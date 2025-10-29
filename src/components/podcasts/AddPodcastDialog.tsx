@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -25,12 +26,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { PlaceHolderImages } from "@/lib/podcasts";
 
 const formSchema = z.object({
   url: z.string().url({ message: "Please enter a valid URL." }),
   title: z.string().min(2, { message: "Title must be at least 2 characters." }),
-  artist: z.string().min(2, { message: "Artist must be at least 2 characters." }),
+  artist: z
+    .string()
+    .min(2, { message: "Artist must be at least 2 characters." }),
 });
 
 export function AddPodcastDialog({ children }: { children: React.ReactNode }) {
@@ -48,13 +50,12 @@ export function AddPodcastDialog({ children }: { children: React.ReactNode }) {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    const newPodcastArt = PlaceHolderImages.find(p => p.id === 'podcast-new') || PlaceHolderImages[0];
     addPodcast({
       title: values.title,
       artist: values.artist,
       audioUrl: values.url,
-      coverArt: newPodcastArt.imageUrl,
-      coverArtHint: newPodcastArt.imageHint,
+      coverArt: `https://picsum.photos/seed/${Math.random()}/500/500`,
+      coverArtHint: "podcast placeholder",
     });
     setOpen(false);
     form.reset();
@@ -71,7 +72,8 @@ export function AddPodcastDialog({ children }: { children: React.ReactNode }) {
         <DialogHeader>
           <DialogTitle>Add Podcast</DialogTitle>
           <DialogDescription>
-            Add a new podcast to your library by providing a link to an audio file.
+            Add a new podcast to your library by providing a link to an audio
+            file.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -83,7 +85,10 @@ export function AddPodcastDialog({ children }: { children: React.ReactNode }) {
                 <FormItem>
                   <FormLabel>Audio URL</FormLabel>
                   <FormControl>
-                    <Input placeholder="https://example.com/podcast.mp3" {...field} />
+                    <Input
+                      placeholder="https://example.com/podcast.mp3"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -102,7 +107,7 @@ export function AddPodcastDialog({ children }: { children: React.ReactNode }) {
                 </FormItem>
               )}
             />
-             <FormField
+            <FormField
               control={form.control}
               name="artist"
               render={({ field }) => (

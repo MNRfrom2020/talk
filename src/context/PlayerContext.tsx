@@ -1,7 +1,14 @@
-'use client';
+"use client";
 
-import type { Podcast } from '@/lib/podcasts';
-import React, { createContext, useContext, useState, useRef, useCallback, useEffect } from 'react';
+import type { Podcast } from "@/lib/podcasts";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useRef,
+  useCallback,
+  useEffect,
+} from "react";
 
 interface PlayerContextType {
   playlist: Podcast[];
@@ -18,7 +25,7 @@ interface PlayerContextType {
   seek: (time: number) => void;
   volume: number;
   setVolume: (volume: number) => void;
-  addPodcast: (podcast: Omit<Podcast, 'id'>) => void;
+  addPodcast: (podcast: Omit<Podcast, "id">) => void;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -26,12 +33,18 @@ const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 export const usePlayer = () => {
   const context = useContext(PlayerContext);
   if (!context) {
-    throw new Error('usePlayer must be used within a PlayerProvider');
+    throw new Error("usePlayer must be used within a PlayerProvider");
   }
   return context;
 };
 
-export const PlayerProvider = ({ children, initialPodcasts }: { children: React.ReactNode; initialPodcasts: Podcast[] }) => {
+export const PlayerProvider = ({
+  children,
+  initialPodcasts,
+}: {
+  children: React.ReactNode;
+  initialPodcasts: Podcast[];
+}) => {
   const [playlist, setPlaylist] = useState<Podcast[]>(initialPodcasts);
   const [currentTrack, setCurrentTrack] = useState<Podcast | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -40,26 +53,34 @@ export const PlayerProvider = ({ children, initialPodcasts }: { children: React.
   const [volume, setVolumeState] = useState(1);
   const audioRef = useRef<HTMLAudioElement>(null);
 
-  const addPodcast = (podcast: Omit<Podcast, 'id'>) => {
+  const addPodcast = (podcast: Omit<Podcast, "id">) => {
     const newPodcast: Podcast = {
       ...podcast,
       id: (playlist.length + 1).toString(),
     };
-    setPlaylist(prev => [newPodcast, ...prev]);
+    setPlaylist((prev) => [newPodcast, ...prev]);
   };
-  
-  const play = useCallback((trackId?: string) => {
-    const trackToPlay = trackId ? playlist.find(p => p.id === trackId) : currentTrack || playlist[0];
-    if (trackToPlay) {
-      if (currentTrack?.id !== trackToPlay.id) {
-        setCurrentTrack(trackToPlay);
-        if (audioRef.current) {
-          audioRef.current.src = trackToPlay.audioUrl;
+
+  const play = useCallback(
+    (trackId?: string) => {
+      const trackToPlay = trackId
+        ? playlist.find((p) => p.id === trackId)
+        : currentTrack || playlist[0];
+      if (trackToPlay) {
+        if (currentTrack?.id !== trackToPlay.id) {
+          setCurrentTrack(trackToPlay);
+          if (audioRef.current) {
+            audioRef.current.src = trackToPlay.audioUrl;
+          }
         }
+        audioRef.current
+          ?.play()
+          .then(() => setIsPlaying(true))
+          .catch((e) => console.error("Playback failed", e));
       }
-      audioRef.current?.play().then(() => setIsPlaying(true)).catch(e => console.error("Playback failed", e));
-    }
-  }, [playlist, currentTrack]);
+    },
+    [playlist, currentTrack],
+  );
 
   const pause = useCallback(() => {
     audioRef.current?.pause();
@@ -67,7 +88,7 @@ export const PlayerProvider = ({ children, initialPodcasts }: { children: React.
   }, []);
 
   const togglePlay = useCallback(() => {
-    if(!currentTrack && playlist.length > 0) {
+    if (!currentTrack && playlist.length > 0) {
       play(playlist[0].id);
       return;
     }
@@ -79,7 +100,8 @@ export const PlayerProvider = ({ children, initialPodcasts }: { children: React.
     }
   }, [isPlaying, pause, play, currentTrack, playlist]);
 
-  const findCurrentTrackIndex = () => currentTrack ? playlist.findIndex(p => p.id === currentTrack.id) : -1;
+  const findCurrentTrackIndex = () =>
+    currentTrack ? playlist.findIndex((p) => p.id === currentTrack.id) : -1;
 
   const nextTrack = useCallback(() => {
     if (!playlist.length) return;
@@ -120,14 +142,14 @@ export const PlayerProvider = ({ children, initialPodcasts }: { children: React.
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) {
-      audio.addEventListener('timeupdate', onTimeUpdate);
-      audio.addEventListener('loadedmetadata', onLoadedMetadata);
-      audio.addEventListener('ended', nextTrack);
-      
+      audio.addEventListener("timeupdate", onTimeUpdate);
+      audio.addEventListener("loadedmetadata", onLoadedMetadata);
+      audio.addEventListener("ended", nextTrack);
+
       return () => {
-        audio.removeEventListener('timeupdate', onTimeUpdate);
-        audio.removeEventListener('loadedmetadata', onLoadedMetadata);
-        audio.removeEventListener('ended', nextTrack);
+        audio.removeEventListener("timeupdate", onTimeUpdate);
+        audio.removeEventListener("loadedmetadata", onLoadedMetadata);
+        audio.removeEventListener("ended", nextTrack);
       };
     }
   }, [nextTrack]);

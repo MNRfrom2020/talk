@@ -33,8 +33,12 @@ export default function PodcastCard({ podcast }: PodcastCardProps) {
               data-ai-hint={podcast.coverArtHint}
             />
           </div>
-          <h3 className="font-semibold truncate text-foreground">{podcast.title}</h3>
-          <p className="text-sm text-muted-foreground truncate">{podcast.artist}</p>
+          <h3 className="font-semibold truncate text-foreground">
+            {podcast.title}
+          </h3>
+          <p className="text-sm text-muted-foreground truncate">
+            {podcast.artist}
+          </p>
         </CardContent>
       </button>
       <div className="absolute bottom-20 right-6">
@@ -43,7 +47,7 @@ export default function PodcastCard({ podcast }: PodcastCardProps) {
           aria-label={`Play ${podcast.title}`}
           className={cn(
             "flex items-center justify-center h-12 w-12 bg-accent rounded-full text-accent-foreground shadow-xl transform transition-all duration-300 opacity-0 group-hover:opacity-100 group-hover:scale-100 scale-90",
-            { "opacity-100 scale-100": isActive && isPlaying }
+            { "opacity-100 scale-100": isActive && isPlaying },
           )}
         >
           <Play className="h-6 w-6 fill-current ml-1" />

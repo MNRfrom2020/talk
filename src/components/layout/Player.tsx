@@ -47,7 +47,7 @@ export default function Player() {
       <div className="fixed bottom-0 left-0 right-0 h-24 bg-card/80 backdrop-blur-sm border-t border-border/50 flex items-center justify-center px-6">
         <p className="text-muted-foreground">No podcast selected.</p>
       </div>
-    )
+    );
   }
 
   return (
@@ -63,7 +63,9 @@ export default function Player() {
             data-ai-hint={currentTrack.coverArtHint}
           />
           <div className="hidden sm:block">
-            <h3 className="font-semibold text-sm truncate">{currentTrack.title}</h3>
+            <h3 className="font-semibold text-sm truncate">
+              {currentTrack.title}
+            </h3>
             <p className="text-xs text-muted-foreground truncate">
               {currentTrack.artist}
             </p>
@@ -72,7 +74,12 @@ export default function Player() {
 
         <div className="flex flex-col items-center justify-center gap-2 w-2/3 sm:w-1/2 max-w-2xl">
           <div className="flex items-center gap-2 sm:gap-4">
-            <Button variant="ghost" size="icon" onClick={prevTrack} className="h-8 w-8 sm:h-10 sm:w-10">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={prevTrack}
+              className="h-8 w-8 sm:h-10 sm:w-10"
+            >
               <SkipBack className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
             <Button
@@ -87,7 +94,12 @@ export default function Player() {
                 <Play className="h-5 w-5 sm:h-6 sm:w-6 fill-primary-foreground" />
               )}
             </Button>
-            <Button variant="ghost" size="icon" onClick={nextTrack} className="h-8 w-8 sm:h-10 sm:w-10">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={nextTrack}
+              className="h-8 w-8 sm:h-10 sm:w-10"
+            >
               <SkipForward className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           </div>
@@ -110,7 +122,11 @@ export default function Player() {
         </div>
 
         <div className="hidden sm:flex items-center gap-2 w-1/4 justify-end">
-          {volume > 0 ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+          {volume > 0 ? (
+            <Volume2 className="h-5 w-5" />
+          ) : (
+            <VolumeX className="h-5 w-5" />
+          )}
           <Slider
             value={[volume]}
             max={1}

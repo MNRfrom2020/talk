@@ -1,9 +1,9 @@
-import { PlayerProvider } from '@/context/PlayerContext';
-import { podcasts } from '@/lib/podcasts';
-import AppSidebar from '@/components/layout/AppSidebar';
-import Player from '@/components/layout/Player';
-import PodcastLibrary from '@/components/podcasts/PodcastLibrary';
-import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
+import { PlayerProvider } from "@/context/PlayerContext";
+import { podcasts } from "@/lib/podcasts";
+import AppSidebar from "@/components/layout/AppSidebar";
+import Player from "@/components/layout/Player";
+import PodcastLibrary from "@/components/podcasts/PodcastLibrary";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 
 export default function Home() {
   return (
