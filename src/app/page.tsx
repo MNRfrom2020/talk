@@ -15,7 +15,7 @@ export default function Home() {
             <SidebarInset className="flex-1 overflow-y-auto pb-28">
               <main className="p-4 sm:p-6 lg:p-8">
                 <h1 className="text-3xl font-bold tracking-tight mb-6 font-headline">
-                  Recently Added
+                  Your Library
                 </h1>
                 <PodcastLibrary />
               </main>
