@@ -16,14 +16,15 @@ export default function PodcastCard({ podcast }: PodcastCardProps) {
   const isActive = currentTrack?.id === podcast.id;
 
   return (
-    <Card className="group relative w-full overflow-hidden border-none bg-card hover:bg-secondary/80 transition-colors duration-300 shadow-lg">
+    <Card className="group relative w-full overflow-hidden border-none bg-card shadow-lg transition-colors duration-300 hover:bg-secondary/80">
       <button
+        type="button"
         className="w-full text-left"
         onClick={() => play(podcast.id)}
         aria-label={`Play ${podcast.title}`}
       >
         <CardContent className="p-4">
-          <div className="aspect-square relative mb-4">
+          <div className="relative mb-4 aspect-square">
             <Image
               src={podcast.coverArt}
               alt={podcast.title}
@@ -33,24 +34,25 @@ export default function PodcastCard({ podcast }: PodcastCardProps) {
               data-ai-hint={podcast.coverArtHint}
             />
           </div>
-          <h3 className="font-semibold truncate text-foreground">
+          <h3 className="truncate font-semibold text-foreground">
             {podcast.title}
           </h3>
-          <p className="text-sm text-muted-foreground truncate">
+          <p className="truncate text-sm text-muted-foreground">
             {podcast.artist}
           </p>
         </CardContent>
       </button>
       <div className="absolute bottom-20 right-6">
         <button
+          type="button"
           onClick={() => play(podcast.id)}
           aria-label={`Play ${podcast.title}`}
           className={cn(
-            "flex items-center justify-center h-12 w-12 bg-accent rounded-full text-accent-foreground shadow-xl transform transition-all duration-300 opacity-0 group-hover:opacity-100 group-hover:scale-100 scale-90",
+            "flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-xl transform transition-all duration-300 opacity-0 group-hover:opacity-100 group-hover:scale-100 scale-90",
             { "opacity-100 scale-100": isActive && isPlaying },
           )}
         >
-          <Play className="h-6 w-6 fill-current ml-1" />
+          <Play className="ml-1 h-6 w-6 fill-current" />
         </button>
       </div>
     </Card>

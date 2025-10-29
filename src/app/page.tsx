@@ -14,12 +14,7 @@ export default function Home() {
             <div className="flex flex-1 overflow-hidden">
               <AppSidebar />
               <SidebarInset className="flex-1 overflow-y-auto pb-28">
-                <main className="p-4 sm:p-6 lg:p-8">
-                  <h1 className="font-headline mb-6 text-3xl font-bold tracking-tight">
-                    Your Library
-                  </h1>
-                  <PodcastLibrary />
-                </main>
+                <PodcastLibrary />
               </SidebarInset>
             </div>
             <Player />

@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -35,7 +35,7 @@ const formSchema = z.object({
     .min(2, { message: "Artist must be at least 2 characters." }),
 });
 
-export function AddPodcastDialog({ children }: { children: React.ReactNode }) {
+export function AddPodcastDialog({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const { addPodcast } = usePodcast();
   const { toast } = useToast();
@@ -50,13 +50,12 @@ export function AddPodcastDialog({ children }: { children: React.ReactNode }) {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    const seed = Date.now() + Math.random();
     addPodcast({
       title: values.title,
       artist: values.artist,
       audioUrl: values.url,
-      coverArt: `https://picsum.photos/seed/${seed}/500/500`,
-      coverArtHint: "podcast placeholder",
+      coverArt: `https://picsum.photos/seed/${Date.now()}/500/500`,
+      coverArtHint: "podcast cover",
     });
     setOpen(false);
     form.reset();
