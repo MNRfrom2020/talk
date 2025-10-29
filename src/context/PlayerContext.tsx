@@ -1,3 +1,4 @@
+
 "use client";
 
 import type { Podcast } from "@/lib/podcasts";
@@ -53,13 +54,16 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         : currentTrack || podcasts[0];
 
       if (trackToPlay) {
-        if (currentTrack?.id !== trackToPlay.id) {
-          setCurrentTrack(trackToPlay);
-          if (audioRef.current) {
-            audioRef.current.src = trackToPlay.audioUrl;
-            setProgress(0);
+        setCurrentTrack((prevTrack) => {
+          if (prevTrack?.id !== trackToPlay.id) {
+            if (audioRef.current) {
+              audioRef.current.src = trackToPlay.audioUrl;
+              setProgress(0);
+            }
+            return trackToPlay;
           }
-        }
+          return prevTrack;
+        });
         audioRef.current
           ?.play()
           .then(() => setIsPlaying(true))
