@@ -4,10 +4,44 @@ import { usePodcast } from "@/context/PodcastContext";
 import PodcastCard from "./PodcastCard";
 import { usePlayer } from "@/context/PlayerContext";
 import { cn } from "@/lib/utils";
+import { useMemo } from "react";
+import type { Podcast } from "@/lib/podcasts";
+
+const CategorySection = ({
+  title,
+  podcasts,
+}: {
+  title: string;
+  podcasts: Podcast[];
+}) => (
+  <section className="mb-8">
+    <h2 className="font-headline mb-4 text-2xl font-bold tracking-tight">
+      {title}
+    </h2>
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+      {podcasts.map((podcast) => (
+        <PodcastCard key={`${title}-${podcast.id}`} podcast={podcast} />
+      ))}
+    </div>
+  </section>
+);
 
 export default function PodcastLibrary() {
   const { podcasts } = usePodcast();
   const { currentTrack } = usePlayer();
+
+  const categories = useMemo(() => {
+    const categoryMap = new Map<string, Podcast[]>();
+    podcasts.forEach((podcast) => {
+      podcast.categories.forEach((category) => {
+        if (!categoryMap.has(category)) {
+          categoryMap.set(category, []);
+        }
+        categoryMap.get(category)?.push(podcast);
+      });
+    });
+    return Array.from(categoryMap.entries());
+  }, [podcasts]);
 
   return (
     <main
@@ -18,11 +52,16 @@ export default function PodcastLibrary() {
       <h1 className="font-headline mb-6 text-3xl font-bold tracking-tight">
         Your Library
       </h1>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-        {podcasts.map((podcast) => (
-          <PodcastCard key={podcast.id} podcast={podcast} />
-        ))}
-      </div>
+
+      <CategorySection title="Recently Added" podcasts={podcasts} />
+
+      {categories.map(([category, categoryPodcasts]) => (
+        <CategorySection
+          key={category}
+          title={category}
+          podcasts={categoryPodcasts}
+        />
+      ))}
     </main>
   );
 }
