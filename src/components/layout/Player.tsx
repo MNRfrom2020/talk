@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import {
+  ChevronDown,
   Pause,
   Play,
   SkipBack,
@@ -9,9 +10,14 @@ import {
   Volume2,
   VolumeX,
 } from "lucide-react";
+import { useState } from "react";
+import { motion } from "framer-motion";
+
 import { usePlayer } from "@/context/PlayerContext";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { cn } from "@/lib/utils";
+import Overlay from "@/components/layout/Overlay";
 
 function formatTime(seconds: number) {
   if (isNaN(seconds)) return "0:00";
@@ -33,6 +39,7 @@ export default function Player() {
     volume,
     setVolume,
   } = usePlayer();
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const handleProgressChange = (value: number[]) => {
     seek(value[0]);
@@ -40,6 +47,16 @@ export default function Player() {
 
   const handleVolumeChange = (value: number[]) => {
     setVolume(value[0]);
+  };
+
+  const collapsedVariants = {
+    hidden: { y: "100%", opacity: 0 },
+    visible: { y: 0, opacity: 1 },
+  };
+
+  const expandedVariants = {
+    hidden: { y: "100%", opacity: 0, scale: 0.95 },
+    visible: { y: 0, opacity: 1, scale: 1 },
   };
 
   if (!currentTrack) {
@@ -51,90 +68,206 @@ export default function Player() {
   }
 
   return (
-    <div className="fixed bottom-16 left-0 right-0 z-50 h-24 border-t border-border/50 bg-card/80 backdrop-blur-sm md:bottom-0">
-      <div className="flex h-full items-center justify-between px-4 sm:px-6">
-        <div className="flex w-1/3 items-center gap-4 sm:w-1/4">
-          <Image
-            src={currentTrack.coverArt}
-            alt={currentTrack.title}
-            width={64}
-            height={64}
-            className="h-12 w-12 rounded-md object-cover sm:h-16 sm:w-16"
-          />
-          <div className="hidden sm:block">
-            <h3 className="truncate text-sm font-semibold">
-              {currentTrack.title}
-            </h3>
-            <p className="truncate text-xs text-muted-foreground">
-              {currentTrack.artist}
-            </p>
-          </div>
-        </div>
-
-        <div className="flex w-2/3 max-w-2xl flex-col items-center justify-center gap-2 sm:w-1/2">
-          <div className="flex items-center gap-2 sm:gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={prevTrack}
-              className="h-8 w-8 sm:h-10 sm:w-10"
-            >
-              <SkipBack className="h-4 w-4 sm:h-5 sm:w-5" />
-            </Button>
-            <Button
-              variant="default"
-              size="icon"
-              className="h-10 w-10 rounded-full bg-primary hover:bg-primary/90 sm:h-12 sm:w-12"
-              onClick={togglePlay}
-            >
-              {isPlaying ? (
-                <Pause className="h-5 w-5 fill-primary-foreground sm:h-6 sm:w-6" />
-              ) : (
-                <Play className="h-5 w-5 fill-primary-foreground sm:h-6 sm:w-6" />
-              )}
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={nextTrack}
-              className="h-8 w-8 sm:h-10 sm:w-10"
-            >
-              <SkipForward className="h-4 w-4 sm:h-5 sm:w-5" />
-            </Button>
-          </div>
-
-          <div className="flex w-full items-center gap-2">
-            <span className="w-10 text-right text-xs text-muted-foreground">
-              {formatTime(progress)}
-            </span>
-            <Slider
-              value={[progress]}
-              max={duration}
-              step={1}
-              onValueChange={handleProgressChange}
-              className="w-full"
-            />
-            <span className="w-10 text-xs text-muted-foreground">
-              {formatTime(duration)}
-            </span>
-          </div>
-        </div>
-
-        <div className="hidden w-1/4 items-center justify-end gap-2 sm:flex">
-          {volume > 0 ? (
-            <Volume2 className="h-5 w-5" />
-          ) : (
-            <VolumeX className="h-5 w-5" />
+    <>
+      <Overlay isVisible={isExpanded} onClick={() => setIsExpanded(false)} />
+      <motion.div
+        className={cn(
+          "fixed bottom-16 left-0 right-0 z-50 border-t border-border/50 bg-card/80 backdrop-blur-sm md:bottom-0",
+          {
+            "h-24": !isExpanded,
+            "h-[calc(100svh-5rem)] pb-16 md:h-[calc(100svh-6rem)] md:pb-0":
+              isExpanded,
+          },
+        )}
+        onClick={() => !isExpanded && setIsExpanded(true)}
+        variants={isExpanded ? expandedVariants : collapsedVariants}
+        initial="hidden"
+        animate="visible"
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        layout
+      >
+        <div className="flex h-full flex-col">
+          {isExpanded && (
+            <div className="flex-shrink-0 p-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsExpanded(false)}
+                className="h-8 w-8"
+              >
+                <ChevronDown className="h-5 w-5" />
+              </Button>
+            </div>
           )}
-          <Slider
-            value={[volume]}
-            max={1}
-            step={0.01}
-            onValueChange={handleVolumeChange}
-            className="w-24"
-          />
+
+          <div
+            className={cn("flex items-center", {
+              "h-full justify-between px-4 sm:px-6": !isExpanded,
+              "flex-1 flex-col justify-center gap-8 px-8": isExpanded,
+            })}
+          >
+            <div
+              className={cn("flex items-center gap-4", {
+                "w-1/3 sm:w-1/4": !isExpanded,
+                "w-full flex-col": isExpanded,
+              })}
+            >
+              <motion.div
+                layoutId="player-image"
+                className={cn({
+                  "h-12 w-12 sm:h-16 sm:w-16 relative": !isExpanded,
+                  "w-full aspect-square max-w-sm relative": isExpanded,
+                })}
+              >
+                <Image
+                  src={currentTrack.coverArt}
+                  alt={currentTrack.title}
+                  fill
+                  className="rounded-md object-cover"
+                />
+              </motion.div>
+              <div
+                className={cn({
+                  "hidden sm:block": !isExpanded,
+                  "text-center w-full": isExpanded,
+                })}
+              >
+                <h3
+                  className={cn("truncate font-semibold", {
+                    "text-sm": !isExpanded,
+                    "text-2xl font-bold": isExpanded,
+                  })}
+                >
+                  {currentTrack.title}
+                </h3>
+                <p
+                  className={cn("truncate text-muted-foreground", {
+                    "text-xs": !isExpanded,
+                    "text-base": isExpanded,
+                  })}
+                >
+                  {currentTrack.artist}
+                </p>
+              </div>
+            </div>
+
+            <div
+              className={cn("flex flex-col items-center justify-center", {
+                "w-2/3 max-w-2xl gap-2 sm:w-1/2": !isExpanded,
+                "w-full max-w-sm gap-4": isExpanded,
+              })}
+            >
+              <div
+                className={cn("flex w-full items-center", {
+                  "gap-2": !isExpanded,
+                  "gap-4": isExpanded,
+                })}
+              >
+                <span className="w-10 text-right text-xs text-muted-foreground">
+                  {formatTime(progress)}
+                </span>
+                <Slider
+                  value={[progress]}
+                  max={duration}
+                  step={1}
+                  onValueChange={handleProgressChange}
+                  className="w-full"
+                />
+                <span className="w-10 text-xs text-muted-foreground">
+                  {formatTime(duration)}
+                </span>
+              </div>
+              <div
+                className={cn("flex items-center justify-center w-full", {
+                  "gap-2 sm:gap-4": !isExpanded,
+                  "gap-6": isExpanded,
+                })}
+              >
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={prevTrack}
+                  className={cn({
+                    "h-8 w-8 sm:h-10 sm:w-10": !isExpanded,
+                    "h-12 w-12": isExpanded,
+                  })}
+                >
+                  <SkipBack
+                    className={cn({
+                      "h-4 w-4 sm:h-5 sm:w-5": !isExpanded,
+                      "h-6 w-6": isExpanded,
+                    })}
+                  />
+                </Button>
+                <Button
+                  variant="default"
+                  size="icon"
+                  className={cn(
+                    "rounded-full bg-primary hover:bg-primary/90",
+                    {
+                      "h-10 w-10 sm:h-12 sm:w-12": !isExpanded,
+                      "h-16 w-16": isExpanded,
+                    },
+                  )}
+                  onClick={togglePlay}
+                >
+                  {isPlaying ? (
+                    <Pause
+                      className={cn("fill-primary-foreground", {
+                        "h-5 w-5 sm:h-6 sm:w-6": !isExpanded,
+                        "h-8 w-8": isExpanded,
+                      })}
+                    />
+                  ) : (
+                    <Play
+                      className={cn("fill-primary-foreground", {
+                        "h-5 w-5 sm:h-6 sm:w-6": !isExpanded,
+                        "h-8 w-8": isExpanded,
+                      })}
+                    />
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={nextTrack}
+                  className={cn({
+                    "h-8 w-8 sm:h-10 sm:w-10": !isExpanded,
+                    "h-12 w-12": isExpanded,
+                  })}
+                >
+                  <SkipForward
+                    className={cn({
+                      "h-4 w-4 sm:h-5 sm:w-5": !isExpanded,
+                      "h-6 w-6": isExpanded,
+                    })}
+                  />
+                </Button>
+              </div>
+            </div>
+
+            <div
+              className={cn("items-center justify-end gap-2", {
+                "hidden w-1/4 sm:flex": !isExpanded,
+                "flex w-full max-w-sm": isExpanded,
+              })}
+            >
+              {volume > 0 ? (
+                <Volume2 className="h-5 w-5" />
+              ) : (
+                <VolumeX className="h-5 w-5" />
+              )}
+              <Slider
+                value={[volume]}
+                max={1}
+                step={0.01}
+                onValueChange={handleVolumeChange}
+                className="w-full flex-1"
+              />
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </>
   );
 }

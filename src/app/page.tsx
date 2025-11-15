@@ -1,9 +1,10 @@
+import { AnimatePresence } from "framer-motion";
 import BottomNavBar from "@/components/layout/BottomNavBar";
-import { PlayerProvider } from "@/context/PlayerContext";
-import { PodcastProvider } from "@/context/PodcastContext";
-import AppSidebar from "@/components/layout/AppSidebar";
 import Player from "@/components/layout/Player";
 import PodcastLibrary from "@/components/podcasts/PodcastLibrary";
+import AppSidebar from "@/components/layout/AppSidebar";
+import { PlayerProvider } from "@/context/PlayerContext";
+import { PodcastProvider } from "@/context/PodcastContext";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 
 export default function Home() {
@@ -18,7 +19,9 @@ export default function Home() {
                 <PodcastLibrary />
               </SidebarInset>
             </div>
-            <Player />
+            <AnimatePresence>
+              <Player />
+            </AnimatePresence>
             <BottomNavBar />
           </div>
         </SidebarProvider>
