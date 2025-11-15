@@ -7,6 +7,7 @@ import {
   Plus,
   Search,
   Grid,
+  User,
 } from "lucide-react";
 import { AddPodcastDialog } from "../podcasts/AddPodcastDialog";
 import {
@@ -91,6 +92,10 @@ export default function AppSidebar() {
               <span>Add Podcast</span>
             </button>
           </AddPodcastDialog>
+          <button className="mt-2 flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+            <User className="h-5 w-5" />
+            <span>Guest Login</span>
+          </button>
         </SidebarGroup>
       </SidebarContent>
     </Sidebar>
