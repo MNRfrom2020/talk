@@ -33,6 +33,7 @@ const formSchema = z.object({
   artist: z
     .string()
     .min(2, { message: "Artist must be at least 2 characters." }),
+  categories: z.string().min(1, { message: "Please enter at least one category." }),
 });
 
 export function AddPodcastDialog({ children }: { children: ReactNode }) {
@@ -46,6 +47,7 @@ export function AddPodcastDialog({ children }: { children: ReactNode }) {
       url: "",
       title: "",
       artist: "",
+      categories: "",
     },
   });
 
@@ -53,6 +55,7 @@ export function AddPodcastDialog({ children }: { children: ReactNode }) {
     addPodcast({
       title: values.title,
       artist: values.artist,
+      categories: values.categories.split(",").map((c) => c.trim()),
       audioUrl: values.url,
       coverArt: `https://picsum.photos/seed/${Date.now()}/500/500`,
       coverArtHint: "podcast cover",
@@ -119,6 +122,22 @@ export function AddPodcastDialog({ children }: { children: ReactNode }) {
                   <FormControl>
                     <Input placeholder="The Podcaster" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="categories"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Categories</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Mystery, Thriller" {...field} />
+                  </FormControl>
+                   <p className="text-xs text-muted-foreground">
+                    Enter comma-separated categories.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}

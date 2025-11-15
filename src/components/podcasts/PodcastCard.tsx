@@ -6,6 +6,7 @@ import type { Podcast } from "@/lib/podcasts";
 import { usePlayer } from "@/context/PlayerContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { Badge } from "../ui/badge";
 
 interface PodcastCardProps {
   podcast: Podcast;
@@ -40,6 +41,13 @@ export default function PodcastCard({ podcast }: PodcastCardProps) {
           <p className="truncate text-sm text-muted-foreground">
             {podcast.artist}
           </p>
+          <div className="mt-2 flex flex-wrap gap-1">
+            {podcast.categories.slice(0, 2).map((category) => (
+              <Badge key={category} variant="secondary">
+                {category}
+              </Badge>
+            ))}
+          </div>
         </CardContent>
       </button>
       <div className="absolute bottom-20 right-6">
