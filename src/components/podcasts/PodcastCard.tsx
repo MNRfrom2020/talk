@@ -35,13 +35,13 @@ export default function PodcastCard({ podcast }: PodcastCardProps) {
               data-ai-hint={podcast.coverArtHint}
             />
           </div>
-          <h3 className="truncate font-semibold text-foreground">
+          <h3 className="h-12 font-semibold text-foreground line-clamp-2">
             {podcast.title}
           </h3>
-          <p className="truncate text-sm text-muted-foreground">
+          <p className="h-5 text-sm text-muted-foreground line-clamp-1">
             {podcast.artist}
           </p>
-          <div className="mt-2 flex flex-wrap gap-1">
+          <div className="mt-2 flex h-6 flex-wrap gap-1 overflow-hidden">
             {podcast.categories.slice(0, 2).map((category) => (
               <Badge key={category} variant="secondary">
                 {category}
@@ -50,7 +50,7 @@ export default function PodcastCard({ podcast }: PodcastCardProps) {
           </div>
         </CardContent>
       </button>
-      <div className="absolute bottom-20 right-6">
+      <div className="absolute bottom-24 right-6">
         <button
           type="button"
           onClick={() => play(podcast.id)}
