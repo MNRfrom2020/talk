@@ -128,7 +128,8 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const togglePlay = useCallback(() => {
-    if (!currentTrack && podcasts.length > 0) {
+    if (!currentTrack) {
+      if (!podcasts || podcasts.length === 0) return;
       play(podcasts[0].id);
       return;
     }
@@ -149,7 +150,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     if (!podcasts || podcasts.length === 0) return;
     const currentIndex = findCurrentTrackIndex();
     if (currentIndex === -1) {
-        if(podcasts.length > 0) play(podcasts[0].id)
+        play(podcasts[0].id)
         return;
     }
     const nextIndex = (currentIndex + 1) % podcasts.length;
@@ -160,7 +161,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     if (!podcasts || podcasts.length === 0) return;
     const currentIndex = findCurrentTrackIndex();
      if (currentIndex === -1) {
-        if(podcasts.length > 0) play(podcasts[0].id)
+        play(podcasts[0].id)
         return;
     }
     const prevIndex = (currentIndex - 1 + podcasts.length) % podcasts.length;
