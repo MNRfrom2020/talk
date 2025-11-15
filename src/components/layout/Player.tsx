@@ -78,7 +78,12 @@ export default function Player() {
             "h-screen pb-16 md:h-full md:pb-0": isExpanded,
           },
         )}
-        onClick={() => !isExpanded && setIsExpanded(true)}
+        onClick={(e) => {
+          if (!isExpanded) {
+            e.stopPropagation();
+            setIsExpanded(true);
+          }
+        }}
         variants={isExpanded ? expandedVariants : collapsedVariants}
         initial="hidden"
         animate="visible"
@@ -91,7 +96,10 @@ export default function Player() {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setIsExpanded(false)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsExpanded(false);
+                }}
                 className="h-8 w-8"
               >
                 <ChevronDown className="h-5 w-5" />
@@ -185,7 +193,10 @@ export default function Player() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={prevTrack}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    prevTrack();
+                  }}
                   className={cn({
                     "h-8 w-8 sm:h-10 sm:w-10": !isExpanded,
                     "h-12 w-12": isExpanded,
@@ -208,7 +219,10 @@ export default function Player() {
                       "h-16 w-16": isExpanded,
                     },
                   )}
-                  onClick={togglePlay}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    togglePlay();
+                  }}
                 >
                   {isPlaying ? (
                     <Pause
@@ -229,7 +243,10 @@ export default function Player() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={nextTrack}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    nextTrack();
+                  }}
                   className={cn({
                     "h-8 w-8 sm:h-10 sm:w-10": !isExpanded,
                     "h-12 w-12": isExpanded,
