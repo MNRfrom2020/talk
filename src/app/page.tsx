@@ -15,7 +15,7 @@ export default function Home() {
           <div className="flex h-screen flex-col bg-background">
             <div className="flex flex-1 overflow-hidden">
               <AppSidebar />
-              <SidebarInset className="flex-1 overflow-y-auto pb-48 md:pb-28">
+              <SidebarInset className="flex-1 overflow-y-auto">
                 <PodcastLibrary />
               </SidebarInset>
             </div>

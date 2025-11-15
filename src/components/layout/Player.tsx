@@ -61,7 +61,7 @@ export default function Player() {
 
   if (!currentTrack) {
     return (
-      <div className="fixed bottom-16 left-0 right-0 z-50 flex h-24 items-center justify-center border-t border-border/50 bg-card/80 px-6 backdrop-blur-sm md:bottom-0">
+      <div className="fixed bottom-16 left-0 right-0 z-50 flex h-24 items-center justify-center border-t border-border/50 bg-card/80 px-6 backdrop-blur-sm md:hidden">
         <p className="text-muted-foreground">No podcast selected.</p>
       </div>
     );
@@ -75,8 +75,7 @@ export default function Player() {
           "fixed bottom-16 left-0 right-0 z-50 border-t border-border/50 bg-card/80 backdrop-blur-sm md:bottom-0",
           {
             "h-24": !isExpanded,
-            "h-[calc(100svh-5rem)] pb-16 md:h-[calc(100svh-6rem)] md:pb-0":
-              isExpanded,
+            "h-screen pb-16 md:h-full md:pb-0": isExpanded,
           },
         )}
         onClick={() => !isExpanded && setIsExpanded(true)}
@@ -153,7 +152,7 @@ export default function Player() {
 
             <div
               className={cn("flex flex-col items-center justify-center", {
-                "w-2/3 max-w-2xl gap-2 sm:w-1/2": !isExpanded,
+                "w-2/3 max-w-md gap-2 sm:w-1/2": !isExpanded,
                 "w-full max-w-sm gap-4": isExpanded,
               })}
             >
