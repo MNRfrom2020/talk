@@ -52,11 +52,16 @@ const CategorySection = ({
         <h2 className="font-headline text-2xl font-bold tracking-tight">
           {title}
         </h2>
-        {hasMore && !isExpanded && (
-          <Button variant="link" onClick={() => setIsExpanded(true)}>
-            See all
-          </Button>
-        )}
+        {hasMore &&
+          (isExpanded ? (
+            <Button variant="link" onClick={() => setIsExpanded(false)}>
+              Show less
+            </Button>
+          ) : (
+            <Button variant="link" onClick={() => setIsExpanded(true)}>
+              See all
+            </Button>
+          ))}
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
         {displayedPodcasts.map((podcast) => (
