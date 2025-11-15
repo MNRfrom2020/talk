@@ -1,220 +1,12 @@
 
 [
   {
-    "id": "1",
-    "title": "Feludar Goendagiri",
-    "artist": "Satyajit Ray",
-    "coverArt": "https://picsum.photos/seed/1/500/500",
-    "coverArtHint": "detective story",
-    "audioUrl": "https://stream.mnr.world/0:/Feluda/01.%20Feludar%20Goendagiri/Sunday%20Suspense/01.Feluda%20r%20Goendagiri%20-%20Satyajit%20Ray%20(128kpbs).mp3"
-  },
-  {
-    "id": "2",
-    "title": "Badshahi Angti",
-    "artist": "Satyajit Ray",
-    "coverArt": "https://picsum.photos/seed/2/500/500",
-    "coverArtHint": "royal mystery",
-    "audioUrl": "https://stream.mnr.world/0:/Feluda/02.%20Badshahi%20Angti/Sunday%20Suspense/02.Baadshaahi%20Angti%20-%20Satyajit%20Ray%20128kpbs.mp3"
-  },
-  {
-    "id": "3",
-    "title": "Sheyal Debota Rahasya",
-    "artist": "Satyajit Ray",
-    "coverArt": "https://picsum.photos/seed/3/500/500",
-    "coverArtHint": "ancient mystery",
-    "audioUrl": "https://stream.mnr.world/0:/Feluda/04.%20Sheyal%20Debota%20Rahasya/Sunday%20Suspense/04.Sheyal%20Debota%20Rahasya%20-%20Satyajit%20Ray%20128kpbs.mp3"
-  },
-  {
-    "id": "4",
-    "title": "Gangtokey Gondogol",
-    "artist": "Satyajit Ray",
-    "coverArt": "https://picsum.photos/seed/4/500/500",
-    "coverArtHint": "mountain adventure",
-    "audioUrl": "https://stream.mnr.world/0:/Feluda/05.%20Gangtokey%20Gondogol/Sunday%20Suspense/Gangtokey%20Gondogol%20-%20Satyajit%20Ray%20%20128kpbs.mp3"
-  },
-  {
-    "id": "5",
-    "title": "Samaddarer Chabi",
-    "artist": "Satyajit Ray",
-    "coverArt": "https://picsum.photos/seed/5/500/500",
-    "coverArtHint": "key mystery",
-    "audioUrl": "https://stream.mnr.world/0:/Feluda/08.%20Samaddarer%20Chabi/Sunday%20Suspense/Samaddar-er%20Chaabi%20-%20Satyajit%20Ray%20128kpbs.mp3"
-  },
-  {
-    "id": "6",
-    "title": "Ankita",
+    "id": "29",
+    "title": "Swarup Babur Bhul",
     "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/6/500/500",
-    "coverArtHint": "supernatural story",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Ankita.mp3"
-  },
-  {
-    "id": "7",
-    "title": "Aschorjo Coin",
-    "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/7/500/500",
-    "coverArtHint": "magical coin",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Aschorjo%20Coin.mp3"
-  },
-  {
-    "id": "8",
-    "title": "Bahurupi",
-    "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/8/500/500",
-    "coverArtHint": "impersonator story",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Bahurupi.mp3"
-  },
-  {
-    "id": "9",
-    "title": "Chitrakar",
-    "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/9/500/500",
-    "coverArtHint": "artist tale",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Chitrakar.mp3"
-  },
-  {
-    "id": "10",
-    "title": "Chitrangada",
-    "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/10/500/500",
-    "coverArtHint": "mythological story",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Chitrangada.mp3"
-  },
-  {
-    "id": "11",
-    "title": "Cycle",
-    "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/11/500/500",
-    "coverArtHint": "mystery cycle",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Cycle.mp3"
-  },
-  {
-    "id": "12",
-    "title": "Daju",
-    "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/12/500/500",
-    "coverArtHint": "brother story",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Daju.mp3"
-  },
-  {
-    "id": "13",
-    "title": "Dibakar",
-    "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/13/500/500",
-    "coverArtHint": "character story",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Dibakar.mp3"
-  },
-  {
-    "id": "14",
-    "title": "Doctor Pakrashi O Nil Phul",
-    "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/14/500/500",
-    "coverArtHint": "doctor mystery",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Doctor%20Pakrashi%20O%20Nil%20Phul.mp3"
-  },
-  {
-    "id": "15",
-    "title": "Dr. Pakrashi R Dragon Aka Ayna",
-    "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/15/500/500",
-    "coverArtHint": "dragon mirror",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Dr.%20Pakrashi%20R%20Dragon%20Aka%20Ayna.mp3"
-  },
-  {
-    "id": "16",
-    "title": "Dr. Pakrashi-er Aloukik Bislashan",
-    "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/16/500/500",
-    "coverArtHint": "supernatural analysis",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Dr.%20Pakrashi-er%20Aloukik%20Bislashan.mp3"
-  },
-  {
-    "id": "17",
-    "title": "Ema",
-    "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/17/500/500",
-    "coverArtHint": "character story",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Ema.mp3"
-  },
-  {
-    "id": "18",
-    "title": "Gaach Manobi",
-    "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/18/500/500",
-    "coverArtHint": "tree woman",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Gaach%20Manobi.mp3"
-  },
-  {
-    "id": "19",
-    "title": "Ghaar Beka Bajna",
-    "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/19/500/500",
-    "coverArtHint": "strange music",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Ghaar%20Beka%20Bajna.mp3"
-  },
-  {
-    "id": "20",
-    "title": "Gogol R Baganbarir Rahoshyomoy Ghori",
-    "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/20/500/500",
-    "coverArtHint": "mysterious clock",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Gogol%20R%20Baganbarir%20Rahoshyomoy%20Ghori.mp3"
-  },
-  {
-    "id": "21",
-    "title": "Haranath er Mrityu Sakhi",
-    "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/21/500/500",
-    "coverArtHint": "death witness",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Haranath%20er%20Mrityu%20Sakhi.mp3"
-  },
-  {
-    "id": "22",
-    "title": "Jonmodin",
-    "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/22/500/500",
-    "coverArtHint": "birthday story",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Jonmodin.mp3"
-  },
-  {
-    "id": "23",
-    "title": "Kaak",
-    "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/23/500/500",
-    "coverArtHint": "crow story",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Kaak.mp3"
-  },
-  {
-    "id": "24",
-    "title": "Mithir Ma",
-    "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/24/500/500",
-    "coverArtHint": "mother story",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Mithir%20Ma.mp3"
-  },
-  {
-    "id": "25",
-    "title": "Noksha",
-    "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/25/500/500",
-    "coverArtHint": "design story",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Noksha.mp3"
-  },
-  {
-    "id": "26",
-    "title": "Rohoshyomoy Gari Guli",
-    "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/26/500/500",
-    "coverArtHint": "mysterious cars",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Rohoshyomoy%20Gari%20Guli.mp3"
-  },
-  {
-    "id": "27",
-    "title": "Santanu-er Jonmodin",
-    "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/27/500/500",
-    "coverArtHint": "birthday story",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Santanu-er%20Jonmodin.mp3"
+    "coverArt": "https://picsum.photos/seed/29/500/500",
+    "coverArtHint": "mistake story",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Swarup%20Babur%20Bhul.mp3"
   },
   {
     "id": "28",
@@ -225,11 +17,219 @@
     "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Swapno%20Chikitsa.mp3"
   },
   {
-    "id": "29",
-    "title": "Swarup Babur Bhul",
+    "id": "27",
+    "title": "Santanu-er Jonmodin",
     "artist": "Aloukik Robbar",
-    "coverArt": "https://picsum.photos/seed/29/500/500",
-    "coverArtHint": "mistake story",
-    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Swarup%20Babur%20Bhul.mp3"
+    "coverArt": "https://picsum.photos/seed/27/500/500",
+    "coverArtHint": "birthday story",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Santanu-er%20Jonmodin.mp3"
+  },
+  {
+    "id": "26",
+    "title": "Rohoshyomoy Gari Guli",
+    "artist": "Aloukik Robbar",
+    "coverArt": "https://picsum.photos/seed/26/500/500",
+    "coverArtHint": "mysterious cars",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Rohoshyomoy%20Gari%20Guli.mp3"
+  },
+  {
+    "id": "25",
+    "title": "Noksha",
+    "artist": "Aloukik Robbar",
+    "coverArt": "https://picsum.photos/seed/25/500/500",
+    "coverArtHint": "design story",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Noksha.mp3"
+  },
+  {
+    "id": "24",
+    "title": "Mithir Ma",
+    "artist": "Aloukik Robbar",
+    "coverArt": "https://picsum.photos/seed/24/500/500",
+    "coverArtHint": "mother story",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Mithir%20Ma.mp3"
+  },
+  {
+    "id": "23",
+    "title": "Kaak",
+    "artist": "Aloukik Robbar",
+    "coverArt": "https://picsum.photos/seed/23/500/500",
+    "coverArtHint": "crow story",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Kaak.mp3"
+  },
+  {
+    "id": "22",
+    "title": "Jonmodin",
+    "artist": "Aloukik Robbar",
+    "coverArt": "https://picsum.photos/seed/22/500/500",
+    "coverArtHint": "birthday story",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Jonmodin.mp3"
+  },
+  {
+    "id": "21",
+    "title": "Haranath er Mrityu Sakhi",
+    "artist": "Aloukik Robbar",
+    "coverArt": "https://picsum.photos/seed/21/500/500",
+    "coverArtHint": "death witness",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Haranath%20er%20Mrityu%20Sakhi.mp3"
+  },
+  {
+    "id": "20",
+    "title": "Gogol R Baganbarir Rahoshyomoy Ghori",
+    "artist": "Aloukik Robbar",
+    "coverArt": "https://picsum.photos/seed/20/500/500",
+    "coverArtHint": "mysterious clock",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Gogol%20R%20Baganbarir%20Rahoshyomoy%20Ghori.mp3"
+  },
+  {
+    "id": "19",
+    "title": "Ghaar Beka Bajna",
+    "artist": "Aloukik Robbar",
+    "coverArt": "https://picsum.photos/seed/19/500/500",
+    "coverArtHint": "strange music",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Ghaar%20Beka%20Bajna.mp3"
+  },
+  {
+    "id": "18",
+    "title": "Gaach Manobi",
+    "artist": "Aloukik Robbar",
+    "coverArt": "https://picsum.photos/seed/18/500/500",
+    "coverArtHint": "tree woman",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Gaach%20Manobi.mp3"
+  },
+  {
+    "id": "17",
+    "title": "Ema",
+    "artist": "Aloukik Robbar",
+    "coverArt": "https://picsum.photos/seed/17/500/500",
+    "coverArtHint": "character story",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Ema.mp3"
+  },
+  {
+    "id": "16",
+    "title": "Dr. Pakrashi-er Aloukik Bislashan",
+    "artist": "Aloukik Robbar",
+    "coverArt": "https://picsum.photos/seed/16/500/500",
+    "coverArtHint": "supernatural analysis",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Dr.%20Pakrashi-er%20Aloukik%20Bislashan.mp3"
+  },
+  {
+    "id": "15",
+    "title": "Dr. Pakrashi R Dragon Aka Ayna",
+    "artist": "Aloukik Robbar",
+    "coverArt": "https://picsum.photos/seed/15/500/500",
+    "coverArtHint": "dragon mirror",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Dr.%20Pakrashi%20R%20Dragon%20Aka%20Ayna.mp3"
+  },
+  {
+    "id": "14",
+    "title": "Doctor Pakrashi O Nil Phul",
+    "artist": "Aloukik Robbar",
+    "coverArt": "https://picsum.photos/seed/14/500/500",
+    "coverArtHint": "doctor mystery",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Doctor%20Pakrashi%20O%20Nil%20Phul.mp3"
+  },
+  {
+    "id": "13",
+    "title": "Dibakar",
+    "artist": "Aloukik Robbar",
+    "coverArt": "https://picsum.photos/seed/13/500/500",
+    "coverArtHint": "character story",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Dibakar.mp3"
+  },
+  {
+    "id": "12",
+    "title": "Daju",
+    "artist": "Aloukik Robbar",
+    "coverArt": "https://picsum.photos/seed/12/500/500",
+    "coverArtHint": "brother story",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Daju.mp3"
+  },
+  {
+    "id": "11",
+    "title": "Cycle",
+    "artist": "Aloukik Robbar",
+    "coverArt": "https://picsum.photos/seed/11/500/500",
+    "coverArtHint": "mystery cycle",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Cycle.mp3"
+  },
+  {
+    "id": "10",
+    "title": "Chitrangada",
+    "artist": "Aloukik Robbar",
+    "coverArt": "https://picsum.photos/seed/10/500/500",
+    "coverArtHint": "mythological story",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Chitrangada.mp3"
+  },
+  {
+    "id": "9",
+    "title": "Chitrakar",
+    "artist": "Aloukik Robbar",
+    "coverArt": "https://picsum.photos/seed/9/500/500",
+    "coverArtHint": "artist tale",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Chitrakar.mp3"
+  },
+  {
+    "id": "8",
+    "title": "Bahurupi",
+    "artist": "Aloukik Robbar",
+    "coverArt": "https://picsum.photos/seed/8/500/500",
+    "coverArtHint": "impersonator story",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Bahurupi.mp3"
+  },
+  {
+    "id": "7",
+    "title": "Aschorjo Coin",
+    "artist": "Aloukik Robbar",
+    "coverArt": "https://picsum.photos/seed/7/500/500",
+    "coverArtHint": "magical coin",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Aschorjo%20Coin.mp3"
+  },
+  {
+    "id": "6",
+    "title": "Ankita",
+    "artist": "Aloukik Robbar",
+    "coverArt": "https://picsum.photos/seed/6/500/500",
+    "coverArtHint": "supernatural story",
+    "audioUrl": "https://stream.mnr.world/0:/Audio%20Book/Aloukik%20Robbar/Ankita.mp3"
+  },
+  {
+    "id": "5",
+    "title": "Samaddarer Chabi",
+    "artist": "Satyajit Ray",
+    "coverArt": "https://picsum.photos/seed/5/500/500",
+    "coverArtHint": "key mystery",
+    "audioUrl": "https://stream.mnr.world/0:/Feluda/08.%20Samaddarer%20Chabi/Sunday%20Suspense/Samaddar-er%20Chaabi%20-%20Satyajit%20Ray%20128kpbs.mp3"
+  },
+  {
+    "id": "4",
+    "title": "Gangtokey Gondogol",
+    "artist": "Satyajit Ray",
+    "coverArt": "https://picsum.photos/seed/4/500/500",
+    "coverArtHint": "mountain adventure",
+    "audioUrl": "https://stream.mnr.world/0:/Feluda/05.%20Gangtokey%20Gondogol/Sunday%20Suspense/Gangtokey%20Gondogol%20-%20Satyajit%20Ray%20%20128kpbs.mp3"
+  },
+  {
+    "id": "3",
+    "title": "Sheyal Debota Rahasya",
+    "artist": "Satyajit Ray",
+    "coverArt": "https://picsum.photos/seed/3/500/500",
+    "coverArtHint": "ancient mystery",
+    "audioUrl": "https://stream.mnr.world/0:/Feluda/04.%20Sheyal%20Debota%20Rahasya/Sunday%20Suspense/04.Sheyal%20Debota%20Rahasya%20-%20Satyajit%20Ray%20128kpbs.mp3"
+  },
+  {
+    "id": "2",
+    "title": "Badshahi Angti",
+    "artist": "Satyajit Ray",
+    "coverArt": "https://picsum.photos/seed/2/500/500",
+    "coverArtHint": "royal mystery",
+    "audioUrl": "https://stream.mnr.world/0:/Feluda/02.%20Badshahi%20Angti/Sunday%20Suspense/02.Baadshaahi%20Angti%20-%20Satyajit%20Ray%20128kpbs.mp3"
+  },
+  {
+    "id": "1",
+    "title": "Feludar Goendagiri",
+    "artist": "Satyajit Ray",
+    "coverArt": "https://picsum.photos/seed/1/500/500",
+    "coverArtHint": "detective story",
+    "audioUrl": "https://stream.mnr.world/0:/Feluda/01.%20Feludar%20Goendagiri/Sunday%20Suspense/01.Feluda%20r%20Goendagiri%20-%20Satyajit%20Ray%20(128kpbs).mp3"
   }
 ]

@@ -33,7 +33,7 @@ export const PodcastProvider = ({ children }: { children: ReactNode }) => {
   const addPodcast = (podcast: Omit<Podcast, "id">) => {
     const newPodcast: Podcast = {
       ...podcast,
-      id: (Date.now() + Math.random()).toString(),
+      id: (podcasts.length > 0 ? Math.max(...podcasts.map(p => parseInt(p.id))) + 1 : 1).toString(),
     };
     setPodcasts((prev) => [newPodcast, ...prev]);
   };
