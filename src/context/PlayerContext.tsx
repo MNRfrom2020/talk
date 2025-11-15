@@ -12,6 +12,8 @@ import React, {
 } from "react";
 import { usePodcast } from "./PodcastContext";
 
+const HISTORY_STORAGE_KEY = "podcast_history";
+
 interface PlayerContextType {
   currentTrack: Podcast | null;
   isPlaying: boolean;
@@ -26,6 +28,7 @@ interface PlayerContextType {
   seek: (time: number) => void;
   volume: number;
   setVolume: (volume: number) => void;
+  history: Podcast[];
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -45,12 +48,41 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(1);
+  const [history, setHistory] = useState<Podcast[]>([]);
   const audioRef = useRef<HTMLAudioElement>(null);
   const isPlayingRef = React.useRef(isPlaying);
 
   useEffect(() => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
+
+  useEffect(() => {
+    try {
+      const storedHistory = localStorage.getItem(HISTORY_STORAGE_KEY);
+      if (storedHistory) {
+        setHistory(JSON.parse(storedHistory));
+      }
+    } catch (error) {
+      console.error("Failed to load history from localStorage", error);
+    }
+  }, []);
+
+  const addToHistory = (track: Podcast) => {
+    setHistory((prevHistory) => {
+      const newHistory = [
+        track,
+        ...prevHistory.filter((item) => item.id !== track.id),
+      ].slice(0, 50); // Keep history to a reasonable size
+
+      try {
+        localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(newHistory));
+      } catch (error) {
+        console.error("Failed to save history to localStorage", error);
+      }
+
+      return newHistory;
+    });
+  };
 
   const play = useCallback(
     (trackId?: string) => {
@@ -61,6 +93,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       if (trackToPlay) {
         if (currentTrack?.id !== trackToPlay.id) {
           setCurrentTrack(trackToPlay);
+          addToHistory(trackToPlay);
         } else {
           // If it's the same track, just play it
           audioRef.current
@@ -178,6 +211,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     seek,
     volume,
     setVolume,
+    history,
   };
 
   return (

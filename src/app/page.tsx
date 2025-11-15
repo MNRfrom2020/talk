@@ -6,6 +6,7 @@ import AppSidebar from "@/components/layout/AppSidebar";
 import { PlayerProvider } from "@/context/PlayerContext";
 import { PodcastProvider } from "@/context/PodcastContext";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 export default function Home() {
   return (
@@ -15,8 +16,10 @@ export default function Home() {
           <div className="flex h-screen flex-col bg-background">
             <div className="flex flex-1 overflow-hidden">
               <AppSidebar />
-              <SidebarInset className="flex-1 overflow-y-auto">
-                <PodcastLibrary showTitle={false} />
+              <SidebarInset className="flex flex-1 flex-col">
+                <ScrollArea className="h-full">
+                  <PodcastLibrary showTitle={false} />
+                </ScrollArea>
               </SidebarInset>
             </div>
             <AnimatePresence>
