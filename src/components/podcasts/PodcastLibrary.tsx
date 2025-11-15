@@ -71,7 +71,7 @@ const CategorySection = ({
   );
 };
 
-export default function PodcastLibrary() {
+export default function PodcastLibrary({ showTitle = true }: { showTitle?: boolean }) {
   const { podcasts } = usePodcast();
   const { currentTrack } = usePlayer();
 
@@ -94,9 +94,11 @@ export default function PodcastLibrary() {
         "pb-28 md:pb-8": currentTrack,
       })}
     >
-      <h1 className="font-headline mb-6 text-3xl font-bold tracking-tight">
-        Your Library
-      </h1>
+      {showTitle && (
+        <h1 className="font-headline mb-6 text-3xl font-bold tracking-tight">
+          Your Library
+        </h1>
+      )}
 
       <CategorySection title="Recently Added" podcasts={podcasts} />
 

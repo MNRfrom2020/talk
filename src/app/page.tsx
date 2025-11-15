@@ -16,7 +16,7 @@ export default function Home() {
             <div className="flex flex-1 overflow-hidden">
               <AppSidebar />
               <SidebarInset className="flex-1 overflow-y-auto">
-                <PodcastLibrary />
+                <PodcastLibrary showTitle={false} />
               </SidebarInset>
             </div>
             <AnimatePresence>
