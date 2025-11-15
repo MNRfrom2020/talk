@@ -19,6 +19,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
+import { SearchDialog } from "../search/SearchDialog";
 
 export default function AppSidebar() {
   const pathname = usePathname();
@@ -41,10 +42,12 @@ export default function AppSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton href="#">
-                <Search />
-                Search
-              </SidebarMenuButton>
+              <SearchDialog>
+                <button className="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+                  <Search />
+                  <span>Search</span>
+                </button>
+              </SearchDialog>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
@@ -56,7 +59,10 @@ export default function AppSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton href="/" isActive={pathname === "/"}>
+              <SidebarMenuButton
+                href="/library"
+                isActive={pathname === "/library"}
+              >
                 <Library />
                 Your Library
               </SidebarMenuButton>

@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { Grid, Home, Library, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SearchDialog } from "../search/SearchDialog";
 
 export default function BottomNavBar() {
   const pathname = usePathname();
@@ -15,7 +16,12 @@ export default function BottomNavBar() {
           icon={Home}
           isActive={pathname === "/"}
         />
-        <NavItem href="#" label="Search" icon={Search} />
+        <SearchDialog>
+          <button className="flex flex-col items-center justify-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground">
+            <Search className="h-6 w-6" />
+            <span>Search</span>
+          </button>
+        </SearchDialog>
         <NavItem
           href="/categories"
           label="Categories"
@@ -23,10 +29,10 @@ export default function BottomNavBar() {
           isActive={pathname.startsWith("/categories")}
         />
         <NavItem
-          href="/"
+          href="/library"
           label="Your Library"
           icon={Library}
-          isActive={pathname === "/"}
+          isActive={pathname === "/library"}
         />
       </div>
     </div>
