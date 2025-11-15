@@ -1,12 +1,12 @@
 import { AnimatePresence } from "framer-motion";
 import BottomNavBar from "@/components/layout/BottomNavBar";
 import Player from "@/components/layout/Player";
+import PodcastLibrary from "@/components/podcasts/PodcastLibrary";
 import AppSidebar from "@/components/layout/AppSidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import HistoryList from "@/components/podcasts/HistoryList";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-export default function LibraryPage() {
+export default function Home() {
   return (
     <SidebarProvider>
       <div className="flex h-screen flex-col bg-background">
@@ -14,9 +14,7 @@ export default function LibraryPage() {
           <AppSidebar />
           <SidebarInset className="flex flex-1 flex-col">
             <ScrollArea className="h-full">
-              <main className="p-4 sm:p-6 lg:p-8">
-                <HistoryList />
-              </main>
+              <PodcastLibrary showTitle={false} />
             </ScrollArea>
           </SidebarInset>
         </div>

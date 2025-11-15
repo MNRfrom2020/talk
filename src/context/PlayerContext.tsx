@@ -67,7 +67,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  const addToHistory = (track: Podcast) => {
+  const addToHistory = useCallback((track: Podcast) => {
     setHistory((prevHistory) => {
       const newHistory = [
         track,
@@ -82,7 +82,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
 
       return newHistory;
     });
-  };
+  }, []);
 
   const play = useCallback(
     (trackId?: string) => {
@@ -103,7 +103,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         }
       }
     },
-    [podcasts, currentTrack],
+    [podcasts, currentTrack, addToHistory],
   );
 
   useEffect(() => {
@@ -143,15 +143,23 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   );
 
   const nextTrack = useCallback(() => {
-    if (!podcasts.length) return;
+    if (!podcasts || podcasts.length === 0) return;
     const currentIndex = findCurrentTrackIndex();
+    if (currentIndex === -1) {
+        if(podcasts.length > 0) play(podcasts[0].id)
+        return;
+    }
     const nextIndex = (currentIndex + 1) % podcasts.length;
     play(podcasts[nextIndex].id);
   }, [podcasts, play, findCurrentTrackIndex]);
 
   const prevTrack = useCallback(() => {
-    if (!podcasts.length) return;
+    if (!podcasts || podcasts.length === 0) return;
     const currentIndex = findCurrentTrackIndex();
+     if (currentIndex === -1) {
+        if(podcasts.length > 0) play(podcasts[0].id)
+        return;
+    }
     const prevIndex = (currentIndex - 1 + podcasts.length) % podcasts.length;
     play(podcasts[prevIndex].id);
   }, [podcasts, play, findCurrentTrackIndex]);
