@@ -63,5 +63,3 @@ function NavItem({ href, label, icon: Icon, isActive }: NavItemProps) {
     </NextLink>
   );
 }
-
-    

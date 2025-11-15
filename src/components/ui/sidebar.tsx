@@ -543,8 +543,8 @@ const sidebarMenuButtonVariants = cva(
 );
 
 type SidebarMenuButtonProps = (
-  | (React.ComponentProps<"button"> & { href?: never })
-  | (React.ComponentProps<typeof NextLink> & { href: string })
+  | (Omit<React.ComponentProps<"button">, "href"> & { href?: never })
+  | (Omit<React.ComponentProps<typeof NextLink>, "href"> & { href: string })
 ) & {
   asChild?: boolean;
   isActive?: boolean;
@@ -566,30 +566,26 @@ const SidebarMenuButton = React.forwardRef<
       tooltip,
       className,
       href,
+      children,
       ...props
     },
     ref,
   ) => {
     const { isMobile, state } = useSidebar();
-
-    const commonProps = {
-      "data-sidebar": "menu-button",
-      "data-size": size,
-      "data-active": isActive,
-      className: cn(sidebarMenuButtonVariants({ variant, size }), className),
-      ...props,
-    };
-
-    const buttonContent = href ? (
-      <NextLink ref={ref} href={href} {...commonProps} />
-    ) : (
-      <button ref={ref} {...commonProps} />
-    );
-
-    const Comp = asChild ? Slot : typeof buttonContent.type;
+    const Comp = asChild ? Slot : href ? NextLink : "button";
 
     const button = (
-      <Comp {...buttonContent.props}>{buttonContent.props.children}</Comp>
+      <Comp
+        ref={ref}
+        href={href as any}
+        data-sidebar="menu-button"
+        data-size={size}
+        data-active={isActive}
+        className={cn(sidebarMenuButtonVariants({ variant, size, className }))}
+        {...props}
+      >
+        {children}
+      </Comp>
     );
 
     if (!tooltip) {
@@ -786,5 +782,3 @@ export {
   SidebarTrigger,
   useSidebar,
 };
-
-    
