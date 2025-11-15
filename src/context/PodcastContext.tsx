@@ -6,6 +6,7 @@ import {
   useContext,
   useState,
   type ReactNode,
+  useMemo,
 } from "react";
 import type { Podcast } from "@/lib/podcasts";
 import { podcasts as initialPodcasts } from "@/lib/podcasts";
@@ -30,6 +31,10 @@ export const usePodcast = () => {
 export const PodcastProvider = ({ children }: { children: ReactNode }) => {
   const [podcasts, setPodcasts] = useState<Podcast[]>(initialPodcasts);
 
+  const sortedPodcasts = useMemo(() => {
+    return [...podcasts].sort((a, b) => parseInt(b.id) - parseInt(a.id));
+  }, [podcasts]);
+
   const addPodcast = (podcast: Omit<Podcast, "id">) => {
     const newPodcast: Podcast = {
       ...podcast,
@@ -39,7 +44,7 @@ export const PodcastProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const value = {
-    podcasts,
+    podcasts: sortedPodcasts,
     addPodcast,
   };
 
