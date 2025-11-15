@@ -46,6 +46,11 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(1);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const isPlayingRef = React.useRef(isPlaying);
+
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+  }, [isPlaying]);
 
   const play = useCallback(
     (trackId?: string) => {
@@ -54,24 +59,32 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         : currentTrack || podcasts[0];
 
       if (trackToPlay) {
-        setCurrentTrack((prevTrack) => {
-          if (prevTrack?.id !== trackToPlay.id) {
-            if (audioRef.current) {
-              audioRef.current.src = trackToPlay.audioUrl;
-              setProgress(0);
-            }
-            return trackToPlay;
-          }
-          return prevTrack;
-        });
-        audioRef.current
-          ?.play()
-          .then(() => setIsPlaying(true))
-          .catch((e) => console.error("Playback failed", e));
+        if (currentTrack?.id !== trackToPlay.id) {
+          setCurrentTrack(trackToPlay);
+        } else {
+          // If it's the same track, just play it
+          audioRef.current
+            ?.play()
+            .then(() => setIsPlaying(true))
+            .catch((e) => console.error("Playback failed", e));
+        }
       }
     },
     [podcasts, currentTrack],
   );
+
+  useEffect(() => {
+    if (currentTrack && audioRef.current) {
+      if (audioRef.current.src !== currentTrack.audioUrl) {
+        audioRef.current.src = currentTrack.audioUrl;
+        setProgress(0);
+      }
+      audioRef.current
+        .play()
+        .then(() => setIsPlaying(true))
+        .catch((e) => console.error("Playback failed", e));
+    }
+  }, [currentTrack]);
 
   const pause = useCallback(() => {
     audioRef.current?.pause();
@@ -93,9 +106,8 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
 
   const findCurrentTrackIndex = useCallback(
     () => (currentTrack ? podcasts.findIndex((p) => p.id === currentTrack.id) : -1),
-    [currentTrack, podcasts]
+    [currentTrack, podcasts],
   );
-
 
   const nextTrack = useCallback(() => {
     if (!podcasts.length) return;
