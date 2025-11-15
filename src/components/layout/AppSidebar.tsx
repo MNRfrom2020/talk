@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import {
   Home,
   Library,
@@ -20,6 +21,8 @@ import {
 } from "@/components/ui/sidebar";
 
 export default function AppSidebar() {
+  const pathname = usePathname();
+
   return (
     <Sidebar>
       <SidebarHeader>
@@ -32,7 +35,7 @@ export default function AppSidebar() {
         <SidebarGroup>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton href="/">
+              <SidebarMenuButton href="/" isActive={pathname === "/"}>
                 <Home />
                 Home
               </SidebarMenuButton>
@@ -44,13 +47,16 @@ export default function AppSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton href="/categories" isActive>
+              <SidebarMenuButton
+                href="/categories"
+                isActive={pathname.startsWith("/categories")}
+              >
                 <Grid />
                 Categories
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton href="/">
+              <SidebarMenuButton href="/" isActive={pathname === "/"}>
                 <Library />
                 Your Library
               </SidebarMenuButton>

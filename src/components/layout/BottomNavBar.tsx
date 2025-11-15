@@ -1,16 +1,33 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { Grid, Home, Library, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export default function BottomNavBar() {
+  const pathname = usePathname();
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-card/80 backdrop-blur-sm md:hidden">
       <div className="grid h-16 grid-cols-4">
-        <NavItem href="/" label="Home" icon={Home} />
+        <NavItem
+          href="/"
+          label="Home"
+          icon={Home}
+          isActive={pathname === "/"}
+        />
         <NavItem href="#" label="Search" icon={Search} />
-        <NavItem href="/categories" label="Categories" icon={Grid} isActive />
-        <NavItem href="/" label="Your Library" icon={Library} />
+        <NavItem
+          href="/categories"
+          label="Categories"
+          icon={Grid}
+          isActive={pathname.startsWith("/categories")}
+        />
+        <NavItem
+          href="/"
+          label="Your Library"
+          icon={Library}
+          isActive={pathname === "/"}
+        />
       </div>
     </div>
   );
