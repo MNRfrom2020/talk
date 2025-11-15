@@ -4,8 +4,22 @@ import { usePodcast } from "@/context/PodcastContext";
 import PodcastCard from "./PodcastCard";
 import { usePlayer } from "@/context/PlayerContext";
 import { cn } from "@/lib/utils";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import type { Podcast } from "@/lib/podcasts";
+import { Button } from "@/components/ui/button";
+
+const getRowLimit = () => {
+  if (typeof window === "undefined") {
+    // Default for server-side rendering
+    return 6;
+  }
+  if (window.innerWidth >= 1536) return 6; // 2xl
+  if (window.innerWidth >= 1280) return 5; // xl
+  if (window.innerWidth >= 1024) return 4; // lg
+  if (window.innerWidth >= 768) return 3; // md
+  if (window.innerWidth >= 640) return 3; // sm
+  return 2; // mobile
+};
 
 const CategorySection = ({
   title,
@@ -13,18 +27,45 @@ const CategorySection = ({
 }: {
   title: string;
   podcasts: Podcast[];
-}) => (
-  <section className="mb-8">
-    <h2 className="font-headline mb-4 text-2xl font-bold tracking-tight">
-      {title}
-    </h2>
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-      {podcasts.map((podcast) => (
-        <PodcastCard key={`${title}-${podcast.id}`} podcast={podcast} />
-      ))}
-    </div>
-  </section>
-);
+}) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [rowLimit, setRowLimit] = useState(getRowLimit());
+
+  useEffect(() => {
+    const handleResize = () => {
+      setRowLimit(getRowLimit());
+    };
+
+    window.addEventListener("resize", handleResize);
+    // Set initial value
+    handleResize();
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const displayedPodcasts = isExpanded ? podcasts : podcasts.slice(0, rowLimit);
+  const hasMore = podcasts.length > rowLimit;
+
+  return (
+    <section className="mb-8">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-headline text-2xl font-bold tracking-tight">
+          {title}
+        </h2>
+        {hasMore && !isExpanded && (
+          <Button variant="link" onClick={() => setIsExpanded(true)}>
+            See all
+          </Button>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+        {displayedPodcasts.map((podcast) => (
+          <PodcastCard key={`${title}-${podcast.id}`} podcast={podcast} />
+        ))}
+      </div>
+    </section>
+  );
+};
 
 export default function PodcastLibrary() {
   const { podcasts } = usePodcast();
