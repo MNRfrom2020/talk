@@ -1,6 +1,13 @@
 "use client";
 
-import { Home, Library, Plus, Podcast as PodcastIcon } from "lucide-react";
+import {
+  Home,
+  Library,
+  Plus,
+  Podcast as PodcastIcon,
+  Search,
+  Grid,
+} from "lucide-react";
 import { AddPodcastDialog } from "../podcasts/AddPodcastDialog";
 import {
   Sidebar,
@@ -28,6 +35,18 @@ export default function AppSidebar() {
               <SidebarMenuButton href="#" isActive>
                 <Home />
                 Home
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton href="#">
+                <Search />
+                Search
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton href="#">
+                <Grid />
+                Categories
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
