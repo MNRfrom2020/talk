@@ -81,22 +81,24 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
   return (
     <>
       <Card className="group relative w-full overflow-hidden border-none bg-card shadow-lg transition-colors duration-300 hover:bg-secondary/80">
-        <div className="absolute left-2 top-2 z-10">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
-            onClick={handleToggleFavorite}
-            aria-label={playlist.isFavorite ? "Remove from saved playlists" : "Add to saved playlists"}
-          >
-            <Heart
-              className={cn(
-                "h-5 w-5 text-foreground",
-                playlist.isFavorite && "fill-primary text-primary"
-              )}
-            />
-          </Button>
-        </div>
+        {playlist.isPredefined && (
+          <div className="absolute left-2 top-2 z-10">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
+              onClick={handleToggleFavorite}
+              aria-label={playlist.isFavorite ? "Remove from saved playlists" : "Add to saved playlists"}
+            >
+              <Heart
+                className={cn(
+                  "h-5 w-5 text-foreground",
+                  playlist.isFavorite && "fill-primary text-primary"
+                )}
+              />
+            </Button>
+          </div>
+        )}
         {!playlist.isPredefined && playlist.id !== FAVORITES_PLAYLIST_ID && (
           <div className="absolute right-2 top-2 z-10">
             <DropdownMenu>
