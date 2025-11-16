@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence } from "framer-motion";
 import { Camera, Clapperboard, Mic, User, TrendingUp } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -232,7 +233,10 @@ export default function ProfilePage() {
 
   return (
     <SidebarProvider>
-      <div className="flex h-screen flex-col bg-background">
+       <div className="relative flex h-screen flex-col bg-background">
+         <Link href="/my-login" className="absolute right-2 top-2 z-50 text-muted-foreground opacity-50 hover:opacity-100" title="Super Admin Login">
+          ·
+        </Link>
         <MobileHeader />
         <div className="flex flex-1 overflow-hidden">
           <AppSidebar />
@@ -382,9 +386,3 @@ export default function ProfilePage() {
     </SidebarProvider>
   );
 }
-
-    
-
-    
-
-    
