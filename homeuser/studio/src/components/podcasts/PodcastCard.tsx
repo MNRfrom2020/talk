@@ -105,7 +105,10 @@ export default function PodcastCard({
 
   const handleDownload = async (e: MouseEvent) => {
     e.stopPropagation();
-    if (isDownloaded) return; // Or show a toast that it's already downloaded
+    if (isDownloaded) {
+       handleDeleteDownload(e);
+       return;
+    }
     toast({
       title: "Starting download...",
       description: `"${podcast.title}" is being downloaded.`,
@@ -141,7 +144,7 @@ export default function PodcastCard({
       return <Loader className="h-5 w-5 animate-spin text-foreground" />;
     }
     if (isDownloaded) {
-      return <Check className="h-5 w-5 text-green-500" />;
+      return <Trash2 className="h-5 w-5 text-destructive" />;
     }
     return <Download className="h-5 w-5 text-foreground" />;
   };
@@ -152,7 +155,7 @@ export default function PodcastCard({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
+          className="h-8 w-8 opacity-100"
           onClick={handleToggleFavorite}
           aria-label={
             isFavorite ? "Remove from favorites" : "Add to favorites"
@@ -168,8 +171,8 @@ export default function PodcastCard({
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100"
-          onClick={isDownloaded ? handleDeleteDownload : handleDownload}
+          className="h-8 w-8 opacity-100"
+          onClick={handleDownload}
           disabled={isDownloading}
           aria-label={
             isDownloaded
@@ -253,6 +256,7 @@ export default function PodcastCard({
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               data-ai-hint={podcast.coverArtHint}
             />
+            {isDownloaded && <div className="absolute bottom-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary/80 backdrop-blur-sm"><Check className="h-3 w-3 text-primary-foreground" /></div>}
           </div>
           <h3 className="h-12 font-semibold text-foreground line-clamp-2">
             {podcast.title}
