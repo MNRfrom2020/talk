@@ -12,6 +12,7 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
 import { SearchDialog } from "../search/SearchDialog";
 
@@ -78,7 +79,7 @@ export default function AppSidebar() {
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarContent className="!flex-grow-0">
+      <SidebarFooter>
         <SidebarGroup>
           <AddPodcastDialog>
             <button className="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
@@ -91,7 +92,7 @@ export default function AppSidebar() {
             <span>Guest Login</span>
           </button>
         </SidebarGroup>
-      </SidebarContent>
+      </SidebarFooter>
     </Sidebar>
   );
 }
