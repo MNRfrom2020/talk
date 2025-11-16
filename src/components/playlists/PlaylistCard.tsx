@@ -82,7 +82,7 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
     <>
       <Card className="group relative w-full overflow-hidden border-none bg-card shadow-lg transition-colors duration-300 hover:bg-secondary/80">
         {playlist.isPredefined && (
-          <div className="absolute left-2 top-2 z-10">
+          <div className="absolute left-3 top-3 z-10">
             <Button
               variant="ghost"
               size="icon"
