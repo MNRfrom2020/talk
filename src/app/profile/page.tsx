@@ -41,6 +41,7 @@ export default function ProfilePage() {
     user.avatar,
   );
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const importFileInputRef = React.useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -81,6 +82,95 @@ export default function ProfilePage() {
       description: "You have been logged out.",
     });
   }
+
+  const handleExport = () => {
+    try {
+      const userProfile = localStorage.getItem("guest_user_profile");
+      const podcastHistory = localStorage.getItem("podcast_history");
+      const podcastPlaylists = localStorage.getItem("podcast_playlists");
+
+      const dataToExport = {
+        userProfile: userProfile ? JSON.parse(userProfile) : null,
+        podcastHistory: podcastHistory ? JSON.parse(podcastHistory) : null,
+        podcastPlaylists: podcastPlaylists
+          ? JSON.parse(podcastPlaylists)
+          : null,
+      };
+
+      const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
+        JSON.stringify(dataToExport, null, 2),
+      )}`;
+      const link = document.createElement("a");
+      link.href = jsonString;
+      link.download = "mnr-talks-backup.json";
+      link.click();
+
+      toast({
+        title: "Data Exported",
+        description: "Your data has been successfully exported.",
+      });
+    } catch (error) {
+      console.error("Failed to export data", error);
+      toast({
+        variant: "destructive",
+        title: "Export Failed",
+        description: "There was an error while exporting your data.",
+      });
+    }
+  };
+
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const text = e.target?.result;
+        if (typeof text !== "string") {
+          throw new Error("File is not a valid text file.");
+        }
+        const data = JSON.parse(text);
+
+        if (data.userProfile) {
+          localStorage.setItem(
+            "guest_user_profile",
+            JSON.stringify(data.userProfile),
+          );
+        }
+        if (data.podcastHistory) {
+          localStorage.setItem(
+            "podcast_history",
+            JSON.stringify(data.podcastHistory),
+          );
+        }
+        if (data.podcastPlaylists) {
+          localStorage.setItem(
+            "podcast_playlists",
+            JSON.stringify(data.podcastPlaylists),
+          );
+        }
+
+        toast({
+          title: "Import Successful",
+          description: "Your data has been imported. The app will now reload.",
+        });
+
+        // Reload to apply changes from localStorage
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } catch (error) {
+        console.error("Failed to import data", error);
+        toast({
+          variant: "destructive",
+          title: "Import Failed",
+          description: "The selected file is not valid or is corrupted.",
+        });
+      }
+    };
+    reader.readAsText(file);
+  };
 
   return (
     <SidebarProvider>
@@ -155,6 +245,33 @@ export default function ProfilePage() {
                       </Button>
                     </form>
                   </Form>
+
+                  <Separator />
+
+                  <div className="space-y-4">
+                     <h2 className="text-lg font-medium">Data Management</h2>
+                      <Button
+                        variant="secondary"
+                        className="w-full"
+                        onClick={handleExport}
+                      >
+                        Export My Data
+                      </Button>
+                       <Button
+                        variant="secondary"
+                        className="w-full"
+                        onClick={() => importFileInputRef.current?.click()}
+                      >
+                        Import My Data
+                      </Button>
+                       <input
+                        type="file"
+                        ref={importFileInputRef}
+                        className="hidden"
+                        accept=".json"
+                        onChange={handleImport}
+                      />
+                  </div>
 
                   <Separator />
 
