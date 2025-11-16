@@ -11,6 +11,8 @@ import {
   Download,
   Loader,
   Check,
+  ListPlus,
+  Share2,
 } from "lucide-react";
 import type { Podcast } from "@/lib/types";
 import { usePlayer } from "@/context/PlayerContext";
@@ -47,7 +49,7 @@ export default function PodcastCard({
   playlistId,
   onRemove,
 }: PodcastCardProps) {
-  const { play, currentTrack, isPlaying } = usePlayer();
+  const { play, currentTrack, isPlaying, addToQueue } = usePlayer();
   const {
     playlists,
     addPodcastToPlaylist,
@@ -139,6 +141,28 @@ export default function PodcastCard({
     });
   };
 
+  const handleAddToQueue = (e: MouseEvent) => {
+    e.stopPropagation();
+    addToQueue(podcast);
+    toast({
+      title: "Added to Queue",
+      description: `"${podcast.title}" has been added to your playing queue.`,
+    });
+  };
+  
+  const handleShare = (e: MouseEvent) => {
+    e.stopPropagation();
+    // In a real app, this would be a dedicated page URL.
+    // For now, we'll just copy the title and artist as an example.
+    const shareText = `Check out "${podcast.title}" by ${podcast.artist}!`;
+    navigator.clipboard.writeText(shareText);
+    toast({
+      title: "Copied to Clipboard",
+      description: "Podcast info has been copied.",
+    });
+  };
+
+
   return (
     <Card className="group relative w-full overflow-hidden border-none bg-card shadow-lg transition-colors duration-300 hover:bg-secondary/80">
       <div className="absolute left-3 top-4 z-10">
@@ -175,6 +199,13 @@ export default function PodcastCard({
             onClick={(e) => e.stopPropagation()}
             align="end"
           >
+            <DropdownMenuItem onClick={handleAddToQueue}>
+              <ListPlus className="mr-2 h-4 w-4" />
+              Add to Queue
+            </DropdownMenuItem>
+
+            <DropdownMenuSeparator />
+
             {isDownloading ? (
               <DropdownMenuItem disabled>
                 <Loader className="mr-2 h-4 w-4 animate-spin" />
@@ -218,6 +249,12 @@ export default function PodcastCard({
                 </CreatePlaylistDialog>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
+
+            <DropdownMenuItem onClick={handleShare}>
+              <Share2 className="mr-2 h-4 w-4" />
+              Share
+            </DropdownMenuItem>
+
             {onRemove && currentPlaylist && !currentPlaylist.isPredefined && (
               <>
                 <DropdownMenuSeparator />

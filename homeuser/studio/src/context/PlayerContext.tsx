@@ -30,6 +30,10 @@ interface PlayerContextType {
   volume: number;
   setVolume: (volume: number) => void;
   history: Podcast[];
+  queue: Podcast[];
+  addToQueue: (track: Podcast) => void;
+  playbackRate: number;
+  setPlaybackRate: (rate: number) => void;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -54,6 +58,8 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(1);
   const [history, setHistory] = useState<Podcast[]>([]);
+  const [queue, setQueue] = useState<Podcast[]>([]);
+  const [playbackRate, setPlaybackRateState] = useState(1);
   const audioRef = useRef<HTMLAudioElement>(null);
   const isPlayingRef = React.useRef(isPlaying);
   const currentBlobUrl = useRef<string | null>(null);
@@ -109,13 +115,15 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         audioRef.current.src = sourceUrl;
         setProgress(0);
       }
+      
+      audioRef.current.playbackRate = playbackRate;
 
       audioRef.current
         .play()
         .then(() => setIsPlaying(true))
         .catch((e) => console.error("Playback failed", e));
     },
-    [getDownloadedPodcast],
+    [getDownloadedPodcast, playbackRate],
   );
 
   const addToHistory = useCallback((track: Podcast) => {
@@ -143,7 +151,8 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       if (trackId) {
         trackToPlay = playlist.find((p) => p.id === trackId);
       } else {
-        trackToPlay = currentTrack || (playlist.length > 0 ? playlist[0] : null);
+        trackToPlay =
+          currentTrack || (playlist.length > 0 ? playlist[0] : null);
       }
 
       if (trackToPlay) {
@@ -190,7 +199,19 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       : -1;
   }, [currentTrack, podcasts, currentPlaylist]);
 
+  const playNextInQueue = useCallback(() => {
+    if (queue.length > 0) {
+      const nextTrackInQueue = queue[0];
+      setQueue((prev) => prev.slice(1));
+      play(nextTrackInQueue.id, [nextTrackInQueue, ...(currentPlaylist || [])]);
+      return true;
+    }
+    return false;
+  }, [queue, play, currentPlaylist]);
+
   const nextTrack = useCallback(() => {
+    if (playNextInQueue()) return;
+
     const playlist = currentPlaylist || podcasts;
     if (!playlist || playlist.length === 0) return;
     const currentIndex = findCurrentTrackIndex();
@@ -200,7 +221,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     }
     const nextIndex = (currentIndex + 1) % playlist.length;
     play(playlist[nextIndex].id, playlist);
-  }, [currentPlaylist, podcasts, play, findCurrentTrackIndex]);
+  }, [currentPlaylist, podcasts, play, findCurrentTrackIndex, playNextInQueue]);
 
   const prevTrack = useCallback(() => {
     const playlist = currentPlaylist || podcasts;
@@ -226,6 +247,17 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       audioRef.current.volume = vol;
       setVolumeState(vol);
     }
+  };
+
+  const setPlaybackRate = (rate: number) => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = rate;
+      setPlaybackRateState(rate);
+    }
+  };
+
+  const addToQueue = (track: Podcast) => {
+    setQueue((prev) => [...prev, track]);
   };
 
   const onTimeUpdate = () => {
@@ -270,6 +302,10 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     volume,
     setVolume,
     history,
+    queue,
+    addToQueue,
+    playbackRate,
+    setPlaybackRate,
   };
 
   return (
