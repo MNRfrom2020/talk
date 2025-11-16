@@ -24,20 +24,21 @@ export default function LibraryPage() {
           <AppSidebar />
           <SidebarInset className="flex flex-1 flex-col">
             <ScrollArea className="h-full">
-              <main className="p-4 sm:p-6 lg:p-8">
-                <div className="mb-6 flex items-center justify-between">
-                  <h1 className="font-headline text-3xl font-bold tracking-tight">
-                    Your Library
-                  </h1>
-                  <CreatePlaylistDialog>
-                    <Button>
-                      <Plus className="mr-2 h-4 w-4" /> New Playlist
-                    </Button>
-                  </CreatePlaylistDialog>
-                </div>
-                <PlaylistList />
-                <Separator className="my-8" />
+              <main className="space-y-8 p-4 sm:p-6 lg:p-8">
                 <HistoryList />
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h1 className="font-headline text-3xl font-bold tracking-tight">
+                      Your Library
+                    </h1>
+                    <CreatePlaylistDialog>
+                      <Button>
+                        <Plus className="mr-2 h-4 w-4" /> New Playlist
+                      </Button>
+                    </CreatePlaylistDialog>
+                  </div>
+                  <PlaylistList />
+                </div>
               </main>
             </ScrollArea>
           </SidebarInset>
