@@ -5,7 +5,7 @@ import { Button } from "../ui/button";
 export default function MobileHeader() {
   return (
     <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border/50 px-4 py-2 md:hidden">
-      <Link href="/" className="flex items-center gap-2">
+      <Link href="/" className="flex items-center gap-2 rounded-full bg-secondary px-3 py-1">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 192 171.000002"
