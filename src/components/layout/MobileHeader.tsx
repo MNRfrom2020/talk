@@ -4,12 +4,8 @@ import { Button } from "../ui/button";
 
 export default function MobileHeader() {
   return (
-    <header className="sticky top-0 z-40 grid grid-cols-3 items-center border-b border-border/50 bg-background/80 px-4 py-2 backdrop-blur-sm md:hidden">
-      <div className="w-10" />
-      <Link
-        href="/"
-        className="flex items-center justify-center gap-2 rounded-full bg-secondary px-3 py-1"
-      >
+    <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border/50 px-4 py-2 md:hidden">
+      <Link href="/" className="flex items-center gap-2">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 192 171.000002"
@@ -27,7 +23,10 @@ export default function MobileHeader() {
         </svg>
         <h1 className="text-xl font-bold font-headline">Talks</h1>
       </Link>
-      <div className="flex justify-end">
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="sm">
+          Disclaimer
+        </Button>
         <Button variant="ghost" size="icon">
           <User />
           <span className="sr-only">Login</span>
