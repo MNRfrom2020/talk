@@ -13,6 +13,8 @@ import predefinedPlaylistsData from "@/lib/predefined-playlists.json";
 
 
 const PLAYLIST_STORAGE_KEY = "podcast_playlists";
+const FAVORITES_PLAYLIST_ID = 'favorites';
+
 
 interface PlaylistContextType {
   playlists: Playlist[];
@@ -25,6 +27,9 @@ interface PlaylistContextType {
   ) => Podcast[];
   getPlaylistById: (playlistId: string) => Playlist | undefined;
   toggleFavorite: (playlistId: string) => void;
+  toggleFavoritePodcast: (podcastId: string) => void;
+  isFavoritePodcast: (podcastId: string) => boolean;
+  FAVORITES_PLAYLIST_ID: string;
 }
 
 const PlaylistContext = createContext<PlaylistContextType | undefined>(
@@ -58,7 +63,7 @@ export const PlaylistProvider = ({
         return userVersion ? { ...p, isFavorite: userVersion.isFavorite } : p;
       });
       
-      const userOnlyPlaylists = userPlaylists.filter((p: Playlist) => !p.isPredefined);
+      const userOnlyPlaylists = userPlaylists.filter((p: Playlist) => !predefinedPlaylists.some(pre => pre.id === p.id));
 
       setPlaylists([...enrichedPredefined, ...userOnlyPlaylists]);
     } catch (error) {
@@ -79,7 +84,7 @@ export const PlaylistProvider = ({
       });
       localStorage.setItem(
         PLAYLIST_STORAGE_KEY,
-        JSON.stringify(playlistsToSave),
+        JSON.stringify(playlistsToSave.filter(p => !p.isPredefined || p.isFavorite)),
       );
       setPlaylists(updatedPlaylists);
     } catch (error) {
@@ -104,6 +109,7 @@ export const PlaylistProvider = ({
 
     const deletePlaylist = useCallback(
     (playlistId: string) => {
+      if (playlistId === FAVORITES_PLAYLIST_ID) return; // Cannot delete favorites playlist
       const updatedPlaylists = playlists.filter(
         (playlist) => playlist.id !== playlistId
       );
@@ -159,6 +165,51 @@ export const PlaylistProvider = ({
     [playlists]
   );
 
+  const isFavoritePodcast = useCallback(
+    (podcastId: string) => {
+      const favoritesPlaylist = playlists.find(p => p.id === FAVORITES_PLAYLIST_ID);
+      return favoritesPlaylist?.podcastIds.includes(podcastId) ?? false;
+    },
+    [playlists],
+  );
+
+
+  const toggleFavoritePodcast = useCallback(
+    (podcastId: string) => {
+      let favoritesPlaylist = playlists.find(p => p.id === FAVORITES_PLAYLIST_ID);
+      let updatedPlaylists;
+
+      if (favoritesPlaylist) {
+        const isAlreadyFavorite = favoritesPlaylist.podcastIds.includes(podcastId);
+        updatedPlaylists = playlists.map(p => {
+          if (p.id === FAVORITES_PLAYLIST_ID) {
+            return {
+              ...p,
+              podcastIds: isAlreadyFavorite
+                ? p.podcastIds.filter(id => id !== podcastId)
+                : [...p.podcastIds, podcastId],
+            };
+          }
+          return p;
+        });
+      } else {
+        // Create the favorites playlist if it doesn't exist
+        const newFavoritesPlaylist: Playlist = {
+          id: FAVORITES_PLAYLIST_ID,
+          name: "Favorites",
+          podcastIds: [podcastId],
+          isPredefined: false, // Treat as a user playlist, but with special ID
+          isFavorite: false,
+        };
+        updatedPlaylists = [...playlists, newFavoritesPlaylist];
+      }
+      
+      savePlaylists(updatedPlaylists);
+    },
+    [playlists],
+  );
+
+
   const value = {
     playlists,
     createPlaylist,
@@ -166,7 +217,10 @@ export const PlaylistProvider = ({
     addPodcastToPlaylist,
     getPodcastsForPlaylist,
     getPlaylistById,
-    toggleFavorite
+    toggleFavorite,
+    toggleFavoritePodcast,
+    isFavoritePodcast,
+    FAVORITES_PLAYLIST_ID,
   };
 
   return (
