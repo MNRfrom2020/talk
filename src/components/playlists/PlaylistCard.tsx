@@ -30,6 +30,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
+import PlaylistCover from "./PlaylistCover";
 
 interface PlaylistCardProps {
   playlist: Playlist;
@@ -42,15 +43,7 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
   const { toast } = useToast();
 
   const playlistPodcasts = getPodcastsForPlaylist(playlist.id, podcasts);
-  const coverArt =
-    playlistPodcasts.length > 0
-      ? playlistPodcasts[0].coverArt
-      : `https://picsum.photos/seed/${playlist.id}/500/500`;
-  const coverArtHint =
-    playlistPodcasts.length > 0
-      ? playlistPodcasts[0].coverArtHint
-      : "abstract art";
-
+  
   const handleDelete = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -132,20 +125,7 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
         <Link href={`/playlists/${playlist.id}`} passHref className="block h-full">
           <CardContent className="p-4">
             <div className="relative mb-4 aspect-square">
-              {playlistPodcasts.length > 0 ? (
-                <Image
-                  src={coverArt}
-                  alt={playlist.name}
-                  fill
-                  className="rounded-md object-cover"
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  data-ai-hint={coverArtHint}
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center rounded-md bg-secondary">
-                  <ListMusic className="h-16 w-16 text-muted-foreground" />
-                </div>
-              )}
+              <PlaylistCover playlist={playlist} podcasts={playlistPodcasts} />
               {playlist.isPredefined && (
                  <Badge
                   variant="secondary"

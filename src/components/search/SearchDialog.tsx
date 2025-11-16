@@ -3,7 +3,7 @@
 
 import { useState, useEffect, type ReactNode } from "react";
 import Image from "next/image";
-import { Play, Search, X } from "lucide-react";
+import { Play, Search } from "lucide-react";
 
 import { usePodcast } from "@/context/PodcastContext";
 import { usePlayer } from "@/context/PlayerContext";
@@ -12,9 +12,9 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -56,12 +56,11 @@ export function SearchDialog({ children }: { children: ReactNode }) {
     setOpen(false);
   };
 
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="top-4 max-w-lg translate-y-0 overflow-hidden p-0">
-         <DialogHeader className="sr-only">
+        <DialogHeader className="sr-only">
           <DialogTitle>Search Podcasts</DialogTitle>
           <DialogDescription>
             Search for podcasts by title, artist, or category.
@@ -81,15 +80,15 @@ export function SearchDialog({ children }: { children: ReactNode }) {
 
         <div className="max-h-[60vh] overflow-y-auto p-4">
           {searchResults.length > 0 ? (
-            <ul className="space-y-4">
+            <ul className="space-y-2">
               {searchResults.map((podcast) => (
-                <li key={podcast.id} className="flex items-center gap-4">
+                <li key={podcast.id} className="group flex items-center gap-4 rounded-md p-2 transition-colors hover:bg-secondary">
                   <Image
                     src={podcast.coverArt}
                     alt={podcast.title}
-                    width={64}
-                    height={64}
-                    className="h-16 w-16 rounded-md"
+                    width={56}
+                    height={56}
+                    className="h-14 w-14 rounded-md"
                   />
                   <div className="flex-1">
                     <h3 className="font-semibold">{podcast.title}</h3>
@@ -101,8 +100,9 @@ export function SearchDialog({ children }: { children: ReactNode }) {
                     variant="ghost"
                     size="icon"
                     onClick={() => handlePlayAndClose(podcast.id)}
+                    className="opacity-0 transition-opacity group-hover:opacity-100"
                   >
-                    <Play className="h-5 w-5" />
+                    <Play className="h-5 w-5 fill-current" />
                   </Button>
                 </li>
               ))}
