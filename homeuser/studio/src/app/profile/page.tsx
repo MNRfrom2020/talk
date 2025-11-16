@@ -34,6 +34,7 @@ import { useToast } from "@/hooks/use-toast";
 import MobileHeader from "@/components/layout/MobileHeader";
 import { cn } from "@/lib/utils";
 import ListeningChart from "@/components/podcasts/ListeningChart";
+import PredefinedPlaylistSection from "@/components/playlists/PredefinedPlaylistSection";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -309,7 +310,7 @@ export default function ProfilePage() {
                   </Form>
                   
                   <Separator />
-
+                  
                   <div className="space-y-4">
                     <h2 className="text-center text-lg font-medium">Your Stats</h2>
                     {stats ? (
@@ -336,6 +337,10 @@ export default function ProfilePage() {
                   </div>
                   
                   <ListeningChart />
+
+                  <Separator />
+
+                  <PredefinedPlaylistSection />
 
                   <Separator />
 
