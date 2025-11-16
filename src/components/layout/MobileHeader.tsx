@@ -1,8 +1,25 @@
 import Link from "next/link";
 import { User } from "lucide-react";
 import { Button } from "../ui/button";
+import { useUser } from "@/context/UserContext";
+import { ProfileDialog } from "../auth/ProfileDialog";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { cn } from "@/lib/utils";
+
+
+function UserAvatar({ className }: { className?: string }) {
+  const { user } = useUser();
+  return (
+    <Avatar className={cn("h-8 w-8", className)}>
+      <AvatarImage src={user.avatar ?? undefined} alt={user.name} />
+      <AvatarFallback>{user.name?.[0].toUpperCase()}</AvatarFallback>
+    </Avatar>
+  );
+}
 
 export default function MobileHeader() {
+  const { user } = useUser();
+
   return (
     <div className="sticky top-0 z-40 p-2 md:hidden">
       <header className="flex items-center justify-between rounded-full bg-secondary px-2 py-1">
@@ -32,10 +49,16 @@ export default function MobileHeader() {
             Disclaimer
           </Button>
           <span className="text-muted-foreground">।</span>
-          <Button variant="ghost" size="icon" className="rounded-full">
-            <User />
-            <span className="sr-only">Login</span>
-          </Button>
+          <ProfileDialog>
+            <Button variant="ghost" size="icon" className="rounded-full">
+              {user.isLoggedIn && user.avatar ? (
+                <UserAvatar />
+              ) : (
+                <User />
+              )}
+              <span className="sr-only">Login</span>
+            </Button>
+          </ProfileDialog>
         </div>
       </header>
     </div>

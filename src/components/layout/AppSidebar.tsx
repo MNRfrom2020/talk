@@ -2,21 +2,36 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Home, Library, Search, Grid, User } from "lucide-react";
+import { Grid, Home, Library, Search } from "lucide-react";
 import {
   Sidebar,
-  SidebarHeader,
   SidebarContent,
-  SidebarGroup,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
   SidebarFooter,
+  SidebarGroup,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { SearchDialog } from "../search/SearchDialog";
+import { useUser } from "@/context/UserContext";
+import { ProfileDialog } from "../auth/ProfileDialog";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { cn } from "@/lib/utils";
+
+function UserAvatar({ className }: { className?: string }) {
+  const { user } = useUser();
+  return (
+    <Avatar className={cn("h-6 w-6", className)}>
+      <AvatarImage src={user.avatar ?? undefined} alt={user.name} />
+      <AvatarFallback>{user.name?.[0].toUpperCase()}</AvatarFallback>
+    </Avatar>
+  );
+}
 
 export default function AppSidebar() {
   const pathname = usePathname();
+  const { user } = useUser();
 
   return (
     <Sidebar>
@@ -80,10 +95,12 @@ export default function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <SidebarGroup>
-          <button className="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-            <User className="h-5 w-5" />
-            <span>Guest Login</span>
-          </button>
+          <ProfileDialog>
+            <button className="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+              <UserAvatar />
+              <span className="truncate">{user.name}</span>
+            </button>
+          </ProfileDialog>
         </SidebarGroup>
       </SidebarFooter>
     </Sidebar>
