@@ -1,11 +1,10 @@
-
 import Link from "next/link";
 import { User } from "lucide-react";
 import { Button } from "../ui/button";
 
 export default function MobileHeader() {
   return (
-    <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border/50 px-4 py-2 md:hidden">
+    <header className="sticky top-0 z-40 flex items-center justify-between border-b border-border/50 bg-transparent px-4 py-2 md:hidden">
       <Link href="/" className="flex items-center gap-2 rounded-full bg-secondary px-3 py-2">
         <svg
           xmlns="http://www.w3.org/2000/svg"
