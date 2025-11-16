@@ -3,6 +3,7 @@
 
 import { usePathname } from "next/navigation";
 import { Grid, Home, Library, Search } from "lucide-react";
+import Link from "next/link";
 import {
   Sidebar,
   SidebarContent,
@@ -32,6 +33,13 @@ function UserAvatar({ className }: { className?: string }) {
 export default function AppSidebar() {
   const pathname = usePathname();
   const { user } = useUser();
+
+  const profileButtonContent = (
+    <div className="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+      <UserAvatar />
+      <span className="truncate">{user.name}</span>
+    </div>
+  );
 
   return (
     <Sidebar>
@@ -84,7 +92,7 @@ export default function AppSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton
                 href="/library"
-                isActive={pathname === "/library" || pathname.startsWith("/playlists")}
+                isActive={pathname === "/library" || pathname.startsWith("/playlists") || pathname === '/profile'}
               >
                 <Library />
                 Your Library
@@ -95,12 +103,15 @@ export default function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <SidebarGroup>
-          <ProfileDialog>
-            <button className="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
-              <UserAvatar />
-              <span className="truncate">{user.name}</span>
-            </button>
-          </ProfileDialog>
+          {user.isLoggedIn ? (
+            <Link href="/profile" passHref>
+              {profileButtonContent}
+            </Link>
+          ) : (
+            <ProfileDialog>
+              <button className="w-full">{profileButtonContent}</button>
+            </ProfileDialog>
+          )}
         </SidebarGroup>
       </SidebarFooter>
     </Sidebar>

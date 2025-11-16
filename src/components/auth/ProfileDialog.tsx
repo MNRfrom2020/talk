@@ -3,10 +3,9 @@
 
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useState, type ReactNode, useRef } from "react";
+import { useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import Image from "next/image";
 import { Camera, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -17,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Form,
@@ -36,28 +36,18 @@ const formSchema = z.object({
 });
 
 export function ProfileDialog({ children }: { children: ReactNode }) {
-  const { user, login, logout } = useUser();
+  const { user, login } = useUser();
   const [open, setOpen] = useState(false);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(
-    user.avatar,
-  );
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: user.name,
+      name: "Guest",
     },
   });
-
-  // Reset form when dialog opens or user changes
-  React.useEffect(() => {
-    if (open) {
-      form.reset({ name: user.name });
-      setAvatarPreview(user.avatar);
-    }
-  }, [open, user, form]);
 
   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -74,17 +64,8 @@ export function ProfileDialog({ children }: { children: ReactNode }) {
     login(values.name, avatarPreview);
     setOpen(false);
     toast({
-      title: "Profile Updated",
-      description: "Your changes have been saved locally.",
-    });
-  }
-  
-  function handleLogout() {
-    logout();
-    setOpen(false);
-    toast({
-      title: "Logged Out",
-      description: "You have been logged out.",
+      title: "Welcome!",
+      description: "You are now logged in as a guest.",
     });
   }
 
@@ -93,7 +74,10 @@ export function ProfileDialog({ children }: { children: ReactNode }) {
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{user.isLoggedIn ? 'Edit Profile' : 'Guest Login'}</DialogTitle>
+          <DialogTitle>Create Your Profile</DialogTitle>
+           <DialogDescription>
+            Set your display name and avatar to personalize your experience.
+          </DialogDescription>
         </DialogHeader>
         <div className="py-4">
           <div className="mb-6 flex justify-center">
@@ -140,11 +124,8 @@ export function ProfileDialog({ children }: { children: ReactNode }) {
             </form>
           </Form>
         </div>
-        <DialogFooter className="sm:justify-between">
-          {user.isLoggedIn ? (
-             <Button variant="outline" onClick={handleLogout}>Logout</Button>
-          ) : <div></div>}
-          <Button type="submit" form="profile-form">Save Changes</Button>
+        <DialogFooter>
+          <Button type="submit" form="profile-form">Save and Continue</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

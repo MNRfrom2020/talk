@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -22,12 +23,23 @@ function UserAvatar({ className }: { className?: string }) {
 export default function MobileHeader() {
   const { user } = useUser();
 
+  const profileButtonContent = (
+     <Button variant="ghost" size="icon" className="rounded-full">
+      {user.isLoggedIn ? (
+        <UserAvatar />
+      ) : (
+        <User />
+      )}
+      <span className="sr-only">Profile</span>
+    </Button>
+  );
+
   return (
     <div className="sticky top-0 z-40 p-2 md:hidden">
       <header className="flex items-center justify-between rounded-full bg-secondary px-2 py-1">
         <Link
           href="/"
-          className="flex items-center gap-2 rounded-full bg-transparent px-3 py-1"
+          className="flex items-center gap-2 rounded-full bg-transparent px-3 py-2"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -51,16 +63,15 @@ export default function MobileHeader() {
             Disclaimer
           </Button>
           <span className="text-muted-foreground">।</span>
-          <ProfileDialog>
-            <Button variant="ghost" size="icon" className="rounded-full">
-              {user.isLoggedIn && user.avatar ? (
-                <UserAvatar />
-              ) : (
-                <User />
-              )}
-              <span className="sr-only">Login</span>
-            </Button>
-          </ProfileDialog>
+           {user.isLoggedIn ? (
+              <Link href="/profile" passHref>
+                {profileButtonContent}
+              </Link>
+            ) : (
+              <ProfileDialog>
+                {profileButtonContent}
+              </ProfileDialog>
+            )}
         </div>
       </header>
     </div>
