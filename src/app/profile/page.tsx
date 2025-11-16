@@ -248,7 +248,7 @@ export default function ProfilePage() {
                   <Separator />
 
                   <div className="w-full space-y-4">
-                     <h2 className="text-lg font-medium text-center">Data Management</h2>
+                     <h2 className="text-center text-lg font-medium">Data Management</h2>
                       <Button
                         variant="secondary"
                         className="w-full"
