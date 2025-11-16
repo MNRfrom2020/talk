@@ -15,6 +15,7 @@ import { Plus } from "lucide-react";
 import PlaylistList from "@/components/playlists/PlaylistList";
 import { Separator } from "@/components/ui/separator";
 import PredefinedPlaylistSection from "@/components/playlists/PredefinedPlaylistSection";
+import { cn } from "@/lib/utils";
 
 export default function LibraryPage() {
   return (
@@ -25,7 +26,12 @@ export default function LibraryPage() {
           <AppSidebar />
           <SidebarInset className="flex flex-1 flex-col">
             <ScrollArea className="h-full">
-              <main className="space-y-8 p-4 sm:p-6 lg:p-8">
+              <main
+                className={cn(
+                  "space-y-8 p-4 sm:p-6 lg:p-8",
+                  "pb-24 md:pb-8",
+                )}
+              >
                 <div className="flex items-center justify-between">
                   <h1 className="font-headline text-3xl font-bold tracking-tight">
                     Your Library
