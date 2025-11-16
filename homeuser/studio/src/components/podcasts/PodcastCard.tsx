@@ -171,13 +171,11 @@ export default function PodcastCard({
   
   const handleShare = (e: MouseEvent) => {
     e.stopPropagation();
-    // In a real app, this would be a dedicated page URL.
-    // For now, we'll just copy the title and artist as an example.
-    const shareText = `Check out "${podcast.title}" by ${podcast.artist}!`;
-    navigator.clipboard.writeText(shareText);
+    const shareUrl = `${window.location.origin}/podcasts/${podcast.id}`;
+    navigator.clipboard.writeText(shareUrl);
     toast({
-      title: "Copied to Clipboard",
-      description: "Podcast info has been copied.",
+      title: "Link Copied",
+      description: "A shareable link has been copied to your clipboard.",
     });
   };
 

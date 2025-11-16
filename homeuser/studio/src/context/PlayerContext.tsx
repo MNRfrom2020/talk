@@ -17,7 +17,6 @@ const HISTORY_STORAGE_KEY = "podcast_history";
 const PROGRESS_STORAGE_KEY = "podcast_progress";
 const LISTENING_LOG_KEY = "listening_log";
 
-
 // --- useThrottle Hook ---
 function useThrottle<T extends (...args: any[]) => any>(
   callback: T,
@@ -47,6 +46,7 @@ function useThrottle<T extends (...args: any[]) => any>(
 }
 // --- End useThrottle Hook ---
 
+
 interface ProgressInfo {
   progress: number;
   duration: number;
@@ -63,6 +63,7 @@ interface PlayerContextType {
   currentTrack: Podcast | null;
   isPlaying: boolean;
   play: (trackId?: string, playlist?: Podcast[]) => void;
+  autoPlay: (trackId?: string, playlist?: Podcast[]) => void;
   pause: () => void;
   togglePlay: () => void;
   nextTrack: () => void;
@@ -209,7 +210,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const setAudioSource = useCallback(
-    async (track: Podcast) => {
+    async (track: Podcast, shouldAutoPlay = true) => {
       if (!audioRef.current) return;
 
       if (currentBlobUrl.current) {
@@ -232,6 +233,11 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       if (audioRef.current.src !== sourceUrl) {
         audioRef.current.src = sourceUrl;
         audioRef.current.load();
+      }
+      
+      if (!shouldAutoPlay) {
+         setIsPlaying(false);
+         return;
       }
 
       const playPromise = audioRef.current.play();
@@ -270,9 +276,9 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       return newHistory;
     });
   }, []);
-
-  const play = useCallback(
-    (trackId?: string, playlist: Podcast[] = podcasts) => {
+  
+  const playInternal = useCallback(
+    (trackId?: string, playlist: Podcast[] = podcasts, shouldAutoPlay = true) => {
       const playlistToUse = playlist && playlist.length > 0 ? playlist : podcasts;
       setCurrentPlaylist(playlistToUse);
 
@@ -288,8 +294,8 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         if (currentTrack?.id !== trackToPlay.id) {
           setCurrentTrack(trackToPlay);
           addToHistory(trackToPlay);
-          setAudioSource(trackToPlay);
-        } else {
+          setAudioSource(trackToPlay, shouldAutoPlay);
+        } else if (shouldAutoPlay) {
           audioRef.current
             ?.play()
             .then(() => {
@@ -302,6 +308,15 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     },
     [podcasts, currentTrack, addToHistory, setAudioSource],
   );
+
+  const play = useCallback((trackId?: string, playlist?: Podcast[]) => {
+      playInternal(trackId, playlist, true);
+  }, [playInternal]);
+  
+  const autoPlay = useCallback((trackId?: string, playlist?: Podcast[]) => {
+      playInternal(trackId, playlist, true);
+  }, [playInternal]);
+
 
   const togglePlay = useCallback(() => {
     const playlist = currentPlaylist || podcasts;
@@ -472,7 +487,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const audio = audioRef.current;
     if (audio) {
-      const throttledTimeUpdate = useThrottle(onTimeUpdate, 5000);
+      const throttledTimeUpdate = onTimeUpdate;
       audio.addEventListener("timeupdate", throttledTimeUpdate);
       audio.addEventListener("play", () => lastTimeUpdate.current = Date.now());
       audio.addEventListener("pause", onTimeUpdate); // Log remaining time on pause
@@ -493,6 +508,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     currentTrack,
     isPlaying,
     play,
+    autoPlay,
     pause,
     togglePlay,
     nextTrack,
