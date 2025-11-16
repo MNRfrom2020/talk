@@ -224,7 +224,7 @@ export default function ProfilePage() {
                     <form
                       id="profile-form"
                       onSubmit={form.handleSubmit(onSubmit)}
-                      className="space-y-6"
+                      className="w-full space-y-6"
                     >
                       <FormField
                         control={form.control}
@@ -247,7 +247,7 @@ export default function ProfilePage() {
 
                   <Separator />
 
-                  <div className="space-y-4">
+                  <div className="w-full space-y-4">
                      <h2 className="text-lg font-medium">Data Management</h2>
                       <Button
                         variant="secondary"
