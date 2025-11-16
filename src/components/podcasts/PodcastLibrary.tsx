@@ -48,31 +48,32 @@ export default function PodcastLibrary({
           Browse All
         </h1>
       )}
+      <div className="space-y-8">
+        <CategorySection title="Recently Added" podcasts={podcasts} />
 
-      <CategorySection title="Recently Added" podcasts={podcasts} />
+        {predefinedPlaylists.length > 0 && (
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-headline text-2xl font-bold tracking-tight">
+                Playlists
+              </h2>
+            </div>
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
+              {predefinedPlaylists.map((playlist) => (
+                <PlaylistCard key={playlist.id} playlist={playlist} />
+              ))}
+            </div>
+          </section>
+        )}
 
-      {predefinedPlaylists.length > 0 && (
-        <section className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-headline text-2xl font-bold tracking-tight">
-              Playlists
-            </h2>
-          </div>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-            {predefinedPlaylists.map((playlist) => (
-              <PlaylistCard key={playlist.id} playlist={playlist} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {categories.map(([category, categoryPodcasts]) => (
-        <CategorySection
-          key={category}
-          title={category}
-          podcasts={categoryPodcasts}
-        />
-      ))}
+        {categories.map(([category, categoryPodcasts]) => (
+          <CategorySection
+            key={category}
+            title={category}
+            podcasts={categoryPodcasts}
+          />
+        ))}
+      </div>
     </main>
   );
 }
