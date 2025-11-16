@@ -23,11 +23,11 @@ export default function MobileHeader() {
         </svg>
         <h1 className="text-xl font-bold font-headline">Talks</h1>
       </Link>
-      <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm">
+      <div className="flex items-center gap-1 rounded-full bg-secondary p-1">
+        <Button variant="ghost" size="sm" className="rounded-full">
           Disclaimer
         </Button>
-        <Button variant="ghost" size="icon">
+        <Button variant="ghost" size="icon" className="rounded-full">
           <User />
           <span className="sr-only">Login</span>
         </Button>
