@@ -62,10 +62,10 @@ export const PlaylistProvider = ({
         return userVersion ? { ...p, isFavorite: userVersion.isFavorite } : p;
       });
       
-      const userOnlyPlaylists = userPlaylists.filter((p: Playlist) => !predefinedPlaylists.some(pre => pre.id === p.id));
+      let userOnlyPlaylists = userPlaylists.filter((p: Playlist) => !predefinedPlaylists.some(pre => pre.id === p.id));
 
       // Ensure Favorites playlist always exists
-      let favoritesPlaylist = userOnlyPlaylists.find(p => p.id === FAVORITES_PLAYLIST_ID);
+      let favoritesPlaylist = userOnlyPlaylists.find((p: { id: string; }) => p.id === FAVORITES_PLAYLIST_ID);
       if (!favoritesPlaylist) {
         favoritesPlaylist = {
           id: FAVORITES_PLAYLIST_ID,
@@ -74,8 +74,7 @@ export const PlaylistProvider = ({
           isPredefined: false,
           isFavorite: false,
         };
-        // Add it to the front of user-only playlists
-        userOnlyPlaylists.unshift(favoritesPlaylist);
+        userOnlyPlaylists = [favoritesPlaylist, ...userOnlyPlaylists];
       }
 
 

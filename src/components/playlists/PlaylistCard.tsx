@@ -7,7 +7,7 @@ import { ListMusic, Lock, MoreVertical, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 import { usePodcast } from "@/context/PodcastContext";
-import { usePlaylist } from "@/context/PlaylistContext";
+import { usePlaylist, FAVORITES_PLAYLIST_ID } from "@/context/PlaylistContext";
 import type { Playlist } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -69,7 +69,7 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
   return (
     <>
       <Card className="group relative w-full overflow-hidden border-none bg-card shadow-lg transition-colors duration-300 hover:bg-secondary/80">
-        {!playlist.isPredefined && (
+        {!playlist.isPredefined && playlist.id !== FAVORITES_PLAYLIST_ID && (
           <div className="absolute right-2 top-2 z-10">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
