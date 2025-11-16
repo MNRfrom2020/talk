@@ -1,9 +1,10 @@
+
 "use client";
 
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence } from "framer-motion";
-import { Camera, User } from "lucide-react";
+import { Camera, Clapperboard, Mic, User, TrendingUp } from "lucide-react";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -13,6 +14,7 @@ import BottomNavBar from "@/components/layout/BottomNavBar";
 import Player from "@/components/layout/Player";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -25,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { usePlayer } from "@/context/PlayerContext";
 import { useUser } from "@/context/UserContext";
 import { useToast } from "@/hooks/use-toast";
 import MobileHeader from "@/components/layout/MobileHeader";
@@ -34,8 +37,29 @@ const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
 });
 
+const StatCard = ({
+  title,
+  value,
+  icon,
+}: {
+  title: string;
+  value: string;
+  icon: React.ReactNode;
+}) => (
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+      <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      {icon}
+    </CardHeader>
+    <CardContent>
+      <div className="text-2xl font-bold">{value}</div>
+    </CardContent>
+  </Card>
+);
+
 export default function ProfilePage() {
   const { user, login, logout } = useUser();
+  const { history } = usePlayer();
   const [avatarPreview, setAvatarPreview] = React.useState<string | null>(
     user.avatar,
   );
@@ -49,6 +73,31 @@ export default function ProfilePage() {
       name: user.name,
     },
   });
+
+  const stats = React.useMemo(() => {
+    if (history.length === 0) {
+      return null;
+    }
+
+    const artistCounts = new Map<string, number>();
+    const categoryCounts = new Map<string, number>();
+
+    history.forEach((podcast) => {
+      artistCounts.set(podcast.artist, (artistCounts.get(podcast.artist) || 0) + 1);
+      podcast.categories.forEach((category) => {
+        categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1);
+      });
+    });
+
+    const favoriteArtist = [...artistCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
+    const favoriteCategory = [...categoryCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
+
+    return {
+      totalPlayed: history.length,
+      favoriteArtist,
+      favoriteCategory,
+    };
+  }, [history]);
 
   React.useEffect(() => {
     form.reset({ name: user.name });
@@ -244,6 +293,34 @@ export default function ProfilePage() {
                       </Button>
                     </form>
                   </Form>
+                  
+                  <Separator />
+
+                  <div className="space-y-4">
+                    <h2 className="text-center text-lg font-medium">Your Stats</h2>
+                    {stats ? (
+                       <div className="grid gap-4 md:grid-cols-3">
+                        <StatCard
+                          title="Episodes Played"
+                          value={stats.totalPlayed.toString()}
+                          icon={<Clapperboard className="h-4 w-4 text-muted-foreground" />}
+                        />
+                        <StatCard
+                          title="Favorite Artist"
+                          value={stats.favoriteArtist}
+                          icon={<Mic className="h-4 w-4 text-muted-foreground" />}
+                        />
+                        <StatCard
+                          title="Top Category"
+                          value={stats.favoriteCategory}
+                          icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
+                        />
+                      </div>
+                    ) : (
+                      <p className="text-center text-sm text-muted-foreground">Start listening to see your stats here!</p>
+                    )}
+                  </div>
+
 
                   <Separator />
 
@@ -294,3 +371,7 @@ export default function ProfilePage() {
     </SidebarProvider>
   );
 }
+
+    
+
+    

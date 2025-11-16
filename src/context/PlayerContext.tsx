@@ -12,10 +12,38 @@ import React, {
 } from "react";
 import { usePodcast } from "./PodcastContext";
 import { useDownload } from "@/context/DownloadContext";
-import { useThrottle } from "@/hooks/use-throttle";
 
 const HISTORY_STORAGE_KEY = "podcast_history";
 const PROGRESS_STORAGE_KEY = "podcast_progress";
+
+// --- useThrottle Hook ---
+function useThrottle<T extends (...args: any[]) => any>(
+  callback: T,
+  delay: number,
+) {
+  const lastCall = useRef(0);
+  const timeout = useRef<NodeJS.Timeout | null>(null);
+
+  return useCallback(
+    (...args: Parameters<T>) => {
+      const now = Date.now();
+      if (now - lastCall.current >= delay) {
+        lastCall.current = now;
+        callback(...args);
+      } else {
+        if (timeout.current) {
+          clearTimeout(timeout.current);
+        }
+        timeout.current = setTimeout(() => {
+          lastCall.current = now;
+          callback(...args);
+        }, delay);
+      }
+    },
+    [callback, delay],
+  );
+}
+// --- End useThrottle Hook ---
 
 interface ProgressInfo {
   progress: number;
@@ -35,6 +63,7 @@ interface PlayerContextType {
   togglePlay: () => void;
   nextTrack: () => void;
   prevTrack: () => void;
+  playRandom: () => void;
   audioRef: React.RefObject<HTMLAudioElement>;
   progress: number;
   duration: number;
@@ -182,6 +211,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (audioRef.current.src !== sourceUrl) {
         audioRef.current.src = sourceUrl;
+        audioRef.current.load();
       }
 
       const playPromise = audioRef.current.play();
@@ -222,14 +252,15 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
 
   const play = useCallback(
     (trackId?: string, playlist: Podcast[] = podcasts) => {
-      setCurrentPlaylist(playlist);
+      const playlistToUse = playlist && playlist.length > 0 ? playlist : podcasts;
+      setCurrentPlaylist(playlistToUse);
 
       let trackToPlay: Podcast | undefined | null = null;
       if (trackId) {
-        trackToPlay = playlist.find((p) => p.id === trackId);
+        trackToPlay = playlistToUse.find((p) => p.id === trackId);
       } else {
         trackToPlay =
-          currentTrack || (playlist.length > 0 ? playlist[0] : null);
+          currentTrack || (playlistToUse.length > 0 ? playlistToUse[0] : null);
       }
 
       if (trackToPlay) {
@@ -305,6 +336,13 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     const prevIndex = (currentIndex - 1 + playlist.length) % playlist.length;
     play(playlist[prevIndex].id, playlist);
   }, [currentPlaylist, podcasts, play, findCurrentTrackIndex]);
+
+  const playRandom = useCallback(() => {
+    if (podcasts.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * podcasts.length);
+    const randomPodcast = podcasts[randomIndex];
+    play(randomPodcast.id, currentPlaylist || podcasts);
+  }, [podcasts, play, currentPlaylist]);
 
   const seek = (time: number) => {
     if (audioRef.current) {
@@ -403,7 +441,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         audio.removeEventListener("ended", nextTrack);
       };
     }
-  }, [nextTrack, saveProgress]);
+  }, [nextTrack, onTimeUpdate, onLoadedMetadata]);
 
   const value = {
     currentTrack,
@@ -413,6 +451,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     togglePlay,
     nextTrack,
     prevTrack,
+    playRandom,
     audioRef,
     progress,
     duration,
