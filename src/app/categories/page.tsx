@@ -18,9 +18,19 @@ const Page = () => {
   const allCategories = Array.from(
     new Set(podcasts.flatMap((p) => p.categories)),
   ).sort();
+
+  const artistsToExclude = [
+    "Dr Muhammad Ibrahim",
+    "Mahmud Huzaifa",
+    "Mazharul Islam",
+    "Moeen Uddin",
+  ];
+
   const allArtists = Array.from(
     new Set(podcasts.flatMap((p) => p.artist)),
-  ).sort();
+  )
+    .filter((artist) => !artistsToExclude.includes(artist))
+    .sort();
 
   return (
     <SidebarProvider>
