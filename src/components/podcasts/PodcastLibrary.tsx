@@ -3,25 +3,23 @@
 
 import { usePodcast } from "@/context/PodcastContext";
 import PodcastCard from "./PodcastCard";
-import { usePlayer } from "@/context/PlayerContext";
 import { cn } from "@/lib/utils";
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import type { Podcast } from "@/lib/types";
 import { usePlaylist } from "@/context/PlaylistContext";
 import PlaylistCard from "../playlists/PlaylistCard";
 import CategorySection from "./CategorySection";
-import { useUser } from "@/context/UserContext";
-import { Button } from "../ui/button";
-
-import myPlaylistsData from "@/lib/myplaylist.json";
-import myAudioData from "@/lib/myaudio.json";
-
+import { Loader2 } from "lucide-react";
 
 const INITIAL_VISIBLE_CATEGORIES = 10;
 const CATEGORY_INCREMENT = 10;
 
 // Fisher-Yates (aka Knuth) Shuffle
 function shuffleArray<T>(array: T[]): T[] {
+  if (typeof window === "undefined") {
+    // Return original array on server
+    return array;
+  }
   const newArray = [...array];
   for (let i = newArray.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -30,6 +28,11 @@ function shuffleArray<T>(array: T[]): T[] {
   return newArray;
 }
 
+const Loader = () => (
+  <div className="flex items-center justify-center py-8">
+    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+  </div>
+);
 
 export default function PodcastLibrary({
   showTitle = true,
@@ -38,10 +41,12 @@ export default function PodcastLibrary({
 }) {
   const { podcasts } = usePodcast();
   const { playlists } = usePlaylist();
-  const { user } = useUser();
   const [visibleCategories, setVisibleCategories] = useState(
     INITIAL_VISIBLE_CATEGORIES,
   );
+  const [shuffledCategories, setShuffledCategories] = useState<[string, Podcast[]][]>([]);
+  const loaderRef = useRef<HTMLDivElement>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const predefinedPlaylists = useMemo(() => {
     return [...playlists.filter((p) => p.isPredefined)].sort((a, b) =>
@@ -49,7 +54,7 @@ export default function PodcastLibrary({
     );
   }, [playlists]);
 
-  const { quranCategory, randomCategories } = useMemo(() => {
+  const quranCategory = useMemo(() => {
     const categoryMap = new Map<string, Podcast[]>();
     podcasts.forEach((podcast) => {
       podcast.categories.forEach((category) => {
@@ -59,34 +64,64 @@ export default function PodcastLibrary({
         categoryMap.get(category)?.push(podcast);
       });
     });
-
     const allCategories = Array.from(categoryMap.entries());
-
     const quranIndex = allCategories.findIndex(([key]) => key === "Quran");
-    let quranCategory: [string, Podcast[]] | null = null;
-    if (quranIndex > -1) {
-      quranCategory = allCategories[quranIndex];
-    }
-    
-    const otherCategories = allCategories.filter(([key]) => key !== "Quran");
-
-    return {
-      quranCategory,
-      randomCategories: shuffleArray(otherCategories),
-    };
+    return quranIndex > -1 ? allCategories[quranIndex] : null;
+  }, [podcasts]);
+  
+  useEffect(() => {
+     const categoryMap = new Map<string, Podcast[]>();
+    podcasts.forEach((podcast) => {
+      podcast.categories.forEach((category) => {
+        if (!categoryMap.has(category)) {
+          categoryMap.set(category, []);
+        }
+        categoryMap.get(category)?.push(podcast);
+      });
+    });
+    const otherCategories = Array.from(categoryMap.entries()).filter(([key]) => key !== "Quran");
+    setShuffledCategories(shuffleArray(otherCategories));
   }, [podcasts]);
 
+
   const displayedCategories = useMemo(() => {
-    return randomCategories.slice(0, visibleCategories);
-  }, [randomCategories, visibleCategories]);
+    return shuffledCategories.slice(0, visibleCategories);
+  }, [shuffledCategories, visibleCategories]);
 
-  const hasMoreCategories = visibleCategories < randomCategories.length;
+  const hasMoreCategories = visibleCategories < shuffledCategories.length;
 
-  const loadMoreCategories = () => {
-    setVisibleCategories(
-      (prev) => prev + CATEGORY_INCREMENT,
+  const loadMoreCategories = useCallback(() => {
+    if (isLoading) return;
+    setIsLoading(true);
+    setTimeout(() => {
+      setVisibleCategories(
+        (prev) => prev + CATEGORY_INCREMENT,
+      );
+      setIsLoading(false);
+    }, 500); // Simulate network delay
+  }, [isLoading]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMoreCategories && !isLoading) {
+          loadMoreCategories();
+        }
+      },
+      { rootMargin: "200px" },
     );
-  };
+
+    const loader = loaderRef.current;
+    if (loader) {
+      observer.observe(loader);
+    }
+
+    return () => {
+      if (loader) {
+        observer.unobserve(loader);
+      }
+    };
+  }, [hasMoreCategories, isLoading, loadMoreCategories]);
 
 
   return (
@@ -132,13 +167,9 @@ export default function PodcastLibrary({
           />
         ))}
 
-        {hasMoreCategories && (
-          <div className="text-center">
-            <Button onClick={loadMoreCategories} variant="secondary">
-              Show More
-            </Button>
-          </div>
-        )}
+        <div ref={loaderRef}>
+           {hasMoreCategories && <Loader />}
+        </div>
 
       </div>
     </main>
