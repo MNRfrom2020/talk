@@ -74,6 +74,7 @@ export default function MobileHeader() {
                 Disclaimer
               </Button>
             </DisclaimerDialog>
+            <span className="text-muted-foreground">।</span>
            <Button
             variant="ghost"
             size="icon"
