@@ -229,7 +229,7 @@ export default function Player() {
                     "text-base": isExpanded,
                   })}
                 >
-                  {currentTrack.artist.join(", ")}
+                  {currentTrack.artist}
                 </p>
               </div>
             </div>
@@ -429,7 +429,7 @@ export default function Player() {
                 <QueueSheet>
                   <Button variant="outline" className="w-full">
                     <ListMusic className="mr-2" />
-                    Up Next
+                    Playlist
                   </Button>
                 </QueueSheet>
               )}

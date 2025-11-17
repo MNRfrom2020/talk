@@ -8,7 +8,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetFooter,
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { usePlayer } from "@/context/PlayerContext";
@@ -17,7 +16,6 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import * as React from "react";
-import { SaveQueueDialog } from "../playlists/SaveQueueDialog";
 
 export function QueueSheet({ children }: { children: React.ReactNode }) {
   const {
@@ -27,8 +25,6 @@ export function QueueSheet({ children }: { children: React.ReactNode }) {
     removeFromQueue,
     moveTrackInQueue,
   } = usePlayer();
-  
-  const hasQueue = currentTrack || queue.length > 0;
 
   return (
     <Sheet>
@@ -145,18 +141,9 @@ export function QueueSheet({ children }: { children: React.ReactNode }) {
             </div>
           </ScrollArea>
         </div>
-         <SheetFooter className="mt-4">
-           <SaveQueueDialog>
-            <Button
-              variant="outline"
-              className="w-full"
-              disabled={!hasQueue}
-            >
-              Save as Playlist
-            </Button>
-          </SaveQueueDialog>
-        </SheetFooter>
       </SheetContent>
     </Sheet>
   );
 }
+
+    
