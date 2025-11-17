@@ -10,23 +10,28 @@ import React, {
 } from "react";
 
 const USER_STORAGE_KEY = "guest_user_profile";
+const SUPER_ADMIN_SESSION_KEY = "super_admin_session";
+
 
 interface User {
   name: string;
   avatar: string | null;
   isLoggedIn: boolean;
+  isSuperAdmin: boolean;
 }
 
 interface UserContextType {
   user: User;
   login: (name: string, avatar?: string | null) => void;
   logout: () => void;
+  superAdminLogin: () => void;
 }
 
 const defaultUser: User = {
   name: "Guest",
   avatar: null,
   isLoggedIn: false,
+  isSuperAdmin: false,
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -46,14 +51,20 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem(USER_STORAGE_KEY);
+      const isSuperAdmin = sessionStorage.getItem(SUPER_ADMIN_SESSION_KEY) === "true";
+
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
         if(parsedUser.isLoggedIn) {
-          setUser(parsedUser);
+          setUser({...parsedUser, isSuperAdmin});
+        } else if (isSuperAdmin) {
+           setUser({...defaultUser, isSuperAdmin: true, isLoggedIn: true, name: "Super Admin" });
         }
+      } else if (isSuperAdmin) {
+        setUser({...defaultUser, isSuperAdmin: true, isLoggedIn: true, name: "Super Admin" });
       }
     } catch (error) {
-      console.error("Failed to load user from localStorage", error);
+      console.error("Failed to load user from storage", error);
     } finally {
       setIsInitialized(true);
     }
@@ -61,10 +72,12 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
   const saveUser = useCallback((userData: User) => {
     try {
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
+      const userToSave = { name: userData.name, avatar: userData.avatar, isLoggedIn: userData.isLoggedIn };
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userToSave));
+      sessionStorage.setItem(SUPER_ADMIN_SESSION_KEY, String(userData.isSuperAdmin));
       setUser(userData);
     } catch (error) {
-      console.error("Failed to save user to localStorage", error);
+      console.error("Failed to save user to storage", error);
     }
   }, []);
 
@@ -74,20 +87,33 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         name,
         avatar: avatar === undefined ? user.avatar : avatar,
         isLoggedIn: true,
+        isSuperAdmin: user.isSuperAdmin,
       };
       saveUser(newUserData);
     },
-    [saveUser, user.avatar],
+    [saveUser, user.avatar, user.isSuperAdmin],
   );
 
   const logout = useCallback(() => {
     try {
       localStorage.removeItem(USER_STORAGE_KEY);
+      sessionStorage.removeItem(SUPER_ADMIN_SESSION_KEY);
       setUser(defaultUser);
     } catch (error) {
-      console.error("Failed to remove user from localStorage", error);
+      console.error("Failed to clear storage", error);
     }
   }, []);
+  
+  const superAdminLogin = useCallback(() => {
+     const newUserData: User = {
+        name: "Super Admin",
+        avatar: null,
+        isLoggedIn: true,
+        isSuperAdmin: true,
+      };
+      saveUser(newUserData);
+  }, [saveUser]);
+
 
   if (!isInitialized) {
     return null; // Or a loading spinner
@@ -97,6 +123,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     user,
     login,
     logout,
+    superAdminLogin,
   };
 
   return (
