@@ -13,6 +13,7 @@ import {
   SkipForward,
   Volume2,
   VolumeX,
+  ListMusic,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
@@ -33,7 +34,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { usePodcast } from "@/context/PodcastContext";
+import { QueueSheet } from "@/components/player/QueueSheet";
 
 function formatTime(seconds: number) {
   if (isNaN(seconds)) return "0:00";
@@ -64,7 +65,6 @@ export default function Player() {
     seekForward,
     seekBackward,
   } = usePlayer();
-  const { podcasts } = usePodcast();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const handleProgressChange = (value: number[]) => {
@@ -424,6 +424,15 @@ export default function Player() {
               <div className="hidden sm:flex w-full flex-1 items-center gap-2">
                  {VolumeControl}
               </div>
+              
+              {isExpanded && (
+                <QueueSheet>
+                  <Button variant="outline" className="w-full">
+                    <ListMusic className="mr-2" />
+                    Up Next
+                  </Button>
+                </QueueSheet>
+              )}
             </div>
           </div>
 

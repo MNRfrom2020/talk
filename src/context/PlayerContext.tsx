@@ -79,6 +79,8 @@ interface PlayerContextType {
   history: Podcast[];
   queue: Podcast[];
   addToQueue: (track: Podcast) => void;
+  playTrackFromQueue: (trackId: string) => void;
+  removeFromQueue: (trackId: string) => void;
   playbackRate: number;
   setPlaybackRate: (rate: number) => void;
   getPodcastProgress: (trackId: string) => ProgressInfo | undefined;
@@ -213,6 +215,8 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (audioRef.current.src !== sourceUrl) {
         audioRef.current.src = sourceUrl;
+        // When source changes, reset progress
+        setProgress(0);
       }
       
       if (!shouldAutoPlay) {
@@ -225,7 +229,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       if (playPromise !== undefined) {
         playPromise
           .then(() => {
-            if (savedProgress && savedProgress.progress > 0) {
+            if (savedProgress && savedProgress.progress > 0 && audioRef.current!.src === sourceUrl) {
               audioRef.current!.currentTime = savedProgress.progress;
             }
             setIsPlaying(true);
@@ -260,17 +264,28 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   const playInternal = useCallback(
     (trackId?: string, playlist: Podcast[] = podcasts, shouldAutoPlay = true) => {
       const playlistToUse = playlist && playlist.length > 0 ? playlist : podcasts;
-      setCurrentPlaylist(playlistToUse);
-
+      
       let trackToPlay: Podcast | undefined | null = null;
+      let startFromIndex = 0;
+
       if (trackId) {
-        trackToPlay = playlistToUse.find((p) => p.id === trackId);
+        startFromIndex = playlistToUse.findIndex((p) => p.id === trackId);
+        if(startFromIndex !== -1) {
+          trackToPlay = playlistToUse[startFromIndex];
+        }
       } else {
         trackToPlay =
           currentTrack || (playlistToUse.length > 0 ? playlistToUse[0] : null);
+        if (trackToPlay) {
+           startFromIndex = playlistToUse.findIndex((p) => p.id === trackToPlay!.id);
+        }
       }
 
       if (trackToPlay) {
+        const newPlaylist = playlistToUse.slice(startFromIndex);
+        setCurrentPlaylist(newPlaylist);
+        setQueue(newPlaylist.slice(1));
+
         if (currentTrack?.id !== trackToPlay.id) {
           setCurrentTrack(trackToPlay);
           addToHistory(trackToPlay);
@@ -294,7 +309,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   }, [playInternal]);
   
   const autoPlay = useCallback((trackId?: string, playlist?: Podcast[]) => {
-      playInternal(trackId, playlist, true);
+      playInternal(trackId, playlist, false);
   }, [playInternal]);
 
 
@@ -324,44 +339,40 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     if (queue.length > 0) {
       const nextTrackInQueue = queue[0];
       setQueue((prev) => prev.slice(1));
-      play(nextTrackInQueue.id, [nextTrackInQueue, ...(currentPlaylist || [])]);
+      play(nextTrackInQueue.id, [nextTrackInQueue, ...queue.slice(1)]);
       return true;
     }
     return false;
-  }, [queue, play, currentPlaylist]);
+  }, [queue, play]);
 
   const nextTrack = useCallback(() => {
     if (playNextInQueue()) return;
 
-    const playlist = currentPlaylist || podcasts;
-    if (!playlist || playlist.length === 0) return;
-    const currentIndex = findCurrentTrackIndex();
-    if (currentIndex === -1) {
-      play(playlist[0].id, playlist);
-      return;
-    }
-    const nextIndex = (currentIndex + 1) % playlist.length;
-    play(playlist[nextIndex].id, playlist);
-  }, [currentPlaylist, podcasts, play, findCurrentTrackIndex, playNextInQueue]);
+    // If queue is empty, do nothing
+  }, [playNextInQueue]);
 
   const prevTrack = useCallback(() => {
     const playlist = currentPlaylist || podcasts;
     if (!playlist || playlist.length === 0) return;
     const currentIndex = findCurrentTrackIndex();
-    if (currentIndex === -1) {
-      play(playlist[0].id, playlist);
-      return;
+    
+    // Find the original full playlist from which `currentPlaylist` was derived
+    const originalPlaylist = podcasts;
+    const originalIndex = originalPlaylist.findIndex(p => p.id === currentTrack?.id);
+
+    if (originalIndex > 0) {
+      const prevTrackId = originalPlaylist[originalIndex - 1].id;
+      play(prevTrackId, originalPlaylist);
     }
-    const prevIndex = (currentIndex - 1 + playlist.length) % playlist.length;
-    play(playlist[prevIndex].id, playlist);
-  }, [currentPlaylist, podcasts, play, findCurrentTrackIndex]);
+
+  }, [currentPlaylist, podcasts, play, findCurrentTrackIndex, currentTrack]);
 
   const playRandom = useCallback(() => {
     if (podcasts.length === 0) return;
     const randomIndex = Math.floor(Math.random() * podcasts.length);
     const randomPodcast = podcasts[randomIndex];
-    play(randomPodcast.id, currentPlaylist || podcasts);
-  }, [podcasts, play, currentPlaylist]);
+    play(randomPodcast.id, podcasts);
+  }, [podcasts, play]);
 
   const seek = (time: number) => {
     if (audioRef.current) {
@@ -399,8 +410,29 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const addToQueue = (track: Podcast) => {
-    setQueue((prev) => [...prev, track]);
+    if (!queue.find(t => t.id === track.id) && currentTrack?.id !== track.id) {
+       setQueue((prev) => [...prev, track]);
+    }
   };
+  
+  const playTrackFromQueue = (trackId: string) => {
+    const trackIndex = queue.findIndex(t => t.id === trackId);
+    if (trackIndex !== -1) {
+      const trackToPlay = queue[trackIndex];
+      const newQueue = queue.slice(trackIndex + 1);
+      
+      setCurrentTrack(trackToPlay);
+      setQueue(newQueue);
+      setCurrentPlaylist([trackToPlay, ...newQueue]);
+      addToHistory(trackToPlay);
+      setAudioSource(trackToPlay, true);
+    }
+  };
+
+  const removeFromQueue = (trackId: string) => {
+    setQueue(prev => prev.filter(t => t.id !== trackId));
+  };
+
 
   const onTimeUpdate = () => {
     if (audioRef.current) {
@@ -519,6 +551,8 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     history,
     queue,
     addToQueue,
+    playTrackFromQueue,
+    removeFromQueue,
     playbackRate,
     setPlaybackRate,
     getPodcastProgress,
