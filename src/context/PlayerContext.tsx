@@ -81,7 +81,7 @@ interface PlayerContextType {
   addToQueue: (track: Podcast) => void;
   playTrackFromQueue: (trackId: string) => void;
   removeFromQueue: (trackId: string) => void;
-  reorderQueue: (newQueue: Podcast[]) => void;
+  moveTrackInQueue: (trackId: string, direction: "up" | "down") => void;
   playbackRate: number;
   setPlaybackRate: (rate: number) => void;
   getPodcastProgress: (trackId: string) => ProgressInfo | undefined;
@@ -449,10 +449,23 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   const removeFromQueue = (trackId: string) => {
     setQueue((prev) => prev.filter((t) => t.id !== trackId));
   };
+  
+  const moveTrackInQueue = (trackId: string, direction: "up" | "down") => {
+    setQueue(prevQueue => {
+      const index = prevQueue.findIndex(t => t.id === trackId);
+      if (index === -1) return prevQueue;
 
-  const reorderQueue = (newQueue: Podcast[]) => {
-    setQueue(newQueue);
+      const newIndex = direction === 'up' ? index - 1 : index + 1;
+      if (newIndex < 0 || newIndex >= prevQueue.length) return prevQueue;
+      
+      const newQueue = [...prevQueue];
+      const [movedTrack] = newQueue.splice(index, 1);
+      newQueue.splice(newIndex, 0, movedTrack);
+      
+      return newQueue;
+    });
   };
+
 
   const onTimeUpdate = () => {
     if (audioRef.current) {
@@ -576,7 +589,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     addToQueue,
     playTrackFromQueue,
     removeFromQueue,
-    reorderQueue,
+    moveTrackInQueue,
     playbackRate,
     setPlaybackRate,
     getPodcastProgress,
