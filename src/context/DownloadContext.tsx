@@ -155,9 +155,16 @@ export const DownloadProvider = ({ children }: { children: ReactNode }) => {
     loadDownloadedPodcasts();
   }, []);
 
+  const isDownloaded = useCallback(
+    (podcastId: string) => {
+      return downloadedPodcasts.some((p) => p.id === podcastId);
+    },
+    [downloadedPodcasts],
+  );
+
   const downloadPodcast = useCallback(
     async (podcast: Podcast) => {
-      if (downloadingPodcasts.includes(podcast.id) || downloadedPodcasts.some((p) => p.id === podcast.id)) {
+      if (downloadingPodcasts.includes(podcast.id) || isDownloaded(podcast.id)) {
         return;
       }
 
@@ -180,7 +187,7 @@ export const DownloadProvider = ({ children }: { children: ReactNode }) => {
         setDownloadingPodcasts((prev) => prev.filter((id) => id !== podcast.id));
       }
     },
-    [downloadingPodcasts, downloadedPodcasts],
+    [downloadingPodcasts, isDownloaded],
   );
 
   const deleteDownloadedPodcast = useCallback(async (podcastId: string) => {
@@ -199,13 +206,6 @@ export const DownloadProvider = ({ children }: { children: ReactNode }) => {
       return getFromDB<{ podcast: Podcast; blob: Blob }>(podcastId);
     },
     [],
-  );
-
-  const isDownloaded = useCallback(
-    (podcastId: string) => {
-      return downloadedPodcasts.some((p) => p.id === podcastId);
-    },
-    [downloadedPodcasts],
   );
 
   if (!isInitialized) {
