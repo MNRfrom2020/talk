@@ -2,7 +2,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Grid, Home, Library, Search } from "lucide-react";
+import { Grid, Home, Library, Search, Shuffle, User } from "lucide-react";
 import Link from "next/link";
 import {
   Sidebar,
@@ -19,6 +19,7 @@ import { useUser } from "@/context/UserContext";
 import { ProfileDialog } from "../auth/ProfileDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { cn } from "@/lib/utils";
+import { usePlayer } from "@/context/PlayerContext";
 
 function UserAvatar({ className }: { className?: string }) {
   const { user } = useUser();
@@ -33,13 +34,25 @@ function UserAvatar({ className }: { className?: string }) {
 export default function AppSidebar() {
   const pathname = usePathname();
   const { user } = useUser();
+  const { playRandom } = usePlayer();
 
-  const profileButtonContent = (
+  const loggedInProfileButton = (
     <div className="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
       <UserAvatar />
       <span className="truncate">{user.name}</span>
     </div>
   );
+
+  const loggedOutProfileButton = (
+     <div className="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+      <Avatar className="h-6 w-6">
+        <AvatarFallback>
+          <User className="h-4 w-4" />
+        </AvatarFallback>
+      </Avatar>
+      <span className="truncate">Login</span>
+    </div>
+  )
 
   return (
     <Sidebar>
@@ -80,6 +93,12 @@ export default function AppSidebar() {
                 </button>
               </SearchDialog>
             </SidebarMenuItem>
+             <SidebarMenuItem>
+              <SidebarMenuButton onClick={playRandom}>
+                <Shuffle />
+                Surprise Me
+              </SidebarMenuButton>
+            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
                 href="/categories"
@@ -105,11 +124,11 @@ export default function AppSidebar() {
         <SidebarGroup>
           {user.isLoggedIn ? (
             <Link href="/profile" passHref>
-              {profileButtonContent}
+              {loggedInProfileButton}
             </Link>
           ) : (
             <ProfileDialog>
-              <button className="w-full">{profileButtonContent}</button>
+              <button className="w-full">{loggedOutProfileButton}</button>
             </ProfileDialog>
           )}
         </SidebarGroup>
