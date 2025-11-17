@@ -33,8 +33,9 @@ export default function MobileHeader() {
   );
   
   const loginButtonContent = (
-     <Button variant="ghost" size="sm" className="rounded-full">
-        Login
+     <Button variant="ghost" size="icon" className="rounded-full">
+        <User className="h-5 w-5" />
+        <span className="sr-only">Login</span>
     </Button>
   );
 
