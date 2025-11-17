@@ -5,11 +5,31 @@ import { usePodcast } from "@/context/PodcastContext";
 import PodcastCard from "./PodcastCard";
 import { usePlayer } from "@/context/PlayerContext";
 import { cn } from "@/lib/utils";
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import type { Podcast } from "@/lib/types";
 import { usePlaylist } from "@/context/PlaylistContext";
 import PlaylistCard from "../playlists/PlaylistCard";
 import CategorySection from "./CategorySection";
+import { useUser } from "@/context/UserContext";
+import { Button } from "../ui/button";
+
+import myPlaylistsData from "@/lib/myplaylist.json";
+import myAudioData from "@/lib/myaudio.json";
+
+
+const INITIAL_VISIBLE_CATEGORIES = 10;
+const CATEGORY_INCREMENT = 10;
+
+// Fisher-Yates (aka Knuth) Shuffle
+function shuffleArray<T>(array: T[]): T[] {
+  const newArray = [...array];
+  for (let i = newArray.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+  }
+  return newArray;
+}
+
 
 export default function PodcastLibrary({
   showTitle = true,
@@ -18,7 +38,10 @@ export default function PodcastLibrary({
 }) {
   const { podcasts } = usePodcast();
   const { playlists } = usePlaylist();
-  const { currentTrack } = usePlayer();
+  const { user } = useUser();
+  const [visibleCategories, setVisibleCategories] = useState(
+    INITIAL_VISIBLE_CATEGORIES,
+  );
 
   const predefinedPlaylists = useMemo(() => {
     return [...playlists.filter((p) => p.isPredefined)].sort((a, b) =>
@@ -26,7 +49,7 @@ export default function PodcastLibrary({
     );
   }, [playlists]);
 
-  const categories = useMemo(() => {
+  const { quranCategory, randomCategories } = useMemo(() => {
     const categoryMap = new Map<string, Podcast[]>();
     podcasts.forEach((podcast) => {
       podcast.categories.forEach((category) => {
@@ -36,8 +59,35 @@ export default function PodcastLibrary({
         categoryMap.get(category)?.push(podcast);
       });
     });
-    return Array.from(categoryMap.entries());
+
+    const allCategories = Array.from(categoryMap.entries());
+
+    const quranIndex = allCategories.findIndex(([key]) => key === "Quran");
+    let quranCategory: [string, Podcast[]] | null = null;
+    if (quranIndex > -1) {
+      quranCategory = allCategories[quranIndex];
+    }
+    
+    const otherCategories = allCategories.filter(([key]) => key !== "Quran");
+
+    return {
+      quranCategory,
+      randomCategories: shuffleArray(otherCategories),
+    };
   }, [podcasts]);
+
+  const displayedCategories = useMemo(() => {
+    return randomCategories.slice(0, visibleCategories);
+  }, [randomCategories, visibleCategories]);
+
+  const hasMoreCategories = visibleCategories < randomCategories.length;
+
+  const loadMoreCategories = () => {
+    setVisibleCategories(
+      (prev) => prev + CATEGORY_INCREMENT,
+    );
+  };
+
 
   return (
     <main
@@ -66,13 +116,30 @@ export default function PodcastLibrary({
           </section>
         )}
 
-        {categories.map(([category, categoryPodcasts]) => (
+        {quranCategory && (
+           <CategorySection
+            key={quranCategory[0]}
+            title={quranCategory[0]}
+            podcasts={quranCategory[1]}
+          />
+        )}
+
+        {displayedCategories.map(([category, categoryPodcasts]) => (
           <CategorySection
             key={category}
             title={category}
             podcasts={categoryPodcasts}
           />
         ))}
+
+        {hasMoreCategories && (
+          <div className="text-center">
+            <Button onClick={loadMoreCategories} variant="secondary">
+              Show More
+            </Button>
+          </div>
+        )}
+
       </div>
     </main>
   );
