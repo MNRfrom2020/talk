@@ -26,13 +26,13 @@ import {
 import { Input } from "@/components/ui/input";
 
 interface PlaylistPageProps {
-  params: {
+  params: Promise<{
     playlistId: string;
-  };
+  }>;
 }
 
 const PlaylistPage = ({ params }: PlaylistPageProps) => {
-  const { playlistId } = params;
+  const { playlistId } = React.use(params);
   const {
     getPlaylistById,
     getPodcastsForPlaylist,

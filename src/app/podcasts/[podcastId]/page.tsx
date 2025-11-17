@@ -2,7 +2,7 @@
 "use client";
 
 import { AnimatePresence } from "framer-motion";
-import { useEffect } from "react";
+import * as React from "react";
 import Image from "next/image";
 import { Play } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -19,20 +19,20 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface PodcastPageProps {
-  params: {
+  params: Promise<{
     podcastId: string;
-  };
+  }>;
 }
 
 const PodcastPage = ({ params }: PodcastPageProps) => {
-  const { podcastId } = params;
+  const { podcastId } = React.use(params);
   const { play, autoPlay } = usePlayer();
   const podcast = allPodcasts.find((p) => p.id === podcastId);
 
   const searchParams = useSearchParams();
   const isEmbedView = searchParams.get("embed") === "true";
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (podcast) {
       autoPlay(podcast.id);
     }
@@ -65,24 +65,20 @@ const PodcastPage = ({ params }: PodcastPageProps) => {
 
   if (isEmbedView) {
     return (
-       <div className="relative flex h-screen flex-col bg-background">
+      <div className="relative flex h-screen flex-col bg-background">
         <div className="flex flex-1 flex-col items-center justify-center gap-8 overflow-hidden p-8">
-            <div className="relative w-full aspect-square max-w-sm shrink-0">
-                <Image
-                  src={podcast.coverArt}
-                  alt={podcast.title}
-                  fill
-                  className="rounded-md object-cover"
-                />
-            </div>
-             <div className="w-full max-w-sm text-center">
-                <h3 className="text-2xl font-bold">
-                  {podcast.title}
-                </h3>
-                <p className="text-base text-muted-foreground">
-                  {podcast.artist}
-                </p>
-             </div>
+          <div className="relative w-full max-w-sm shrink-0 aspect-square">
+            <Image
+              src={podcast.coverArt}
+              alt={podcast.title}
+              fill
+              className="rounded-md object-cover"
+            />
+          </div>
+          <div className="w-full max-w-sm text-center">
+            <h3 className="text-2xl font-bold">{podcast.title}</h3>
+            <p className="text-base text-muted-foreground">{podcast.artist}</p>
+          </div>
         </div>
         <AnimatePresence>
           <Player />
