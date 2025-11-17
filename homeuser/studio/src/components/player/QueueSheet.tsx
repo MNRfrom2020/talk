@@ -37,7 +37,7 @@ export function QueueSheet({ children }: { children: React.ReactNode }) {
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <ListMusic />
-            Up Next
+            Playlist
           </SheetTitle>
         </SheetHeader>
         <div className="flex-1 overflow-hidden">

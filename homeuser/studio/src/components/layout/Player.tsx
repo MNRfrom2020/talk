@@ -7,10 +7,13 @@ import {
   Moon,
   Pause,
   Play,
+  RotateCcw,
+  RotateCw,
   SkipBack,
   SkipForward,
   Volume2,
   VolumeX,
+  ListMusic,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
@@ -26,7 +29,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { usePodcast } from "@/context/PodcastContext";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { QueueSheet } from "@/components/player/QueueSheet";
 
 function formatTime(seconds: number) {
   if (isNaN(seconds)) return "0:00";
@@ -54,8 +62,9 @@ export default function Player() {
     setPlaybackRate,
     sleepTimer,
     setSleepTimer,
+    seekForward,
+    seekBackward,
   } = usePlayer();
-  const { podcasts } = usePodcast();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const handleProgressChange = (value: number[]) => {
@@ -97,6 +106,25 @@ export default function Player() {
   if (!currentTrack) {
     return null;
   }
+  
+  const VolumeControl = (
+    <div className="flex w-full flex-1 items-center gap-2">
+      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setVolume(volume > 0 ? 0 : 0.5)}>
+        {volume > 0 ? (
+          <Volume2 className="h-5 w-5" />
+        ) : (
+          <VolumeX className="h-5 w-5" />
+        )}
+      </Button>
+      <Slider
+        value={[volume]}
+        max={1}
+        step={0.01}
+        onValueChange={handleVolumeChange}
+        className="w-full flex-1"
+      />
+    </div>
+  )
 
   return (
     <>
@@ -201,7 +229,7 @@ export default function Player() {
                     "text-base": isExpanded,
                   })}
                 >
-                  {currentTrack.artist}
+                  {Array.isArray(currentTrack.artist) ? currentTrack.artist.join(", ") : currentTrack.artist}
                 </p>
               </div>
             </div>
@@ -235,10 +263,10 @@ export default function Player() {
               <div
                 className={cn(
                   "flex w-full items-center justify-center",
-                  { "gap-2 sm:gap-4": !isExpanded, "gap-6": isExpanded },
+                  { "gap-1 sm:gap-2": !isExpanded, "gap-2": isExpanded },
                 )}
               >
-                <Button
+                 <Button
                   variant="ghost"
                   size="icon"
                   onClick={handleButtonClick(prevTrack)}
@@ -253,13 +281,27 @@ export default function Player() {
                   />
                 </Button>
                 <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleButtonClick(seekBackward)}
+                  className={cn(
+                    isExpanded ? "h-12 w-12" : "h-8 w-8 sm:h-10 sm:w-10",
+                  )}
+                >
+                  <RotateCcw
+                    className={cn(
+                      isExpanded ? "h-6 w-6" : "h-4 w-4 sm:h-5 sm:w-5",
+                    )}
+                  />
+                </Button>
+                <Button
                   variant="default"
                   size="icon"
                   className={cn(
                     "rounded-full bg-primary hover:bg-primary/90",
                     isExpanded ? "h-16 w-16" : "h-10 w-10 sm:h-12 sm:w-12",
                   )}
-                  onClick={handleButtonClick(() => togglePlay(podcasts))}
+                  onClick={handleButtonClick(togglePlay)}
                 >
                   {isPlaying ? (
                     <Pause
@@ -276,6 +318,20 @@ export default function Player() {
                       )}
                     />
                   )}
+                </Button>
+                 <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleButtonClick(seekForward)}
+                  className={cn(
+                    isExpanded ? "h-12 w-12" : "h-8 w-8 sm:h-10 sm:w-10",
+                  )}
+                >
+                  <RotateCw
+                    className={cn(
+                      isExpanded ? "h-6 w-6" : "h-4 w-4 sm:h-5 sm:w-5",
+                    )}
+                  />
                 </Button>
                 <Button
                   variant="ghost"
@@ -295,8 +351,9 @@ export default function Player() {
             </div>
 
             <div
-              className={cn("flex w-full max-w-sm items-center gap-4", {
+              className={cn("flex w-full items-center gap-4", {
                 "hidden sm:flex sm:w-1/4 sm:justify-end": !isExpanded,
+                "max-w-sm justify-center": isExpanded,
               })}
             >
               {isExpanded && (
@@ -348,23 +405,34 @@ export default function Player() {
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  
+                  <div className="sm:hidden">
+                    <Popover>
+                        <PopoverTrigger asChild>
+                           <Button variant="outline" size="icon" onClick={(e) => e.stopPropagation()}>
+                             {volume > 0 ? <Volume2 /> : <VolumeX />}
+                           </Button>
+                        </PopoverTrigger>
+                        <PopoverContent side="top" onClick={(e) => e.stopPropagation()} className="w-48 p-2">
+                           {VolumeControl}
+                        </PopoverContent>
+                    </Popover>
+                  </div>
                 </div>
               )}
 
-              <div className="flex w-full flex-1 items-center gap-2">
-                {volume > 0 ? (
-                  <Volume2 className="h-5 w-5" />
-                ) : (
-                  <VolumeX className="h-5 w-5" />
-                )}
-                <Slider
-                  value={[volume]}
-                  max={1}
-                  step={0.01}
-                  onValueChange={handleVolumeChange}
-                  className="w-full flex-1"
-                />
+              <div className="hidden sm:flex w-full flex-1 items-center gap-2">
+                 {VolumeControl}
               </div>
+              
+              {isExpanded && (
+                <QueueSheet>
+                  <Button variant="outline" className="w-full">
+                    <ListMusic className="mr-2" />
+                    Playlist
+                  </Button>
+                </QueueSheet>
+              )}
             </div>
           </div>
 
