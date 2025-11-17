@@ -1,6 +1,15 @@
 
 [
   {
+    "id": "30",
+    "title": "055.Ar-Rahman",
+    "artist": "Zain Abu Kautsar",
+    "categories": ["Quran"],
+    "coverArt": "https://stream.mnr.world/0:/Talk/Quran/Zain%20Abu%20Kautsar/055.Ar-Rahman_Zain_Abu_Kautsar.png",
+    "coverArtHint": "Best Al Quran Recitation",
+    "audioUrl": "https://stream.mnr.world/0:/Talk/Quran/Zain%20Abu%20Kautsar/055.Ar-Rahman_Zain_Abu_Kautsar.opus"
+  },
+  {
     "id": "29",
     "title": "Feludar Goendagiri",
     "artist": "Satyajit Ray",
