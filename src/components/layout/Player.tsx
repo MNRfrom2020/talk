@@ -283,7 +283,7 @@ export default function Player() {
                     "rounded-full bg-primary hover:bg-primary/90",
                     isExpanded ? "h-16 w-16" : "h-10 w-10 sm:h-12 sm:w-12",
                   )}
-                  onClick={handleButtonClick(() => togglePlay(podcasts))}
+                  onClick={handleButtonClick(togglePlay)}
                 >
                   {isPlaying ? (
                     <Pause
@@ -381,7 +381,7 @@ export default function Player() {
                              {volume > 0 ? <Volume2 /> : <VolumeX />}
                            </Button>
                         </PopoverTrigger>
-                        <PopoverContent onClick={(e) => e.stopPropagation()} className="w-48 p-2">
+                        <PopoverContent side="top" onClick={(e) => e.stopPropagation()} className="w-48 p-2">
                            {VolumeControl}
                         </PopoverContent>
                     </Popover>
