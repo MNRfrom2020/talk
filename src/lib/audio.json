@@ -1,31 +1,30 @@
-
 [
   {
     "id": "4",
     "title": "Maula Ya Salli Wa Sallim",
-    "artist": ["Dr Muhammad Ibrahim"],
+    "artist": ["Dr Muhammad Ibrahim", "Mahmud Huzaifa"],
     "categories": ["Nasheed"],
-    "coverArt": "https://picsum.photos/seed/4/500/500",
+    "coverArt": "https://stream.mnr.world/0:/Talk/Nasheed/Dr%20Muhammad%20Ibrahim/Maula_Ya_Salli_Wa_Sallim_Dr_Muhammad_Ibrahim_and_Mahmud_Huzaifa.png",
     "coverArtHint": "Nasheed",
-    "audioUrl": "https://stream.mnr.world/0:/Talk/Nasheed/Dr%20Muhammad%20Ibrahim/Maula%20Ya%20Salli%20Wa%20Sallim_Dr%20Muhammad%20Ibrahim_Mahmud%20Huzaifa.opus"
+    "audioUrl": "https://stream.mnr.world/0:/Talk/Nasheed/Dr%20Muhammad%20Ibrahim/Maula_Ya_Salli_Wa_Sallim_Dr_Muhammad_Ibrahim_and_Mahmud_Huzaifa.opus"
   },
   {
     "id": "3",
     "title": "Allahu Allahu Tumi Jalle Jalalu",
-    "artist": ["Dr Muhammad Ibrahim"],
+    "artist": ["Dr Muhammad Ibrahim", "Mahmud Huzaifa"],
     "categories": ["Nasheed"],
-    "coverArt": "https://picsum.photos/seed/3/500/500",
+    "coverArt": "https://stream.mnr.world/0:/Talk/Nasheed/Dr%20Muhammad%20Ibrahim/Allahu_Allahu_Tumi_Jalle_Jalalu_Dr_Muhammad_Ibrahim_and_Mahmud_Huzaifa.png",
     "coverArtHint": "Nasheed",
-    "audioUrl": "https://stream.mnr.world/0:/Talk/Nasheed/Dr%20Muhammad%20Ibrahim/Allahu%20Allahu%20Tumi%20Jalle%20Jalalu_Dr%20Muhammad%20Ibrahim_Mahmud%20Huzaifa.opus"
+    "audioUrl": "https://stream.mnr.world/0:/Talk/Nasheed/Dr%20Muhammad%20Ibrahim/Allahu_Allahu_Tumi_Jalle_Jalalu_Dr_Muhammad_Ibrahim_and_Mahmud_Huzaifa.opus"
   },
   {
     "id": "2",
     "title": "Allahu Allahu",
     "artist": ["Dr Muhammad Ibrahim"],
     "categories": ["Nasheed"],
-    "coverArt": "https://picsum.photos/seed/2/500/500",
+    "coverArt": "https://stream.mnr.world/0:/Talk/Nasheed/Dr%20Muhammad%20Ibrahim/Allahu_Allahu_Dr_Muhammad_Ibrahim.png",
     "coverArtHint": "Nasheed",
-    "audioUrl": "https://stream.mnr.world/0:/Talk/Nasheed/Dr%20Muhammad%20Ibrahim/Allahu%20Allahu_Dr%20Muhammad%20Ibrahim.opus"
+    "audioUrl": "https://stream.mnr.world/0:/Talk/Nasheed/Dr%20Muhammad%20Ibrahim/Allahu_Allahu_Dr_Muhammad_Ibrahim.opus"
   },
   {
     "id": "1",
