@@ -15,12 +15,9 @@ import { Plus } from "lucide-react";
 import PlaylistList from "@/components/playlists/PlaylistList";
 import PredefinedPlaylistSection from "@/components/playlists/PredefinedPlaylistSection";
 import { cn } from "@/lib/utils";
-import { useDownload } from "@/context/DownloadContext";
 import CategorySection from "@/components/podcasts/CategorySection";
 
 export default function LibraryPage() {
-  const { downloadedPodcasts } = useDownload();
-
   return (
     <SidebarProvider>
       <div className="flex h-screen flex-col bg-background">
@@ -48,13 +45,6 @@ export default function LibraryPage() {
                   </div>
 
                   <HistoryList />
-
-                  {downloadedPodcasts.length > 0 && (
-                    <CategorySection
-                      title="Downloads"
-                      podcasts={downloadedPodcasts}
-                    />
-                  )}
 
                   <PredefinedPlaylistSection />
 
