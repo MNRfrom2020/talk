@@ -124,7 +124,7 @@ export default function PodcastCard({
   
   const handleShare = (e: MouseEvent) => {
     e.stopPropagation();
-    const shareUrl = `${window.location.origin}/podcasts/${podcast.id}`;
+    const shareUrl = `${window.location.origin}/podcasts/${podcast.id}?embed=true`;
     navigator.clipboard.writeText(shareUrl);
     toast({
       title: "Link Copied",
