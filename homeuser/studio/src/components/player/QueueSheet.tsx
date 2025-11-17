@@ -21,7 +21,7 @@ export function QueueSheet({ children }: { children: React.ReactNode }) {
   const {
     currentTrack,
     queue,
-    setQueue,
+    reorderQueue,
     playTrackFromQueue,
     removeFromQueue,
   } = usePlayer();
@@ -80,7 +80,7 @@ export function QueueSheet({ children }: { children: React.ReactNode }) {
                 <Reorder.Group
                   axis="y"
                   values={queue}
-                  onReorder={setQueue}
+                  onReorder={reorderQueue}
                   className="space-y-2"
                 >
                   {queue.map((track) => (

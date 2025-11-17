@@ -45,7 +45,6 @@ function useThrottle<T extends (...args: any[]) => any>(
 }
 // --- End useThrottle Hook ---
 
-
 interface ProgressInfo {
   progress: number;
   duration: number;
@@ -78,9 +77,11 @@ interface PlayerContextType {
   setVolume: (volume: number) => void;
   history: Podcast[];
   queue: Podcast[];
+  setQueue: React.Dispatch<React.SetStateAction<Podcast[]>>;
   addToQueue: (track: Podcast) => void;
   playTrackFromQueue: (trackId: string) => void;
   removeFromQueue: (trackId: string) => void;
+  reorderQueue: (newQueue: Podcast[]) => void;
   playbackRate: number;
   setPlaybackRate: (rate: number) => void;
   getPodcastProgress: (trackId: string) => ProgressInfo | undefined;
@@ -167,7 +168,6 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, 5000);
 
-
   const saveProgress = useThrottle(
     (trackId: string, progress: number, duration: number) => {
       if (!trackId || isNaN(progress) || isNaN(duration)) return;
@@ -218,10 +218,10 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         // When source changes, reset progress
         setProgress(0);
       }
-      
+
       if (!shouldAutoPlay) {
-         setIsPlaying(false);
-         return;
+        setIsPlaying(false);
+        return;
       }
 
       const playPromise = audioRef.current.play();
@@ -229,7 +229,11 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       if (playPromise !== undefined) {
         playPromise
           .then(() => {
-            if (savedProgress && savedProgress.progress > 0 && audioRef.current!.src === sourceUrl) {
+            if (
+              savedProgress &&
+              savedProgress.progress > 0 &&
+              audioRef.current!.src === sourceUrl
+            ) {
               audioRef.current!.currentTime = savedProgress.progress;
             }
             setIsPlaying(true);
@@ -260,24 +264,31 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       return newHistory;
     });
   }, []);
-  
+
   const playInternal = useCallback(
-    (trackId?: string, playlist: Podcast[] = podcasts, shouldAutoPlay = true) => {
-      const playlistToUse = playlist && playlist.length > 0 ? playlist : podcasts;
-      
+    (
+      trackId?: string,
+      playlist: Podcast[] = podcasts,
+      shouldAutoPlay = true,
+    ) => {
+      const playlistToUse =
+        playlist && playlist.length > 0 ? playlist : podcasts;
+
       let trackToPlay: Podcast | undefined | null = null;
       let startFromIndex = 0;
 
       if (trackId) {
         startFromIndex = playlistToUse.findIndex((p) => p.id === trackId);
-        if(startFromIndex !== -1) {
+        if (startFromIndex !== -1) {
           trackToPlay = playlistToUse[startFromIndex];
         }
       } else {
         trackToPlay =
           currentTrack || (playlistToUse.length > 0 ? playlistToUse[0] : null);
         if (trackToPlay) {
-           startFromIndex = playlistToUse.findIndex((p) => p.id === trackToPlay!.id);
+          startFromIndex = playlistToUse.findIndex(
+            (p) => p.id === trackToPlay!.id,
+          );
         }
       }
 
@@ -304,14 +315,19 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     [podcasts, currentTrack, addToHistory, setAudioSource],
   );
 
-  const play = useCallback((trackId?: string, playlist?: Podcast[]) => {
+  const play = useCallback(
+    (trackId?: string, playlist?: Podcast[]) => {
       playInternal(trackId, playlist, true);
-  }, [playInternal]);
-  
-  const autoPlay = useCallback((trackId?: string, playlist?: Podcast[]) => {
-      playInternal(trackId, playlist, false);
-  }, [playInternal]);
+    },
+    [playInternal],
+  );
 
+  const autoPlay = useCallback(
+    (trackId?: string, playlist?: Podcast[]) => {
+      playInternal(trackId, playlist, false);
+    },
+    [playInternal],
+  );
 
   const togglePlay = useCallback(() => {
     const playlist = currentPlaylist || podcasts;
@@ -355,16 +371,17 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     const playlist = currentPlaylist || podcasts;
     if (!playlist || playlist.length === 0) return;
     const currentIndex = findCurrentTrackIndex();
-    
+
     // Find the original full playlist from which `currentPlaylist` was derived
     const originalPlaylist = podcasts;
-    const originalIndex = originalPlaylist.findIndex(p => p.id === currentTrack?.id);
+    const originalIndex = originalPlaylist.findIndex(
+      (p) => p.id === currentTrack?.id,
+    );
 
     if (originalIndex > 0) {
       const prevTrackId = originalPlaylist[originalIndex - 1].id;
       play(prevTrackId, originalPlaylist);
     }
-
   }, [currentPlaylist, podcasts, play, findCurrentTrackIndex, currentTrack]);
 
   const playRandom = useCallback(() => {
@@ -410,17 +427,17 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const addToQueue = (track: Podcast) => {
-    if (!queue.find(t => t.id === track.id) && currentTrack?.id !== track.id) {
-       setQueue((prev) => [...prev, track]);
+    if (!queue.find((t) => t.id === track.id) && currentTrack?.id !== track.id) {
+      setQueue((prev) => [...prev, track]);
     }
   };
-  
+
   const playTrackFromQueue = (trackId: string) => {
-    const trackIndex = queue.findIndex(t => t.id === trackId);
+    const trackIndex = queue.findIndex((t) => t.id === trackId);
     if (trackIndex !== -1) {
       const trackToPlay = queue[trackIndex];
       const newQueue = queue.slice(trackIndex + 1);
-      
+
       setCurrentTrack(trackToPlay);
       setQueue(newQueue);
       setCurrentPlaylist([trackToPlay, ...newQueue]);
@@ -430,28 +447,30 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const removeFromQueue = (trackId: string) => {
-    setQueue(prev => prev.filter(t => t.id !== trackId));
+    setQueue((prev) => prev.filter((t) => t.id !== trackId));
   };
 
+  const reorderQueue = (newQueue: Podcast[]) => {
+    setQueue(newQueue);
+  };
 
   const onTimeUpdate = () => {
     if (audioRef.current) {
       const now = Date.now();
       const delta = (now - lastTimeUpdate.current) / 1000;
       lastTimeUpdate.current = now;
-      
-      if (isPlayingRef.current && delta > 0 && delta < 5) {
-         setListeningLog(prevLog => {
-            const today = new Date().toISOString().split('T')[0];
-            const newLog = {
-              ...prevLog,
-              [today]: (prevLog[today] || 0) + delta,
-            };
-            saveListeningLog(newLog);
-            return newLog;
-         });
-      }
 
+      if (isPlayingRef.current && delta > 0 && delta < 5) {
+        setListeningLog((prevLog) => {
+          const today = new Date().toISOString().split("T")[0];
+          const newLog = {
+            ...prevLog,
+            [today]: (prevLog[today] || 0) + delta,
+          };
+          saveListeningLog(newLog);
+          return newLog;
+        });
+      }
 
       const currentTime = audioRef.current.currentTime;
       const currentDuration = audioRef.current.duration;
@@ -515,14 +534,17 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     if (audio) {
       const throttledTimeUpdate = onTimeUpdate;
       audio.addEventListener("timeupdate", throttledTimeUpdate);
-      audio.addEventListener("play", () => lastTimeUpdate.current = Date.now());
+      audio.addEventListener("play", () => (lastTimeUpdate.current = Date.now()));
       audio.addEventListener("pause", onTimeUpdate); // Log remaining time on pause
       audio.addEventListener("loadedmetadata", onLoadedMetadata);
       audio.addEventListener("ended", nextTrack);
 
       return () => {
         audio.removeEventListener("timeupdate", throttledTimeUpdate);
-        audio.removeEventListener("play", () => lastTimeUpdate.current = Date.now());
+        audio.removeEventListener(
+          "play",
+          () => (lastTimeUpdate.current = Date.now()),
+        );
         audio.removeEventListener("pause", onTimeUpdate);
         audio.removeEventListener("loadedmetadata", onLoadedMetadata);
         audio.removeEventListener("ended", nextTrack);
@@ -550,9 +572,11 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     setVolume,
     history,
     queue,
+    setQueue,
     addToQueue,
     playTrackFromQueue,
     removeFromQueue,
+    reorderQueue,
     playbackRate,
     setPlaybackRate,
     getPodcastProgress,
@@ -568,5 +592,3 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     </PlayerContext.Provider>
   );
 };
-
-    
