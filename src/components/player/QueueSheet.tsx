@@ -1,78 +1,32 @@
-
 "use client";
 
 import Image from "next/image";
-import { ListMusic, X, GripVertical } from "lucide-react";
+import { ListMusic, X, ChevronUp, ChevronDown } from "lucide-react";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
+  SheetFooter,
 } from "@/components/ui/sheet";
 import { usePlayer } from "@/context/PlayerContext";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import { Reorder, useDragControls } from "framer-motion";
 import * as React from "react";
-
-function QueueItem({ track }: { track: ReturnType<typeof usePlayer>["queue"][0] }) {
-  const { playTrackFromQueue, removeFromQueue } = usePlayer();
-  const dragControls = useDragControls();
-
-  return (
-    <Reorder.Item
-      key={track.id}
-      value={track}
-      dragListener={false}
-      dragControls={dragControls}
-      className="group flex items-center gap-2 rounded-md p-2 transition-colors hover:bg-secondary"
-    >
-      <div
-        onPointerDown={(e) => dragControls.start(e)}
-        className="cursor-grab text-muted-foreground"
-      >
-        <GripVertical className="h-5 w-5" />
-      </div>
-      <button
-        className="flex flex-1 items-center gap-4 overflow-hidden text-left"
-        onClick={() => playTrackFromQueue(track.id)}
-      >
-        <Image
-          src={track.coverArt}
-          alt={track.title}
-          width={48}
-          height={48}
-          className="h-12 w-12 rounded-md"
-        />
-        <div className="flex-1 overflow-hidden">
-          <p className="truncate font-semibold">{track.title}</p>
-          <p className="truncate text-sm text-muted-foreground">
-            {Array.isArray(track.artist) ? track.artist.join(", ") : track.artist}
-          </p>
-        </div>
-      </button>
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-8 w-8 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
-        onClick={() => removeFromQueue(track.id)}
-      >
-        <X className="h-4 w-4" />
-      </Button>
-    </Reorder.Item>
-  );
-}
-
+import { SaveQueueDialog } from "../playlists/SaveQueueDialog";
 
 export function QueueSheet({ children }: { children: React.ReactNode }) {
   const {
     currentTrack,
     queue,
-    reorderQueue,
+    playTrackFromQueue,
+    removeFromQueue,
+    moveTrackInQueue,
   } = usePlayer();
+  
+  const hasQueue = currentTrack || queue.length > 0;
 
   return (
     <Sheet>
@@ -85,7 +39,7 @@ export function QueueSheet({ children }: { children: React.ReactNode }) {
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <ListMusic />
-            Up Next
+            Playlist
           </SheetTitle>
         </SheetHeader>
         <div className="flex-1 overflow-hidden">
@@ -126,16 +80,61 @@ export function QueueSheet({ children }: { children: React.ReactNode }) {
               )}
 
               {queue.length > 0 ? (
-                <Reorder.Group
-                  axis="y"
-                  values={queue}
-                  onReorder={reorderQueue}
-                  className="space-y-2"
-                >
-                  {queue.map((track) => (
-                    <QueueItem key={track.id} track={track} />
+                <div className="space-y-2">
+                  {queue.map((track, index) => (
+                    <div
+                      key={track.id}
+                      className="group flex items-center gap-2 rounded-md p-2 transition-colors hover:bg-secondary"
+                    >
+                      <div className="flex flex-col">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          disabled={index === 0}
+                          onClick={() => moveTrackInQueue(track.id, "up")}
+                        >
+                          <ChevronUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          disabled={index === queue.length - 1}
+                          onClick={() => moveTrackInQueue(track.id, "down")}
+                        >
+                          <ChevronDown className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <button
+                        className="flex flex-1 items-center gap-4 overflow-hidden text-left"
+                        onClick={() => playTrackFromQueue(track.id)}
+                      >
+                        <Image
+                          src={track.coverArt}
+                          alt={track.title}
+                          width={48}
+                          height={48}
+                          className="h-12 w-12 rounded-md"
+                        />
+                        <div className="flex-1 overflow-hidden">
+                          <p className="truncate font-semibold">{track.title}</p>
+                          <p className="truncate text-sm text-muted-foreground">
+                             {Array.isArray(track.artist) ? track.artist.join(", ") : track.artist}
+                          </p>
+                        </div>
+                      </button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                        onClick={() => removeFromQueue(track.id)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
                   ))}
-                </Reorder.Group>
+                </div>
               ) : (
                 <div className="flex h-48 items-center justify-center text-center">
                   <p className="text-muted-foreground">The queue is empty.</p>
@@ -144,6 +143,17 @@ export function QueueSheet({ children }: { children: React.ReactNode }) {
             </div>
           </ScrollArea>
         </div>
+         <SheetFooter className="mt-4">
+           <SaveQueueDialog>
+            <Button
+              variant="outline"
+              className="w-full"
+              disabled={!hasQueue}
+            >
+              Save as Playlist
+            </Button>
+          </SaveQueueDialog>
+        </SheetFooter>
       </SheetContent>
     </Sheet>
   );
