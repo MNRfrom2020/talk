@@ -32,6 +32,7 @@ import { Button } from "../ui/button";
 import { CreatePlaylistDialog } from "../playlists/CreatePlaylistDialog";
 import { type MouseEvent, useEffect, useState } from "react";
 import { Progress } from "../ui/progress";
+import { usePodcast } from "@/context/PodcastContext";
 
 interface PodcastCardProps {
   podcast: Podcast;
@@ -53,6 +54,7 @@ export default function PodcastCard({
     addToQueue,
     getPodcastProgress,
   } = usePlayer();
+  const { podcasts: allPodcasts } = usePodcast();
   const {
     playlists,
     addPodcastToPlaylist,
@@ -74,6 +76,9 @@ export default function PodcastCard({
     if (savedProgress) {
       setProgress(savedProgress.progress);
       setDuration(savedProgress.duration);
+    } else {
+      setProgress(0);
+      setDuration(0);
     }
   }, [podcast.id, getPodcastProgress, currentTrack]);
 
@@ -124,7 +129,7 @@ export default function PodcastCard({
   
   const handleShare = (e: MouseEvent) => {
     e.stopPropagation();
-    const shareUrl = `${window.location.origin}/podcasts/${podcast.id}`;
+    const shareUrl = `${window.location.origin}/podcasts/${podcast.id}?embed=true`;
     navigator.clipboard.writeText(shareUrl);
     toast({
       title: "Link Copied",
@@ -227,7 +232,7 @@ export default function PodcastCard({
       <button
         type="button"
         className="w-full text-left"
-        onClick={() => play(podcast.id, playlist)}
+        onClick={() => play(podcast.id, playlist ?? allPodcasts)}
         aria-label={`Play ${podcast.title}`}
       >
         <CardContent className="p-4">
@@ -251,7 +256,7 @@ export default function PodcastCard({
             {podcast.title}
           </h3>
           <p className="h-5 text-sm text-muted-foreground line-clamp-1">
-            {podcast.artist}
+            {podcast.artist.join(", ")}
           </p>
           <div className="mt-2 flex h-6 flex-wrap gap-1 overflow-hidden">
             {podcast.categories.slice(0, 2).map((category) => (
@@ -265,7 +270,7 @@ export default function PodcastCard({
       <div className="absolute bottom-24 right-6">
         <button
           type="button"
-          onClick={() => play(podcast.id, playlist)}
+          onClick={() => play(podcast.id, playlist ?? allPodcasts)}
           aria-label={`Play ${podcast.title}`}
           className={cn(
             "flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-xl transform transition-all duration-300 opacity-0 group-hover:opacity-100 group-hover:scale-100 scale-90",

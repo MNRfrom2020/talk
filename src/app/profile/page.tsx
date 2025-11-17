@@ -64,7 +64,7 @@ const StatCard = ({
 
 export default function ProfilePage() {
   const { user, login, logout } = useUser();
-  const { history } = usePlayer();
+  const { history, listeningLog } = usePlayer();
   const { podcasts } = usePodcast();
   const { getPodcastsForPlaylist, FAVORITES_PLAYLIST_ID } = usePlaylist();
   const [avatarPreview, setAvatarPreview] = React.useState<string | null>(
@@ -80,8 +80,8 @@ export default function ProfilePage() {
       name: user.name,
     },
   });
-  
-  const favoritePodcasts = React.useMemo(() => 
+
+  const favoritePodcasts = React.useMemo(() =>
     getPodcastsForPlaylist(FAVORITES_PLAYLIST_ID, podcasts),
     [getPodcastsForPlaylist, FAVORITES_PLAYLIST_ID, podcasts]
   );
@@ -95,7 +95,9 @@ export default function ProfilePage() {
     const categoryCounts = new Map<string, number>();
 
     history.forEach((podcast) => {
-      artistCounts.set(podcast.artist, (artistCounts.get(podcast.artist) || 0) + 1);
+      podcast.artist.forEach((artist) => {
+        artistCounts.set(artist, (artistCounts.get(artist) || 0) + 1);
+      });
       podcast.categories.forEach((category) => {
         categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1);
       });
@@ -244,9 +246,6 @@ export default function ProfilePage() {
   return (
     <SidebarProvider>
        <div className="relative flex h-screen flex-col bg-background">
-         <Link href="/my-login" className="absolute right-2 top-2 z-50 text-muted-foreground opacity-50 hover:opacity-100" title="Super Admin Login">
-          ·
-        </Link>
         <MobileHeader />
         <div className="flex flex-1 overflow-hidden">
           <AppSidebar />
@@ -344,7 +343,7 @@ export default function ProfilePage() {
                       <p className="text-center text-sm text-muted-foreground">Start listening to see your stats here!</p>
                     )}
                   </div>
-
+                  
                   {favoritePodcasts.length > 0 && (
                     <>
                       <Separator />
@@ -354,7 +353,7 @@ export default function ProfilePage() {
                       />
                     </>
                   )}
-                  
+
                   <ListeningChart />
 
                   <Separator />

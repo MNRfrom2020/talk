@@ -1,4 +1,6 @@
 
+"use client";
+
 import Link from "next/link";
 import { AnimatePresence } from "framer-motion";
 import { Card } from "@/components/ui/card";
@@ -16,7 +18,9 @@ const Page = () => {
   const allCategories = Array.from(
     new Set(podcasts.flatMap((p) => p.categories)),
   ).sort();
-  const allArtists = Array.from(new Set(podcasts.map((p) => p.artist))).sort();
+  const allArtists = Array.from(
+    new Set(podcasts.flatMap((p) => p.artist)),
+  ).sort();
 
   return (
     <SidebarProvider>

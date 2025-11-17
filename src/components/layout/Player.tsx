@@ -26,6 +26,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { usePodcast } from "@/context/PodcastContext";
 
 function formatTime(seconds: number) {
   if (isNaN(seconds)) return "0:00";
@@ -54,6 +55,7 @@ export default function Player() {
     sleepTimer,
     setSleepTimer,
   } = usePlayer();
+  const { podcasts } = usePodcast();
   const [isExpanded, setIsExpanded] = useState(false);
 
   const handleProgressChange = (value: number[]) => {
@@ -199,7 +201,7 @@ export default function Player() {
                     "text-base": isExpanded,
                   })}
                 >
-                  {currentTrack.artist}
+                  {currentTrack.artist.join(", ")}
                 </p>
               </div>
             </div>
@@ -257,7 +259,7 @@ export default function Player() {
                     "rounded-full bg-primary hover:bg-primary/90",
                     isExpanded ? "h-16 w-16" : "h-10 w-10 sm:h-12 sm:w-12",
                   )}
-                  onClick={handleButtonClick(togglePlay)}
+                  onClick={handleButtonClick(() => togglePlay())}
                 >
                   {isPlaying ? (
                     <Pause

@@ -3,7 +3,7 @@
   {
     "id": "4",
     "title": "Maula Ya Salli Wa Sallim",
-    "artist": "Dr Muhammad Ibrahim",
+    "artist": ["Dr Muhammad Ibrahim"],
     "categories": ["Nasheed"],
     "coverArt": "https://picsum.photos/seed/4/500/500",
     "coverArtHint": "Nasheed",
@@ -12,7 +12,7 @@
   {
     "id": "3",
     "title": "Allahu Allahu Tumi Jalle Jalalu",
-    "artist": "Dr Muhammad Ibrahim",
+    "artist": ["Dr Muhammad Ibrahim"],
     "categories": ["Nasheed"],
     "coverArt": "https://picsum.photos/seed/3/500/500",
     "coverArtHint": "Nasheed",
@@ -21,7 +21,7 @@
   {
     "id": "2",
     "title": "Allahu Allahu",
-    "artist": "Dr Muhammad Ibrahim",
+    "artist": ["Dr Muhammad Ibrahim"],
     "categories": ["Nasheed"],
     "coverArt": "https://picsum.photos/seed/2/500/500",
     "coverArtHint": "Nasheed",
@@ -30,7 +30,7 @@
   {
     "id": "1",
     "title": "055.Ar-Rahman",
-    "artist": "Zain Abu Kautsar",
+    "artist": ["Zain Abu Kautsar"],
     "categories": ["Quran"],
     "coverArt": "https://stream.mnr.world/0:/Talk/Quran/Zain%20Abu%20Kautsar/055.Ar-Rahman_Zain_Abu_Kautsar.png",
     "coverArtHint": "Best Al Quran Recitation",

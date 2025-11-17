@@ -2,7 +2,7 @@
 export type Podcast = {
   id: string;
   title: string;
-  artist: string;
+  artist: string[];
   categories: string[];
   coverArt: string;
   coverArtHint: string;

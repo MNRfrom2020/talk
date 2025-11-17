@@ -36,7 +36,7 @@ const ArtistPage = ({ params }: ArtistPageProps) => {
   const [searchTerm, setSearchTerm] = React.useState("");
 
   const podcastsByArtist = React.useMemo(() => {
-    let podcasts = allPodcasts.filter((p) => p.artist === artistName);
+    let podcasts = allPodcasts.filter((p) => p.artist.includes(artistName));
 
     // Filter logic
     if (searchTerm) {

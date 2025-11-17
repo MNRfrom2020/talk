@@ -34,9 +34,9 @@ const PodcastPage = ({ params }: PodcastPageProps) => {
 
   React.useEffect(() => {
     if (podcast) {
-      autoPlay(podcast.id);
+      autoPlay(podcast.id, allPodcasts);
     }
-  }, [podcast, autoPlay]);
+  }, [podcast, autoPlay, allPodcasts]);
 
   if (!podcast) {
     return (
@@ -77,7 +77,7 @@ const PodcastPage = ({ params }: PodcastPageProps) => {
           </div>
           <div className="w-full max-w-sm text-center">
             <h3 className="text-2xl font-bold">{podcast.title}</h3>
-            <p className="text-base text-muted-foreground">{podcast.artist}</p>
+            <p className="text-base text-muted-foreground">{podcast.artist.join(", ")}</p>
           </div>
         </div>
         <AnimatePresence>
@@ -115,7 +115,7 @@ const PodcastPage = ({ params }: PodcastPageProps) => {
                       {podcast.title}
                     </h1>
                     <h2 className="mt-4 text-xl font-medium text-muted-foreground">
-                      {podcast.artist}
+                      {podcast.artist.join(", ")}
                     </h2>
                     <div className="mt-6 flex flex-wrap justify-center gap-2 md:justify-start">
                       {podcast.categories.map((category) => (
