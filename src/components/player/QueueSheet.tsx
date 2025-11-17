@@ -21,7 +21,7 @@ export function QueueSheet({ children }: { children: React.ReactNode }) {
   const {
     currentTrack,
     queue,
-    setQueue,
+    reorderQueue,
     playTrackFromQueue,
     removeFromQueue,
   } = usePlayer();
@@ -30,8 +30,9 @@ export function QueueSheet({ children }: { children: React.ReactNode }) {
     <Sheet>
       <SheetTrigger asChild>{children}</SheetTrigger>
       <SheetContent
+        side="bottom"
         onClick={(e) => e.stopPropagation()}
-        className="flex flex-col"
+        className="flex h-[60vh] flex-col rounded-t-lg"
       >
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
@@ -50,7 +51,7 @@ export function QueueSheet({ children }: { children: React.ReactNode }) {
                   <div
                     className={cn(
                       "group flex items-center gap-4 rounded-md p-2",
-                      "bg-primary/10 border border-primary",
+                      "border border-primary bg-primary/10",
                     )}
                   >
                     <Image
@@ -80,7 +81,7 @@ export function QueueSheet({ children }: { children: React.ReactNode }) {
                 <Reorder.Group
                   axis="y"
                   values={queue}
-                  onReorder={setQueue}
+                  onReorder={reorderQueue}
                   className="space-y-2"
                 >
                   {queue.map((track) => (
