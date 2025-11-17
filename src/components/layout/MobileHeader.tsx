@@ -2,13 +2,14 @@
 "use client";
 
 import Link from "next/link";
-import { User, Shuffle } from "lucide-react";
+import { User, Shuffle, Info } from "lucide-react";
 import { Button } from "../ui/button";
 import { useUser } from "@/context/UserContext";
 import { ProfileDialog } from "../auth/ProfileDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { cn } from "@/lib/utils";
 import { usePlayer } from "@/context/PlayerContext";
+import { DisclaimerDialog } from "./DisclaimerDialog";
 
 
 function UserAvatar({ className }: { className?: string }) {
@@ -64,6 +65,16 @@ export default function MobileHeader() {
           <h1 className="text-xl font-bold font-headline">Talks</h1>
         </Link>
         <div className="flex items-center gap-1 rounded-full bg-transparent p-1">
+          <DisclaimerDialog>
+             <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full"
+              >
+                <Info className="h-5 w-5" />
+                <span className="sr-only">Disclaimer</span>
+              </Button>
+            </DisclaimerDialog>
            <Button
             variant="ghost"
             size="icon"
