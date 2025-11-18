@@ -97,8 +97,7 @@ export default function ProfilePage() {
     const categoryCounts = new Map<string, number>();
 
     history.forEach((podcast) => {
-      const artists = Array.isArray(podcast.artist) ? podcast.artist : [podcast.artist];
-      artists.forEach(artist => {
+      podcast.artist.forEach(artist => {
         artistCounts.set(artist, (artistCounts.get(artist) || 0) + 1);
       });
 

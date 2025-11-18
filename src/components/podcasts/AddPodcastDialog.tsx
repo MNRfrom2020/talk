@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -54,7 +55,7 @@ export function AddPodcastDialog({ children }: { children: ReactNode }) {
   function onSubmit(values: z.infer<typeof formSchema>) {
     addPodcast({
       title: values.title,
-      artist: values.artist,
+      artist: values.artist.split(",").map((a) => a.trim()),
       categories: values.categories.split(",").map((c) => c.trim()),
       audioUrl: values.url,
       coverArt: `https://picsum.photos/seed/${Date.now()}/500/500`,
@@ -122,6 +123,9 @@ export function AddPodcastDialog({ children }: { children: ReactNode }) {
                   <FormControl>
                     <Input placeholder="The Podcaster" {...field} />
                   </FormControl>
+                   <p className="text-xs text-muted-foreground">
+                    Enter comma-separated artists.
+                  </p>
                   <FormMessage />
                 </FormItem>
               )}
