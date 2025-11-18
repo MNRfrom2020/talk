@@ -362,7 +362,7 @@ export default function Player() {
                     <DropdownMenuTrigger asChild>
                       <Button
                         variant="outline"
-                        className="w-24"
+                        className="w-8"
                         onClick={(e) => e.stopPropagation()}
                       >
                         {playbackRate}x
