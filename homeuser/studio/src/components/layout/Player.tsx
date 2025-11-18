@@ -380,7 +380,7 @@ export default function Player() {
             <div
               className={cn("flex w-full items-center gap-4", {
                 "flex w-1/4 justify-end": !isExpanded,
-                "max-w-sm justify-center": isExpanded,
+                "max-w-sm justify-between": isExpanded,
               })}
             >
               {isExpanded && (
@@ -444,23 +444,10 @@ export default function Player() {
                   >
                     <RepeatButtonIcon className="h-5 w-5" />
                   </Button>
-
-                  <div className="sm:hidden">
-                    <Popover>
-                        <PopoverTrigger asChild>
-                           <Button variant="outline" size="icon" className="h-10 w-10" onClick={(e) => e.stopPropagation()}>
-                             {volume > 0 ? <Volume2 /> : <VolumeX />}
-                           </Button>
-                        </PopoverTrigger>
-                        <PopoverContent side="top" onClick={(e) => e.stopPropagation()} className="w-48 p-2">
-                           {VolumeControl}
-                        </PopoverContent>
-                    </Popover>
-                  </div>
                 </div>
               )}
 
-              <div className="hidden sm:flex w-full flex-1 items-center gap-2">
+              <div className="hidden w-full flex-1 items-center gap-2 sm:flex">
                  {VolumeControl}
               </div>
               
@@ -485,12 +472,14 @@ export default function Player() {
               )}
 
               {isExpanded && (
-                <QueueSheet>
-                  <Button variant="outline" className="w-full">
-                    <ListMusic className="mr-2 h-4 w-4" />
-                    Playlist
-                  </Button>
-                </QueueSheet>
+                 <div className="flex w-full justify-center">
+                    <QueueSheet>
+                      <Button variant="outline" className="w-full max-w-sm">
+                        <ListMusic className="mr-2 h-4 w-4" />
+                        Playlist
+                      </Button>
+                    </QueueSheet>
+                 </div>
               )}
             </div>
           </div>
