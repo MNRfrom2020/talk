@@ -9,7 +9,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import predefinedPlaylistsData from "@/lib/playlist.json";
+import initialPlaylistsData from "@/lib/playlist.json";
 
 
 const PLAYLIST_STORAGE_KEY = "podcast_playlists";
@@ -56,7 +56,7 @@ export const PlaylistProvider = ({
     try {
       const storedPlaylists = localStorage.getItem(PLAYLIST_STORAGE_KEY);
       const userPlaylists = storedPlaylists ? JSON.parse(storedPlaylists) : [];
-      const predefinedPlaylists: Playlist[] = predefinedPlaylistsData.map(p => ({...p, isPredefined: true}));
+      const predefinedPlaylists: Playlist[] = initialPlaylistsData.map(p => ({...p, isPredefined: true}));
       
       const enrichedPredefined = predefinedPlaylists.map(p => {
         const userVersion = userPlaylists.find((up: Playlist) => up.id === p.id);
@@ -82,7 +82,7 @@ export const PlaylistProvider = ({
       setPlaylists([...enrichedPredefined, ...userOnlyPlaylists]);
     } catch (error) {
       console.error("Failed to load playlists from localStorage", error);
-      const predefinedPlaylists: Playlist[] = predefinedPlaylistsData.map(p => ({...p, isPredefined: true}));
+      const predefinedPlaylists: Playlist[] = initialPlaylistsData.map(p => ({...p, isPredefined: true}));
        const favoritesPlaylist: Playlist = {
         id: FAVORITES_PLAYLIST_ID,
         name: "Favorites",
