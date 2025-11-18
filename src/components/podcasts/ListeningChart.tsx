@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -63,36 +64,38 @@ export default function ListeningChart() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ChartContainer
-            config={{
-              minutes: {
-                label: "Minutes",
-                color: "hsl(var(--primary))",
-              },
-            }}
-            className="h-[200px] w-full"
-          >
-            <BarChart accessibilityLayer data={chartData}>
-              <XAxis
-                dataKey="date"
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                tickFormatter={(value) => value.slice(0, 3)}
-              />
-              <YAxis
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                tickFormatter={(value) => `${value}m`}
-              />
-              <ChartTooltip
-                cursor={false}
-                content={<ChartTooltipContent indicator="dot" />}
-              />
-              <Bar dataKey="minutes" fill="var(--color-minutes)" radius={8} />
-            </BarChart>
-          </ChartContainer>
+          <div className="flex justify-center">
+            <ChartContainer
+              config={{
+                minutes: {
+                  label: "Minutes",
+                  color: "hsl(var(--primary))",
+                },
+              }}
+              className="h-[200px] w-full max-w-full"
+            >
+              <BarChart accessibilityLayer data={chartData} barCategoryGap="20%">
+                <XAxis
+                  dataKey="date"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  tickFormatter={(value) => value.slice(0, 3)}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  tickFormatter={(value) => `${value}m`}
+                />
+                <ChartTooltip
+                  cursor={false}
+                  content={<ChartTooltipContent indicator="dot" />}
+                />
+                <Bar dataKey="minutes" fill="var(--color-minutes)" radius={8} />
+              </BarChart>
+            </ChartContainer>
+          </div>
         </CardContent>
       </Card>
     </>
