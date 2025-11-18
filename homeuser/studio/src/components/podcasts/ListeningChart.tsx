@@ -2,7 +2,7 @@
 "use client";
 
 import * as React from "react";
-import { Bar, BarChart, CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
+import { Line, LineChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { format, subDays } from "date-fns";
 
 import { usePlayer } from "@/context/PlayerContext";
@@ -82,7 +82,7 @@ export default function ListeningChart() {
             You listened for a total of {totalMinutes} minutes in the last 5 days.
           </CardDescription>
         </CardHeader>
-        <CardContent className="p-2 pt-0 md:p-6">
+        <CardContent className="p-2 pt-0 md:p-6 md:pt-0">
           <div className="hidden md:block">
             <ChartContainer
               config={{
