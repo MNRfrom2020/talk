@@ -148,6 +148,7 @@ export default function Player() {
       <motion.div
         className={cn(
           "fixed left-0 right-0 z-50 border-t border-border/50 bg-card/80 backdrop-blur-sm",
+          "md:scale-90 md:origin-bottom",
           isExpanded
             ? "bottom-0 top-0 h-screen pb-16 md:pb-0"
             : "bottom-16 h-24 md:bottom-0",
