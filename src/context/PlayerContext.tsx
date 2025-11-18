@@ -67,6 +67,7 @@ interface PlayerContextType {
   nextTrack: () => void;
   prevTrack: () => void;
   playRandom: () => void;
+  closePlayer: () => void;
   audioRef: React.RefObject<HTMLAudioElement>;
   progress: number;
   duration: number;
@@ -391,6 +392,19 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     play(randomPodcast.id, podcasts);
   }, [podcasts, play]);
 
+  const closePlayer = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+    }
+    setCurrentTrack(null);
+    setIsPlaying(false);
+    setQueue([]);
+    setCurrentPlaylist(null);
+    setProgress(0);
+    setDuration(0);
+  }, []);
+
   const seek = (time: number) => {
     if (audioRef.current) {
       audioRef.current.currentTime = time;
@@ -575,6 +589,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     nextTrack,
     prevTrack,
     playRandom,
+    closePlayer,
     audioRef,
     progress,
     duration,
