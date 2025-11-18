@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -9,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { cn } from "@/lib/utils";
 import { usePlayer } from "@/context/PlayerContext";
 import { DisclaimerDialog } from "./DisclaimerDialog";
+import { usePodcast } from "@/context/PodcastContext";
 
 
 function UserAvatar({ className }: { className?: string }) {
@@ -24,6 +26,7 @@ function UserAvatar({ className }: { className?: string }) {
 export default function MobileHeader() {
   const { user } = useUser();
   const { playRandom } = usePlayer();
+  const { podcasts } = usePodcast();
 
   const profileButtonContent = (
      <Button variant="ghost" size="icon" className="rounded-full">
@@ -67,10 +70,11 @@ export default function MobileHeader() {
           <DisclaimerDialog>
              <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 className="rounded-full"
               >
-                Disclaimer
+                <Info className="h-5 w-5" />
+                <span className="sr-only">Disclaimer</span>
               </Button>
             </DisclaimerDialog>
             <span className="text-muted-foreground">।</span>
@@ -78,7 +82,7 @@ export default function MobileHeader() {
             variant="ghost"
             size="icon"
             className="rounded-full"
-            onClick={playRandom}
+            onClick={() => playRandom(podcasts)}
           >
             <Shuffle className="h-5 w-5" />
             <span className="sr-only">Surprise Me</span>
