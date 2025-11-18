@@ -21,6 +21,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <link rel="preconnect" href="https://stream.mnr.world" />
+      </head>
       <body className={`${inter.variable} font-body antialiased`}>
         <UserProvider>
           <PodcastProvider>
