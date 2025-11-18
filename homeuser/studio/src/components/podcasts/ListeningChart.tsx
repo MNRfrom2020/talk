@@ -25,7 +25,7 @@ export default function ListeningChart() {
 
   const chartData = React.useMemo(() => {
     const data = [];
-    for (let i = 6; i >= 0; i--) {
+    for (let i = 4; i >= 0; i--) {
       const date = subDays(new Date(), i);
       const dateString = format(date, "yyyy-MM-dd");
       const dayName = format(date, "eee");
@@ -60,40 +60,42 @@ export default function ListeningChart() {
         <CardHeader>
           <CardTitle>Weekly Activity</CardTitle>
           <CardDescription>
-            You listened for a total of {totalMinutes} minutes this week.
+            You listened for a total of {totalMinutes} minutes in the last 5 days.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ChartContainer
-            config={{
-              minutes: {
-                label: "Minutes",
-                color: "hsl(var(--primary))",
-              },
-            }}
-            className="h-[200px] w-full"
-          >
-            <BarChart accessibilityLayer data={chartData}>
-              <XAxis
-                dataKey="date"
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                tickFormatter={(value) => value.slice(0, 3)}
-              />
-              <YAxis
-                tickLine={false}
-                axisLine={false}
-                tickMargin={8}
-                tickFormatter={(value) => `${value}m`}
-              />
-              <ChartTooltip
-                cursor={false}
-                content={<ChartTooltipContent indicator="dot" />}
-              />
-              <Bar dataKey="minutes" fill="var(--color-minutes)" radius={8} />
-            </BarChart>
-          </ChartContainer>
+          <div className="flex justify-center">
+            <ChartContainer
+              config={{
+                minutes: {
+                  label: "Minutes",
+                  color: "hsl(var(--primary))",
+                },
+              }}
+              className="h-[200px] w-full max-w-full"
+            >
+              <BarChart accessibilityLayer data={chartData} barCategoryGap="20%">
+                <XAxis
+                  dataKey="date"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  tickFormatter={(value) => value.slice(0, 3)}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  tickFormatter={(value) => `${value}m`}
+                />
+                <ChartTooltip
+                  cursor={false}
+                  content={<ChartTooltipContent indicator="dot" />}
+                />
+                <Bar dataKey="minutes" fill="var(--color-minutes)" radius={8} />
+              </BarChart>
+            </ChartContainer>
+          </div>
         </CardContent>
       </Card>
     </>
