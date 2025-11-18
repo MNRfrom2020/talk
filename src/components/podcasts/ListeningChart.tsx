@@ -44,7 +44,7 @@ export default function ListeningChart() {
 
   const chartData = React.useMemo(() => {
     const data = [];
-    for (let i = 4; i >= 0; i--) {
+    for (let i = 6; i >= 0; i--) {
       const date = subDays(new Date(), i);
       const dateString = format(date, "yyyy-MM-dd");
       const dayName = format(date, "eee");
@@ -79,7 +79,7 @@ export default function ListeningChart() {
         <CardHeader>
           <CardTitle>Weekly Activity</CardTitle>
           <CardDescription>
-            You listened for a total of {totalMinutes} minutes in the last 5 days.
+            You listened for a total of {totalMinutes} minutes in the last 7 days.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-2 pt-0 md:p-6 md:pt-0">
