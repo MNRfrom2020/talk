@@ -23,11 +23,9 @@ export function DisclaimerDialog({ children }: { children: ReactNode }) {
         <DialogHeader>
           <DialogTitle>Disclaimer</DialogTitle>
           <DialogDescription>
-            The audio content available in this application is sourced from
-            publicly available materials on the internet. This app functions as
-            a player and does not host or own any of the content. All rights
-            and ownership of the audio content belong to their respective
-            creators and copyright holders.
+            এখানে ব্যবহৃত সব অডিও শুধুমাত্র দাওয়াহ ও শিক্ষামূলক উদ্দেশ্যে
+            অন্তর্ভুক্ত করা হয়েছে। কতৃপক্ষের কোনো কপিরাইট সংক্রান্ত আপত্তি বা
+            অসুবিধা থাকলে অনুগ্রহ করে আমাদের সাথে যোগাযোগ করুন: mail@mnr.world
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
