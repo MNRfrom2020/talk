@@ -256,7 +256,7 @@ export default function PodcastCard({
             {podcast.title}
           </h3>
           <p className="h-5 text-sm text-muted-foreground line-clamp-1">
-            {podcast.artist}
+            {podcast.artist.join(", ")}
           </p>
           <div className="mt-2 flex h-6 flex-wrap gap-1 overflow-hidden">
             {podcast.categories.slice(0, 2).map((category) => (

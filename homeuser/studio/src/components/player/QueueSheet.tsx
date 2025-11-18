@@ -66,7 +66,7 @@ export function QueueSheet({ children }: { children: React.ReactNode }) {
                         {currentTrack.title}
                       </p>
                       <p className="truncate text-sm text-primary/80">
-                         {Array.isArray(currentTrack.artist) ? currentTrack.artist.join(", ") : currentTrack.artist}
+                         {currentTrack.artist.join(", ")}
                       </p>
                     </div>
                   </div>
@@ -118,7 +118,7 @@ export function QueueSheet({ children }: { children: React.ReactNode }) {
                         <div className="flex-1 overflow-hidden">
                           <p className="truncate font-semibold">{track.title}</p>
                           <p className="truncate text-sm text-muted-foreground">
-                             {Array.isArray(track.artist) ? track.artist.join(", ") : track.artist}
+                             {track.artist.join(", ")}
                           </p>
                         </div>
                       </button>

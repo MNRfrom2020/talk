@@ -3,7 +3,7 @@
   {
     "id": "1",
     "title": "055.Ar-Rahman",
-    "artist": "Zain Abu Kautsar",
+    "artist": ["Zain Abu Kautsar"],
     "categories": ["Quran"],
     "coverArt": "https://stream.mnr.world/0:/Talk/Quran/Zain%20Abu%20Kautsar/055.Ar-Rahman_Zain_Abu_Kautsar.png",
     "coverArtHint": "Best Al Quran Recitation",

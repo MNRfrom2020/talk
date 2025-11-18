@@ -247,7 +247,7 @@ export default function Player() {
                     "text-base": isExpanded,
                   })}
                 >
-                  {Array.isArray(currentTrack.artist) ? currentTrack.artist.join(", ") : currentTrack.artist}
+                  {currentTrack.artist.join(", ")}
                 </p>
               </div>
             </div>
