@@ -224,7 +224,7 @@ const ExpandedPlayerMobile = () => {
         <div className="flex w-full items-center justify-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="h-10 flex-grow" onClick={(e) => e.stopPropagation()}>
+                <Button variant="outline" className="h-10 w-10" onClick={(e) => e.stopPropagation()}>
                   {playbackRate}x
                 </Button>
               </DropdownMenuTrigger>
@@ -365,7 +365,7 @@ const ExpandedPlayerDesktop = () => {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="h-10 w-24" onClick={(e) => e.stopPropagation()}>
+                <Button variant="outline" className="h-10 flex-grow" onClick={(e) => e.stopPropagation()}>
                   <Moon className="mr-2 h-4 w-4" /> {sleepTimerDisplay || "Timer"}
                 </Button>
               </DropdownMenuTrigger>
@@ -378,6 +378,7 @@ const ExpandedPlayerDesktop = () => {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            
             <Button
               variant="outline"
               size="icon"
@@ -395,9 +396,8 @@ const ExpandedPlayerDesktop = () => {
               <Shuffle className="h-5 w-5" />
             </Button>
             <QueueSheet>
-               <Button variant="outline" className="h-10 w-auto px-4">
-                <ListMusic className="mr-2 h-5 w-5" />
-                Playlist
+               <Button variant="outline" size="icon" className="h-10 w-10">
+                <ListMusic className="h-5 w-5" />
               </Button>
             </QueueSheet>
         </div>
