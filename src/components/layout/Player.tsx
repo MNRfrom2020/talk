@@ -205,7 +205,7 @@ const ExpandedPlayerMobile = () => {
       </motion.div>
       <div className="w-full overflow-hidden text-center">
         <h3 className="text-2xl font-bold">{currentTrack.title}</h3>
-        <p className="truncate text-base text-muted-foreground">{Array.isArray(currentTrack.artist) ? currentTrack.artist.join(", ") : currentTrack.artist}</p>
+        <p className="text-base text-muted-foreground">{Array.isArray(currentTrack.artist) ? currentTrack.artist.join(", ") : currentTrack.artist}</p>
       </div>
 
       <div className="mx-auto flex w-full max-w-sm flex-col items-center justify-center gap-4">
@@ -337,7 +337,7 @@ const ExpandedPlayerDesktop = () => {
         <div className="flex w-full items-center justify-between gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="h-10 w-20" onClick={(e) => e.stopPropagation()}>
+                <Button variant="outline" className="h-10 w-10" onClick={(e) => e.stopPropagation()}>
                   {playbackRate}x
                 </Button>
               </DropdownMenuTrigger>
