@@ -378,7 +378,6 @@ const ExpandedPlayerDesktop = () => {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            
             <Button
               variant="outline"
               size="icon"
@@ -396,7 +395,7 @@ const ExpandedPlayerDesktop = () => {
               <Shuffle className="h-5 w-5" />
             </Button>
             <QueueSheet>
-              <Button variant="outline" className="h-10 w-auto px-4">
+               <Button variant="outline" className="h-10 w-auto px-4">
                 <ListMusic className="mr-2 h-5 w-5" />
                 Playlist
               </Button>
@@ -414,11 +413,14 @@ export default function Player() {
     currentTrack,
     progress,
     duration,
-    seek,
     volume,
     setVolume,
     closePlayer,
     handleProgressChange,
+    toggleRepeatMode,
+    repeatMode,
+    toggleShuffle,
+    isShuffled,
   } = usePlayer();
   const [isExpanded, setIsExpanded] = useState(false);
   const isMobile = useIsMobile();
@@ -438,13 +440,18 @@ export default function Player() {
     visible: { y: 0, opacity: 1, scale: 1 },
   };
 
+  const RepeatButtonIcon = useMemo(() => {
+    if (repeatMode === 'one') return Repeat1;
+    return Repeat;
+  }, [repeatMode]);
+
   if (!currentTrack) {
     return null;
   }
   
   const VolumeControl = (
-    <div className="flex w-full flex-1 items-center gap-2">
-      <Button variant="ghost" size="icon" className="h-10 w-8" onClick={() => setVolume(volume > 0 ? 0 : 0.5)}>
+    <div className="flex w-full items-center gap-2">
+      <Button variant="ghost" size="icon" className="h-10 w-8" onClick={(e) => {e.stopPropagation(); setVolume(volume > 0 ? 0 : 0.5)}}>
         {volume > 0 ? (
           <Volume2 className="h-5 w-5" />
         ) : (
@@ -456,6 +463,7 @@ export default function Player() {
         max={1}
         step={0.01}
         onValueChange={handleVolumeChange}
+        onClick={(e) => e.stopPropagation()}
         className="w-full flex-1"
       />
     </div>
@@ -536,7 +544,7 @@ export default function Player() {
                        <Button
                         variant="ghost"
                         size="icon"
-                        className="absolute -right-2 -top-2 z-10 h-6 w-6 rounded-full bg-card/80 p-1 text-muted-foreground backdrop-blur-sm transition-opacity"
+                        className="absolute -left-2 -top-2 z-10 h-6 w-6 rounded-full bg-card/80 p-1 text-muted-foreground backdrop-blur-sm"
                         onClick={(e) => {
                           e.stopPropagation();
                           closePlayer();
@@ -567,6 +575,7 @@ export default function Player() {
                       step={1}
                       onValueChange={handleProgressChange}
                       className="w-full"
+                      onClick={(e) => e.stopPropagation()}
                     />
                     <span className="w-10 text-xs text-muted-foreground">
                       {formatTime(duration)}
@@ -575,9 +584,34 @@ export default function Player() {
                   <PlayerControls isExpanded={false} />
                 </div>
 
-                <div className="flex w-1/4 items-center justify-end gap-4">
-                  <div className="hidden w-full flex-1 items-center gap-2 sm:flex">
-                    {VolumeControl}
+                <div className="flex w-1/4 items-center justify-end gap-2">
+                  <div className="hidden flex-col items-end gap-2 sm:flex">
+                    <div className="w-full flex-1">
+                      {VolumeControl}
+                    </div>
+                    <div className="flex items-center gap-2">
+                       <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => { e.stopPropagation(); toggleRepeatMode(); }}
+                        className={cn("h-8 w-8", repeatMode !== 'off' && "text-primary bg-primary/10")}
+                      >
+                        <RepeatButtonIcon className="h-4 w-4" />
+                      </Button>
+                       <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => { e.stopPropagation(); toggleShuffle(); }}
+                        className={cn("h-8 w-8", isShuffled && "text-primary bg-primary/10")}
+                      >
+                        <Shuffle className="h-4 w-4" />
+                      </Button>
+                      <QueueSheet>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
+                          <ListMusic className="h-4 w-4" />
+                        </Button>
+                      </QueueSheet>
+                    </div>
                   </div>
                   
                   <div className="flex flex-col items-center gap-0 sm:hidden">
