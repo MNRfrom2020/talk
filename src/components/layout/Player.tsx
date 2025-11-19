@@ -218,7 +218,7 @@ const ExpandedPlayerMobile = () => {
         />
       </motion.div>
       <div className="w-full overflow-hidden text-center">
-        <h3 className="text-2xl font-bold line-clamp-none">{currentTrack.title}</h3>
+        <h3 className="text-2xl font-bold line-clamp-3">{currentTrack.title}</h3>
         <p className="truncate text-base text-muted-foreground">{Array.isArray(currentTrack.artist) ? currentTrack.artist.join(", ") : currentTrack.artist}</p>
       </div>
 
