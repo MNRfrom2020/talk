@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Noto_Sans_Bengali } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { PodcastProvider } from "@/context/PodcastContext";
@@ -13,6 +13,10 @@ export const metadata: Metadata = {
 };
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+const notoSansBengali = Noto_Sans_Bengali({
+  subsets: ["bengali"],
+  variable: "--font-noto-sans-bengali",
+});
 
 export default function RootLayout({
   children,
@@ -21,7 +25,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.variable} font-body antialiased`}>
+      <body
+        className={`${inter.variable} ${notoSansBengali.variable} font-body antialiased`}
+      >
         <UserProvider>
           <PodcastProvider>
             <PlaylistProvider>
