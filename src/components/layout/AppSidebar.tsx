@@ -1,3 +1,4 @@
+
 "use client";
 
 import { usePathname } from "next/navigation";
@@ -19,6 +20,9 @@ import { ProfileDialog } from "../auth/ProfileDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { cn } from "@/lib/utils";
 import { usePlayer } from "@/context/PlayerContext";
+import { usePodcast } from "@/context/PodcastContext";
+import { DisclaimerDialog } from "./DisclaimerDialog";
+import { Button } from "../ui/button";
 
 function UserAvatar({ className }: { className?: string }) {
   const { user } = useUser();
@@ -34,6 +38,7 @@ export default function AppSidebar() {
   const pathname = usePathname();
   const { user } = useUser();
   const { playRandom } = usePlayer();
+  const { podcasts } = usePodcast();
 
   const loggedInProfileButton = (
     <div className="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
@@ -93,7 +98,7 @@ export default function AppSidebar() {
               </SearchDialog>
             </SidebarMenuItem>
              <SidebarMenuItem>
-              <SidebarMenuButton onClick={playRandom}>
+              <SidebarMenuButton onClick={() => playRandom(podcasts)}>
                 <Shuffle />
                 Surprise Me
               </SidebarMenuButton>
@@ -121,6 +126,15 @@ export default function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <SidebarGroup>
+          <DisclaimerDialog>
+             <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start text-sm"
+              >
+                Disclaimer
+              </Button>
+            </DisclaimerDialog>
           {user.isLoggedIn ? (
             <Link href="/profile" passHref>
               {loggedInProfileButton}
