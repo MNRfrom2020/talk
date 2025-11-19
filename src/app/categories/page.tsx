@@ -59,7 +59,7 @@ const Page = () => {
                         key={category}
                         passHref
                       >
-                        <Card className="flex aspect-video items-center justify-center bg-secondary p-4 text-center font-semibold text-secondary-foreground transition-colors hover:bg-primary hover:text-primary-foreground">
+                        <Card className="grid h-full min-h-24 place-items-center bg-secondary p-4 text-center font-semibold text-secondary-foreground transition-colors hover:bg-primary hover:text-primary-foreground">
                           {category}
                         </Card>
                       </Link>
@@ -80,7 +80,7 @@ const Page = () => {
                         key={artist}
                         passHref
                       >
-                        <Card className="flex aspect-video items-center justify-center bg-secondary p-4 text-center font-semibold text-secondary-foreground transition-colors hover:bg-primary hover:text-primary-foreground">
+                        <Card className="grid h-full min-h-24 place-items-center bg-secondary p-4 text-center font-semibold text-secondary-foreground transition-colors hover:bg-primary hover:text-primary-foreground">
                           {artist}
                         </Card>
                       </Link>
