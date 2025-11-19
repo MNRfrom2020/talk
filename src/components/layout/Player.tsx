@@ -536,7 +536,7 @@ export default function Player() {
                        <Button
                         variant="ghost"
                         size="icon"
-                        className="absolute -right-2 -top-2 z-10 h-6 w-6 rounded-full bg-card/80 p-1 text-muted-foreground opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100"
+                        className="absolute -right-2 -top-2 z-10 h-6 w-6 rounded-full bg-card/80 p-1 text-muted-foreground backdrop-blur-sm transition-opacity"
                         onClick={(e) => {
                           e.stopPropagation();
                           closePlayer();
