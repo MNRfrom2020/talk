@@ -122,7 +122,7 @@ const PodcastPage = ({ params }: PodcastPageProps) => {
             <p className="text-base text-muted-foreground">{artistText}</p>
           </div>
            <Button
-              onClick={() => play(podcast.id)}
+              onClick={() => play(podcast.id, allPodcasts, { expand: true })}
               className="mt-8 h-12 rounded-full px-8 text-lg"
             >
               <Play className="mr-2 h-5 w-5 fill-current" />
@@ -176,7 +176,7 @@ const PodcastPage = ({ params }: PodcastPageProps) => {
                       ))}
                     </div>
                     <Button
-                      onClick={() => play(podcast.id)}
+                      onClick={() => play(podcast.id, allPodcasts, { expand: true })}
                       className="mt-8 h-12 rounded-full px-8 text-lg"
                     >
                       <Play className="mr-2 h-5 w-5 fill-current" />

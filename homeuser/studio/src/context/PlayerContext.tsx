@@ -59,13 +59,20 @@ interface SleepTimerInfo {
 type ListeningLog = Record<string, number>; // { 'YYYY-MM-DD': seconds }
 type RepeatMode = "off" | "one" | "all";
 
+interface PlayOptions {
+  expand?: boolean;
+}
 
 interface PlayerContextType {
   currentTrack: Podcast | null;
   isPlaying: boolean;
   isExpanded: boolean;
   setIsExpanded: React.Dispatch<React.SetStateAction<boolean>>;
-  play: (trackId?: string, playlist?: Podcast[]) => void;
+  play: (
+    trackId?: string,
+    playlist?: Podcast[],
+    options?: PlayOptions,
+  ) => void;
   autoPlay: (trackId?: string, playlist?: Podcast[]) => void;
   pause: () => void;
   togglePlay: () => void;
@@ -237,7 +244,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const setAudioSource = useCallback(
-    async (track: Podcast, shouldAutoPlay = true) => {
+    async (track: Podcast, shouldAutoPlay = true, options: PlayOptions = {}) => {
       if (!audioRef.current) return;
 
       const sourceUrl = track.audioUrl;
@@ -248,6 +255,11 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         // When source changes, reset progress
         setProgress(0);
       }
+      
+      if (options.expand) {
+        setIsExpanded(true);
+      }
+
 
       if (!shouldAutoPlay) {
         setIsPlaying(false);
@@ -275,7 +287,6 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
           audioRef.current!.currentTime = savedProgress.progress;
         }
         setIsPlaying(true);
-        setIsExpanded(true);
         audioRef.current!.playbackRate = playbackRate;
         lastTimeUpdate.current = Date.now();
       } catch (e: any) {
@@ -313,6 +324,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       trackId?: string,
       playlist: Podcast[] = podcasts,
       shouldAutoPlay = true,
+      options: PlayOptions = {},
     ) => {
       const playlistToUse =
         playlist && playlist.length > 0 ? playlist : podcasts;
@@ -336,6 +348,9 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       if (trackToPlay) {
+        if (options.expand) {
+          setIsExpanded(true);
+        }
         const newQueue = playlistToUse.slice(startFromIndex + 1);
         setCurrentPlaylist(playlistToUse);
         setQueue(newQueue);
@@ -346,7 +361,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         if (currentTrack?.id !== trackToPlay.id) {
           setCurrentTrack(trackToPlay);
           addToHistory(trackToPlay);
-          setAudioSource(trackToPlay, shouldAutoPlay);
+          setAudioSource(trackToPlay, shouldAutoPlay, options);
         } else if (shouldAutoPlay) {
            if (playPromiseController.current) {
             playPromiseController.current.abort();
@@ -359,7 +374,6 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
             .then(() => {
                if (signal.aborted) return;
               setIsPlaying(true);
-              setIsExpanded(true);
               lastTimeUpdate.current = Date.now();
             })
             .catch((e) => {
@@ -378,8 +392,8 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   );
 
   const play = useCallback(
-    (trackId?: string, playlist?: Podcast[]) => {
-      playInternal(trackId, playlist, true);
+    (trackId?: string, playlist?: Podcast[], options?: PlayOptions) => {
+      playInternal(trackId, playlist, true, options);
     },
     [playInternal],
   );
