@@ -44,7 +44,7 @@ export default function ListeningChart() {
 
   const chartData = React.useMemo(() => {
     const data = [];
-    for (let i = 4; i >= 0; i--) {
+    for (let i = 6; i >= 0; i--) {
       const date = subDays(new Date(), i);
       const dateString = format(date, "yyyy-MM-dd");
       const dayName = format(date, "eee");
@@ -79,11 +79,62 @@ export default function ListeningChart() {
         <CardHeader>
           <CardTitle>Weekly Activity</CardTitle>
           <CardDescription>
-            You listened for a total of {totalMinutes} minutes in the last 5 days.
+            You listened for a total of {totalMinutes} minutes in the last 7 days.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-2 pt-0 md:p-6 md:pt-0">
-          <div>
+          <div className="hidden md:block">
+            <ChartContainer
+              config={{
+                minutes: {
+                  label: "Minutes",
+                  color: "hsl(var(--primary))",
+                },
+              }}
+              className="h-[200px] w-full max-w-full"
+            >
+              <LineChart
+                accessibilityLayer
+                data={chartData}
+                margin={{
+                  left: 12,
+                  right: 12,
+                }}
+              >
+                <CartesianGrid vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  tickFormatter={(value) => value.slice(0, 3)}
+                />
+                <YAxis
+                  tickLine={false}
+                  axisLine={false}
+                  tickMargin={8}
+                  tickFormatter={(value) => `${value}m`}
+                />
+                <ChartTooltip
+                  cursor={false}
+                  content={<ChartTooltipContent indicator="dot" />}
+                />
+                <Line
+                  dataKey="minutes"
+                  type="monotone"
+                  stroke="var(--color-minutes)"
+                  strokeWidth={2}
+                  dot={{
+                    fill: "var(--color-minutes)",
+                  }}
+                  activeDot={{
+                    r: 6,
+                  }}
+                />
+              </LineChart>
+            </ChartContainer>
+          </div>
+          <div className="md:hidden">
              <DailyActivityBars data={chartData} />
           </div>
         </CardContent>
