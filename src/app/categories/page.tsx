@@ -26,6 +26,8 @@ const Page = () => {
     "Mahmud Huzaifa",
     "Mazharul Islam",
     "Moeen Uddin",
+    "Usaid Zahid Siddique",
+    "MercifulServant",
   ];
 
   const allArtists = Array.from(
