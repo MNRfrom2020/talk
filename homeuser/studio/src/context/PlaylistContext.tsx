@@ -18,7 +18,7 @@ export const FAVORITES_PLAYLIST_ID = 'favorites';
 
 interface PlaylistContextType {
   playlists: Playlist[];
-  createPlaylist: (name: string) => void;
+  createPlaylist: (name: string, podcastIds?: string[]) => void;
   deletePlaylist: (playlistId: string) => void;
   addPodcastToPlaylist: (playlistId: string, podcastId: string) => void;
   removePodcastFromPlaylist: (playlistId: string, podcastId: string) => void;
@@ -66,7 +66,7 @@ export const PlaylistProvider = ({
         const storedVersion = userPlaylistsFromStorage.find((p: Playlist) => p.id === pdef.id);
         if (storedVersion && storedVersion.isFavorite) {
           // If stored and favorited, use the stored version (which is a full copy)
-          combinedPlaylists.push({ ...storedVersion, isPredefined: true });
+          combinedPlaylists.push({ ...pdef, ...storedVersion, isPredefined: true });
         } else {
            // Otherwise, use the one from JSON
           combinedPlaylists.push(pdef);
@@ -110,7 +110,14 @@ export const PlaylistProvider = ({
   const savePlaylists = (updatedPlaylists: Playlist[]) => {
     try {
       // Filter out non-favorited predefined playlists before saving
-      const playlistsToSave = updatedPlaylists.filter(p => !p.isPredefined || p.isFavorite);
+      const playlistsToSave = updatedPlaylists.filter(p => !p.isPredefined || p.isFavorite).map(p => {
+        if (p.isPredefined) {
+          // For predefined, only save id and isFavorite status
+          return { id: p.id, isFavorite: p.isFavorite };
+        }
+        // For user-created, save everything
+        return p;
+      });
       
       localStorage.setItem(
         PLAYLIST_STORAGE_KEY,
@@ -190,7 +197,11 @@ export const PlaylistProvider = ({
     (playlistId: string, allPodcasts: Podcast[]) => {
       const playlist = playlists.find((p) => p.id === playlistId);
       if (!playlist) return [];
-      return playlist.podcastIds
+      
+      const podcastIdSet = new Set(allPodcasts.map(p => p.id));
+      const validPodcastIds = playlist.podcastIds.filter(id => podcastIdSet.has(id));
+
+      return validPodcastIds
         .map((id) => allPodcasts.find((p) => p.id === id))
         .filter((p): p is Podcast => !!p);
     },
