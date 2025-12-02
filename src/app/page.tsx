@@ -1,7 +1,8 @@
 
+"use client";
+
 export const runtime = 'edge';
 
-"use client";
 import { AnimatePresence } from "framer-motion";
 import BottomNavBar from "@/components/layout/BottomNavBar";
 import Player from "@/components/layout/Player";

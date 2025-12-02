@@ -1,7 +1,7 @@
 
-export const runtime = 'edge';
-
 "use client";
+
+export const runtime = 'edge';
 
 import Link from "next/link";
 import { AnimatePresence } from "framer-motion";

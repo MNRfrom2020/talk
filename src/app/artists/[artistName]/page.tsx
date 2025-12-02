@@ -1,7 +1,7 @@
 
-export const runtime = 'edge';
-
 "use client";
+
+export const runtime = 'edge';
 
 import { AnimatePresence } from "framer-motion";
 import AppSidebar from "@/components/layout/AppSidebar";
