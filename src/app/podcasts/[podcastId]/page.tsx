@@ -1,8 +1,6 @@
 
 "use client";
 
-export const runtime = 'edge';
-
 import { AnimatePresence } from "framer-motion";
 import * as React from "react";
 import Image from "next/image";
@@ -21,6 +19,8 @@ import { cn } from "@/lib/utils";
 import { usePodcast } from "@/context/PodcastContext";
 import CategorySection from "@/components/podcasts/CategorySection";
 import { Separator } from "@/components/ui/separator";
+
+export const runtime = 'edge';
 
 interface PodcastPageProps {
   params: Promise<{

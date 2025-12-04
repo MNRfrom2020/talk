@@ -1,8 +1,6 @@
 
 "use client";
 
-export const runtime = 'edge';
-
 import { AnimatePresence } from "framer-motion";
 import AppSidebar from "@/components/layout/AppSidebar";
 import BottomNavBar from "@/components/layout/BottomNavBar";
@@ -26,6 +24,8 @@ import { Input } from "@/components/ui/input";
 import { usePlayer } from "@/context/PlayerContext";
 import { Button } from "@/components/ui/button";
 import { Play } from "lucide-react";
+
+export const runtime = 'edge';
 
 interface CategoryPageProps {
   params: Promise<{
