@@ -90,11 +90,11 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   );
 
   const loginWithPassword = async (identifier: string, pass: string) => {
-    const isEmail = identifier.includes('@');
-    
-    const query = isEmail 
-      ? supabase.from('users').select().eq('email', identifier)
-      : supabase.from('users').select().eq('username', identifier);
+    const isEmail = identifier.includes("@");
+
+    const query = isEmail
+      ? supabase.from("users").select().eq("email", identifier)
+      : supabase.from("users").select().eq("username", identifier);
 
     const { data, error } = await query.single();
 
@@ -105,11 +105,13 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     if (data.pass !== pass) {
       throw new Error("ভুল পাসওয়ার্ড।");
     }
-    
+
+    const { pass: removedPass, ...userData } = data;
+
     const loggedInUser: User = {
-      ...data,
-      name: data.name,
-      avatar: data.image,
+      ...userData,
+      name: userData.name,
+      avatar: userData.image,
       isLoggedIn: true,
       isGuest: false,
     };
