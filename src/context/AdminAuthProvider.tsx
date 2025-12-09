@@ -40,7 +40,7 @@ export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
   const signIn = async (username: string, password: string) => {
     const { data, error } = await supabase
       .from("admins")
-      .select("uid, username, password, role, created_at")
+      .select("username, password, uid, role, created_at")
       .eq("username", username)
       .single();
 
