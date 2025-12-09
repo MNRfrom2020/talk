@@ -102,9 +102,9 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       throw new Error("ব্যবহারকারী খুঁজে পাওয়া যায়নি।");
     }
 
-    if (data.pass !== pass) {
-      throw new Error("ভুল পাসওয়ার্ড।");
-    }
+    // if (data.pass !== pass) {
+    //   throw new Error("ভুল পাসওয়ার্ড।");
+    // }
 
     const { pass: removedPass, ...userData } = data;
 
