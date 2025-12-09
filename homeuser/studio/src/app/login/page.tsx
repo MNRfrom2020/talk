@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -24,6 +25,8 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
+import { Loader2 } from "lucide-react";
+import { Music } from "lucide-react";
 
 const formSchema = z.object({
   identifier: z.string().min(1, { message: "ইউজারনেম অথবা ইমেইল আবশ্যক।" }),
@@ -44,7 +47,7 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    if (!loading && user.isLoggedIn) {
+    if (!loading && user.isLoggedIn && !user.isGuest) {
       router.push("/profile");
     }
   }, [user, loading, router]);
@@ -67,21 +70,32 @@ export default function LoginPage() {
     }
   }
   
-  if (loading || user.isLoggedIn) {
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
-        <p>Loading...</p>
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  
+  if (user.isLoggedIn && !user.isGuest) {
+     return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <p>Already logged in. Redirecting...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-secondary/50">
+    <div className="flex min-h-screen items-center justify-center bg-secondary/50 p-4">
       <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle className="text-2xl">লগইন</CardTitle>
+        <CardHeader className="text-center">
+            <div className="flex justify-center items-center mb-4">
+               <Music className="h-10 w-10 text-primary" />
+            </div>
+          <CardTitle className="text-2xl">MNR Talk</CardTitle>
           <CardDescription>
-            আপনার ইউজারনেম বা ইমেইল এবং পাসওয়ার্ড দিয়ে লগইন করুন।
+             লগইন করতে আপনার ইউজারনেম বা ইমেইল ও পাসওয়ার্ড দিন
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -94,7 +108,7 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>ইউজারনেম বা ইমেইল</FormLabel>
                     <FormControl>
-                      <Input placeholder="username or email@example.com" {...field} />
+                      <Input placeholder="username or email" {...field} disabled={form.formState.isSubmitting}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -107,14 +121,21 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>পাসওয়ার্ড</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} />
+                      <Input type="password" placeholder="••••••••" {...field} disabled={form.formState.isSubmitting}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? "লগইন করা হচ্ছে..." : "লগইন করুন"}
+              <Button type="submit" className="w-full hover:scale-105" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? (
+                   <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    লগইন হচ্ছে...
+                  </>
+                ) : (
+                  "লগইন করুন"
+                )}
               </Button>
             </form>
           </Form>
