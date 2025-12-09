@@ -40,6 +40,7 @@ import { usePlaylist } from "@/context/PlaylistContext";
 import { usePodcast } from "@/context/PodcastContext";
 import CategorySection from "@/components/podcasts/CategorySection";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { ProfileDialog } from "@/components/auth/ProfileDialog";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -392,13 +393,20 @@ export default function ProfilePage() {
 
                   <Separator />
 
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={handleLogout}
-                  >
-                    Logout
-                  </Button>
+                  <div className="w-full space-y-2">
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleLogout}
+                    >
+                      Logout
+                    </Button>
+                    <ProfileDialog>
+                        <Button variant="outline" className="w-full">
+                          Login
+                        </Button>
+                    </ProfileDialog>
+                  </div>
                 </div>
                 </div>
               </main>
