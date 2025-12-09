@@ -392,13 +392,20 @@ export default function ProfilePage() {
 
                   <Separator />
 
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={handleLogout}
-                  >
-                    Logout
-                  </Button>
+                  <div className="w-full space-y-2">
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={handleLogout}
+                    >
+                      Logout
+                    </Button>
+                     <Link href="/admin/login" passHref>
+                        <Button variant="outline" className="w-full">
+                          Admin Login
+                        </Button>
+                      </Link>
+                  </div>
                 </div>
                 </div>
               </main>
