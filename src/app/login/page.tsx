@@ -1,8 +1,7 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
+import { useRouter }from "next/navigation";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useUser } from "@/context/UserContext";
@@ -24,9 +23,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect } from "react";
-import { Loader2 } from "lucide-react";
-import { Music } from "lucide-react";
+import { Loader2, Music } from "lucide-react";
 
 const formSchema = z.object({
   identifier: z.string().min(1, { message: "ইউজারনেম অথবা ইমেইল আবশ্যক।" }),
@@ -34,7 +31,7 @@ const formSchema = z.object({
 });
 
 export default function LoginPage() {
-  const { loginWithPassword, user, loading } = useUser();
+  const { loginWithPassword } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -45,13 +42,6 @@ export default function LoginPage() {
       password: "",
     },
   });
-
-  useEffect(() => {
-    if (!loading && user.isLoggedIn && !user.isGuest) {
-      router.push("/profile");
-    }
-  }, [user, loading, router]);
-
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
@@ -69,33 +59,17 @@ export default function LoginPage() {
       });
     }
   }
-  
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-  
-  if (user.isLoggedIn && !user.isGuest) {
-     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <p>Already logged in. Redirecting...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-secondary/50 p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-            <div className="flex justify-center items-center mb-4">
-               <Music className="h-10 w-10 text-primary" />
-            </div>
+          <div className="mb-4 flex items-center justify-center">
+            <Music className="h-10 w-10 text-primary" />
+          </div>
           <CardTitle className="text-2xl">MNR Talk</CardTitle>
           <CardDescription>
-             লগইন করতে আপনার ইউজারনেম বা ইমেইল ও পাসওয়ার্ড দিন
+            লগইন করতে আপনার ইউজারনেম বা ইমেইল ও পাসওয়ার্ড দিন
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -108,7 +82,11 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>ইউজারনেম বা ইমেইল</FormLabel>
                     <FormControl>
-                      <Input placeholder="username or email" {...field} disabled={form.formState.isSubmitting}/>
+                      <Input
+                        placeholder="username or email"
+                        {...field}
+                        disabled={form.formState.isSubmitting}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -121,15 +99,24 @@ export default function LoginPage() {
                   <FormItem>
                     <FormLabel>পাসওয়ার্ড</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="••••••••" {...field} disabled={form.formState.isSubmitting}/>
+                      <Input
+                        type="password"
+                        placeholder="••••••••"
+                        {...field}
+                        disabled={form.formState.isSubmitting}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full hover:scale-105" disabled={form.formState.isSubmitting}>
+              <Button
+                type="submit"
+                className="w-full hover:scale-105"
+                disabled={form.formState.isSubmitting}
+              >
                 {form.formState.isSubmitting ? (
-                   <>
+                  <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     লগইন হচ্ছে...
                   </>
