@@ -401,11 +401,11 @@ export default function ProfilePage() {
                     >
                       Logout
                     </Button>
-                    <ProfileDialog>
-                        <Button variant="outline" className="w-full">
-                          Login
-                        </Button>
-                    </ProfileDialog>
+                     <Link href="/login" passHref>
+                      <Button variant="outline" className="w-full">
+                        Login
+                      </Button>
+                    </Link>
                   </div>
                 </div>
                 </div>
@@ -421,3 +421,5 @@ export default function ProfilePage() {
     </SidebarProvider>
   );
 }
+
+    
