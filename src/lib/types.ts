@@ -16,3 +16,11 @@ export type Playlist = {
   isPredefined?: boolean;
   isFavorite?: boolean;
 };
+
+export type Admin = {
+  uid: string;
+  username: string;
+  password?: string; // Should be handled securely, ideally not stored client-side
+  role: "superadmin" | "admin" | "editor";
+  created_at: string;
+};
