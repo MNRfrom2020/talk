@@ -8,18 +8,24 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
+import type { User as DbUser } from "@/lib/types";
+import { supabase } from "@/lib/supabase";
 
-const USER_STORAGE_KEY = "guest_user_profile";
+const USER_STORAGE_KEY = "user_profile";
 
-interface User {
+
+export interface User extends Partial<DbUser> {
   name: string;
   avatar: string | null;
   isLoggedIn: boolean;
+  isGuest: boolean;
 }
+
 
 interface UserContextType {
   user: User;
   login: (name: string, avatar?: string | null) => void;
+  loginWithPassword: (identifier: string, pass: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -27,6 +33,7 @@ const defaultUser: User = {
   name: "Guest",
   avatar: null,
   isLoggedIn: false,
+  isGuest: true,
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -61,7 +68,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
   const saveUser = useCallback((userData: User) => {
     try {
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
+      const key = userData.isGuest ? "guest_user_profile" : USER_STORAGE_KEY;
+      localStorage.setItem(key, JSON.stringify(userData));
       setUser(userData);
     } catch (error) {
       console.error("Failed to save user to storage", error);
@@ -74,20 +82,50 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         name,
         avatar: avatar === undefined ? user.avatar : avatar,
         isLoggedIn: true,
+        isGuest: true,
       };
       saveUser(newUserData);
     },
     [saveUser, user.avatar],
   );
 
+  const loginWithPassword = async (identifier: string, pass: string) => {
+    const isEmail = identifier.includes('@');
+    
+    const query = isEmail 
+      ? supabase.from('users').select().eq('email', identifier)
+      : supabase.from('users').select().eq('username', identifier);
+
+    const { data, error } = await query.single();
+
+    if (error || !data) {
+      throw new Error("ব্যবহারকারী খুঁজে পাওয়া যায়নি।");
+    }
+
+    if (data.pass !== pass) {
+      throw new Error("ভুল পাসওয়ার্ড।");
+    }
+    
+    const loggedInUser: User = {
+      ...data,
+      name: data.name,
+      avatar: data.image,
+      isLoggedIn: true,
+      isGuest: false,
+    };
+    saveUser(loggedInUser);
+  };
+
+
   const logout = useCallback(() => {
     try {
-      localStorage.removeItem(USER_STORAGE_KEY);
+      const key = user.isGuest ? "guest_user_profile" : USER_STORAGE_KEY;
+      localStorage.removeItem(key);
       setUser(defaultUser);
     } catch (error) {
       console.error("Failed to clear storage", error);
     }
-  }, []);
+  }, [user.isGuest]);
   
   if (!isInitialized) {
     return null; // Or a loading spinner
@@ -96,6 +134,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const value = {
     user,
     login,
+    loginWithPassword,
     logout,
   };
 
@@ -103,3 +142,5 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     <UserContext.Provider value={value}>{children}</UserContext.Provider>
   );
 };
+
+    

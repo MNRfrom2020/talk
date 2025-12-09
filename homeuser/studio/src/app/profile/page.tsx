@@ -40,6 +40,7 @@ import { usePlaylist } from "@/context/PlaylistContext";
 import { usePodcast } from "@/context/PodcastContext";
 import CategorySection from "@/components/podcasts/CategorySection";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { LoginDialog } from "@/components/auth/LoginDialog";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -400,11 +401,11 @@ export default function ProfilePage() {
                     >
                       Logout
                     </Button>
-                     <Link href="/admin/login" passHref>
-                        <Button variant="outline" className="w-full">
-                          Admin Login
-                        </Button>
-                      </Link>
+                    <LoginDialog>
+                      <Button variant="outline" className="w-full">
+                          Login
+                      </Button>
+                    </LoginDialog>
                   </div>
                 </div>
                 </div>
@@ -420,3 +421,5 @@ export default function ProfilePage() {
     </SidebarProvider>
   );
 }
+
+    
