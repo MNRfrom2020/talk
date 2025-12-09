@@ -24,6 +24,7 @@ export interface User extends Partial<DbUser> {
 
 interface UserContextType {
   user: User;
+  loading: boolean;
   login: (name: string, avatar?: string | null) => void;
   loginWithPassword: (identifier: string, pass: string) => Promise<void>;
   logout: () => void;
@@ -48,7 +49,7 @@ export const useUser = () => {
 
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User>(defaultUser);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     try {
@@ -62,14 +63,13 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error) {
       console.error("Failed to load user from storage", error);
     } finally {
-      setIsInitialized(true);
+      setLoading(false);
     }
   }, []);
 
   const saveUser = useCallback((userData: User) => {
     try {
-      const key = userData.isGuest ? "guest_user_profile" : USER_STORAGE_KEY;
-      localStorage.setItem(key, JSON.stringify(userData));
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
       setUser(userData);
     } catch (error) {
       console.error("Failed to save user to storage", error);
@@ -119,20 +119,20 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
   const logout = useCallback(() => {
     try {
-      const key = user.isGuest ? "guest_user_profile" : USER_STORAGE_KEY;
-      localStorage.removeItem(key);
+      localStorage.removeItem(USER_STORAGE_KEY);
       setUser(defaultUser);
     } catch (error) {
       console.error("Failed to clear storage", error);
     }
-  }, [user.isGuest]);
+  }, []);
   
-  if (!isInitialized) {
+  if (loading) {
     return null; // Or a loading spinner
   }
 
   const value = {
     user,
+    loading,
     login,
     loginWithPassword,
     logout,
@@ -142,5 +142,3 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     <UserContext.Provider value={value}>{children}</UserContext.Provider>
   );
 };
-
-    

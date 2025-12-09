@@ -34,5 +34,3 @@ export type User = {
   pass: string;
   created_at: string;
 };
-
-    
