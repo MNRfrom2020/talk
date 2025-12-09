@@ -4,7 +4,7 @@ import {
   useContext,
   useEffect,
   useState,
-  ReactNode,
+  type ReactNode,
 } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
@@ -91,4 +91,12 @@ export const AdminAuthProvider = ({ children }: { children: ReactNode }) => {
       {children}
     </AdminAuthContext.Provider>
   );
+};
+
+export const useAdminAuth = () => {
+  const context = useContext(AdminAuthContext);
+  if (context === undefined) {
+    throw new Error("useAdminAuth must be used within an AdminAuthProvider");
+  }
+  return context;
 };
