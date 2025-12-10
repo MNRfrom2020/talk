@@ -8,18 +8,23 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
+import type { User as DbUser } from "@/lib/types";
+import { supabase } from "@/lib/supabase";
 
-const USER_STORAGE_KEY = "guest_user_profile";
+const USER_STORAGE_KEY = "user_profile";
 
-interface User {
+export interface User extends Partial<DbUser> {
   name: string;
   avatar: string | null;
   isLoggedIn: boolean;
+  isGuest: boolean;
 }
 
 interface UserContextType {
   user: User;
-  login: (name: string, avatar?: string | null) => void;
+  loading: boolean;
+  loginUser: (identifier: string, pass: string) => Promise<void>;
+  loginAsGuest: (name: string, avatar?: string | null) => void;
   logout: () => void;
 }
 
@@ -27,6 +32,7 @@ const defaultUser: User = {
   name: "Guest",
   avatar: null,
   isLoggedIn: false,
+  isGuest: true,
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -41,21 +47,22 @@ export const useUser = () => {
 
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User>(defaultUser);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem(USER_STORAGE_KEY);
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
-        if(parsedUser.isLoggedIn) {
-          setUser(parsedUser);
-        }
+        setUser(parsedUser);
+      } else {
+        setUser(defaultUser);
       }
     } catch (error) {
       console.error("Failed to load user from storage", error);
+      setUser(defaultUser);
     } finally {
-      setIsInitialized(true);
+      setLoading(false);
     }
   }, []);
 
@@ -68,17 +75,53 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  const login = useCallback(
+  const loginAsGuest = useCallback(
     (name: string, avatar?: string | null) => {
       const newUserData: User = {
         name,
         avatar: avatar === undefined ? user.avatar : avatar,
         isLoggedIn: true,
+        isGuest: true,
       };
       saveUser(newUserData);
     },
     [saveUser, user.avatar],
   );
+
+  const loginUser = async (identifier: string, pass: string) => {
+    const isEmail = identifier.includes("@");
+
+    const query = isEmail
+      ? supabase.from("users").select().eq("email", identifier)
+      : supabase.from("users").select().eq("username", identifier);
+
+    const { data, error } = await query.single();
+
+    if (error || !data) {
+      throw new Error("ব্যবহারকারী খুঁজে পাওয়া যায়নি।");
+    }
+
+    const trimmedDbPass = data.pass?.trim();
+    const trimmedInputPass = pass.trim();
+
+    if (trimmedDbPass !== trimmedInputPass) {
+      throw new Error("ভুল পাসওয়ার্ড।");
+    }
+
+    // Clear previous guest/user data before setting new data
+    localStorage.removeItem(USER_STORAGE_KEY);
+
+    const { pass: removedPass, ...userData } = data;
+
+    const loggedInUser: User = {
+      ...userData,
+      name: userData.name,
+      avatar: userData.image,
+      isLoggedIn: true,
+      isGuest: false,
+    };
+    saveUser(loggedInUser);
+  };
 
   const logout = useCallback(() => {
     try {
@@ -88,14 +131,12 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("Failed to clear storage", error);
     }
   }, []);
-  
-  if (!isInitialized) {
-    return null; // Or a loading spinner
-  }
 
   const value = {
     user,
-    login,
+    loading,
+    loginUser,
+    loginAsGuest,
     logout,
   };
 

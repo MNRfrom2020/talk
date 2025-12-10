@@ -1,3 +1,4 @@
+
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -31,7 +32,7 @@ const formSchema = z.object({
 });
 
 export default function LoginPage() {
-  const { login } = useUser();
+  const { loginUser } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -45,7 +46,7 @@ export default function LoginPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await login(values.identifier, values.password);
+      await loginUser(values.identifier, values.password);
       toast({
         title: "লগইন সফল হয়েছে",
         description: "আপনাকে প্রোফাইল পেজে নিয়ে যাওয়া হচ্ছে...",

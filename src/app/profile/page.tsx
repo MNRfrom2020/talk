@@ -40,7 +40,7 @@ import { usePlaylist } from "@/context/PlaylistContext";
 import { usePodcast } from "@/context/PodcastContext";
 import CategorySection from "@/components/podcasts/CategorySection";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { ProfileDialog } from "@/components/auth/ProfileDialog";
+import { LoginDialog } from "@/components/auth/LoginDialog";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -67,7 +67,7 @@ const StatCard = ({
 );
 
 export default function ProfilePage() {
-  const { user, login, logout } = useUser();
+  const { user, loginAsGuest, logout } = useUser();
   const { history, listeningLog, isExpanded } = usePlayer();
   const { podcasts } = usePodcast();
   const { getPodcastsForPlaylist, FAVORITES_PLAYLIST_ID } = usePlaylist();
@@ -137,7 +137,7 @@ export default function ProfilePage() {
   };
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    login(values.name, avatarPreview);
+    loginAsGuest(values.name, avatarPreview);
     toast({
       title: "Profile Updated",
       description: "Your changes have been saved.",
@@ -154,7 +154,7 @@ export default function ProfilePage() {
 
   const handleExport = () => {
     try {
-      const userProfile = localStorage.getItem("guest_user_profile");
+      const userProfile = localStorage.getItem("user_profile");
       const podcastHistory = localStorage.getItem("podcast_history");
       const podcastPlaylists = localStorage.getItem("podcast_playlists");
       const listeningLog = localStorage.getItem("listening_log");
@@ -206,7 +206,7 @@ export default function ProfilePage() {
 
         if (data.userProfile) {
           localStorage.setItem(
-            "guest_user_profile",
+            "user_profile",
             JSON.stringify(data.userProfile),
           );
         }
@@ -401,11 +401,11 @@ export default function ProfilePage() {
                     >
                       Logout
                     </Button>
-                     <Link href="/login" passHref>
+                    <LoginDialog>
                       <Button variant="outline" className="w-full">
-                        Login
+                          Login
                       </Button>
-                    </Link>
+                    </LoginDialog>
                   </div>
                 </div>
                 </div>
@@ -421,5 +421,3 @@ export default function ProfilePage() {
     </SidebarProvider>
   );
 }
-
-    

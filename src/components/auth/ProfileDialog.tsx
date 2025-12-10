@@ -36,7 +36,7 @@ const formSchema = z.object({
 });
 
 export function ProfileDialog({ children }: { children: ReactNode }) {
-  const { user, login } = useUser();
+  const { user, loginAsGuest } = useUser();
   const [open, setOpen] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -61,7 +61,7 @@ export function ProfileDialog({ children }: { children: ReactNode }) {
   };
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    login(values.name, avatarPreview);
+    loginAsGuest(values.name, avatarPreview);
     setOpen(false);
     toast({
       title: "Welcome!",
