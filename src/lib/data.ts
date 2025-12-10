@@ -1,6 +1,6 @@
 
 import { supabase } from "./supabase";
-import type { Podcast, Playlist } from "./types";
+import type { Podcast, Playlist, User } from "./types";
 
 export async function getPodcastCount() {
     const { count, error } = await supabase
@@ -59,7 +59,6 @@ export async function getPodcasts(): Promise<Podcast[]> {
     categories: item.categories,
     coverArt: item.cover_art,
     coverArtHint: item.cover_art_hint,
-    audioUrl: item.audio_url,
     created_at: item.created_at,
   }));
 }
@@ -76,4 +75,18 @@ export async function getPlaylists(): Promise<Playlist[]> {
   }
 
   return data;
+}
+
+export async function getUsers(): Promise<User[]> {
+    const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .order("created_at", { ascending: false });
+        
+    if (error) {
+        console.error("Error fetching users:", error);
+        return [];
+    }
+
+    return data;
 }

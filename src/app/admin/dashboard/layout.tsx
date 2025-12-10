@@ -1,4 +1,3 @@
-
 "use client";
 
 import Link from "next/link";
@@ -11,6 +10,7 @@ import {
   ListMusic,
   LayoutGrid,
   MicVocal,
+  UserCog,
 } from "lucide-react";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 import {
@@ -136,7 +136,7 @@ export default function DashboardLayout({
                   href="/admin/dashboard/users"
                   isActive={pathname === "/admin/dashboard/users"}
                 >
-                  <Users />
+                  <UserCog />
                   ব্যবহারকারী
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -184,7 +184,7 @@ export default function DashboardLayout({
           <NavItem
             href="/admin/dashboard/users"
             label="ইউজার"
-            icon={Users}
+            icon={UserCog}
             isActive={pathname === "/admin/dashboard/users"}
           />
         </div>

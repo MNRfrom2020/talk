@@ -28,10 +28,11 @@ export type Admin = {
 
 export type User = {
   uid: string;
-  name: string;
+  full_name: string;
   image: string | null;
   username: string;
   email: string;
   pass: string;
   created_at: string;
+  updated_at: string;
 };
