@@ -1,10 +1,8 @@
-
 "use server";
 
 import { revalidatePath } from "next/cache";
 import { supabase } from "./supabase";
 import { z } from "zod";
-import { useActionState } from "react";
 
 export async function createUser(formData: FormData) {
   const name = formData.get("name") as string;
