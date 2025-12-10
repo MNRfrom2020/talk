@@ -131,7 +131,7 @@ export async function savePodcast(
         .eq("id", id);
       if (error) throw error;
     } else {
-      // Create new podcast - DB will generate UUID
+      // Create new podcast
       const { error } = await supabase.from("podcasts").insert(podcastData);
       if (error) throw error;
     }
