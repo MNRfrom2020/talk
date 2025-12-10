@@ -35,7 +35,7 @@ const formSchema = z.object({
 
 export function LoginDialog({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  const { loginUser } = useUser();
+  const { login } = useUser();
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -48,7 +48,7 @@ export function LoginDialog({ children }: { children: ReactNode }) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await loginUser(values.identifier, values.password);
+      await login(values.identifier, values.password);
       setOpen(false);
       toast({
         title: "লগইন সফল হয়েছে",
@@ -70,7 +70,7 @@ export function LoginDialog({ children }: { children: ReactNode }) {
         <DialogHeader>
           <DialogTitle>লগইন করুন</DialogTitle>
           <DialogDescription>
-            আপনার ইউজারনেম বা ইমেইল এবং পাসওয়ার্ড দিয়ে লগইন করুন।
+            দু:খিত, নতুন একাউন্ট তৈরির কোনো অপশন নেই। অনুগ্রহ করে আপনার গেস্ট একাউন্টই ব্যবহার চালিয়ে যান। জাযাকাল্লাহু খাইরান।
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
