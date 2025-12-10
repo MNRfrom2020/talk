@@ -3,7 +3,6 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown, MoreHorizontal, Trash2 } from "lucide-react";
-import Image from "next/image";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -122,15 +121,6 @@ export const columns: ColumnDef<Playlist>[] = [
       const playlist = row.original;
       return (
         <div className="flex items-center gap-4">
-          {playlist.cover && (
-            <Image
-              src={playlist.cover}
-              alt={playlist.name}
-              width={40}
-              height={40}
-              className="h-10 w-10 rounded-md object-cover"
-            />
-          )}
           <div className="flex-1 truncate">
             <div className="font-medium truncate">{playlist.name}</div>
           </div>
