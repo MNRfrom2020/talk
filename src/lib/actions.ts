@@ -116,7 +116,7 @@ export async function savePodcast(
 
   const { id, ...data } = validatedFields.data;
 
-  const podcastData: any = {
+  const podcastData: { [key: string]: any } = {
     title: data.title,
     artist: data.artist.split(",").map((s) => s.trim()),
     categories: data.categories.split(",").map((s) => s.trim()),
