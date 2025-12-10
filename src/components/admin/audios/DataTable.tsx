@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import AudioForm from "./AudioForm";
 import type { Podcast } from "@/lib/types";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -202,10 +203,12 @@ export function AudiosDataTable<TData extends Podcast, TValue>({
               {selectedPodcast ? "Edit Audio" : "Add New Audio"}
             </DialogTitle>
           </DialogHeader>
-          <AudioForm
-            podcast={selectedPodcast}
-            onClose={() => setIsFormOpen(false)}
-          />
+          <ScrollArea className="max-h-[80vh] pr-6">
+            <AudioForm
+              podcast={selectedPodcast}
+              onClose={() => setIsFormOpen(false)}
+            />
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </div>
