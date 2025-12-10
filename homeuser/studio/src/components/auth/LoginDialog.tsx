@@ -35,7 +35,7 @@ const formSchema = z.object({
 
 export function LoginDialog({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  const { loginWithPassword } = useUser();
+  const { login } = useUser();
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -48,7 +48,7 @@ export function LoginDialog({ children }: { children: ReactNode }) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await loginWithPassword(values.identifier, values.password);
+      await login(values.identifier, values.password);
       setOpen(false);
       toast({
         title: "লগইন সফল হয়েছে",
@@ -116,5 +116,3 @@ export function LoginDialog({ children }: { children: ReactNode }) {
     </Dialog>
   );
 }
-
-    

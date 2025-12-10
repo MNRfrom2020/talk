@@ -34,7 +34,7 @@ const formSchema = z.object({
 });
 
 export default function LoginPage() {
-  const { loginWithPassword, user, loading } = useUser();
+  const { login, user, loading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -55,7 +55,7 @@ export default function LoginPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await loginWithPassword(values.identifier, values.password);
+      await login(values.identifier, values.password);
       toast({
         title: "লগইন সফল হয়েছে",
         description: "আপনাকে প্রোফাইল পেজে নিয়ে যাওয়া হচ্ছে...",
@@ -78,14 +78,6 @@ export default function LoginPage() {
     );
   }
   
-  if (user.isLoggedIn && !user.isGuest) {
-     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <p>Already logged in. Redirecting...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="flex min-h-screen items-center justify-center bg-secondary/50 p-4">
       <Card className="w-full max-w-sm">

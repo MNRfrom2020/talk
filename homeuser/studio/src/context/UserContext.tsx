@@ -25,8 +25,8 @@ export interface User extends Partial<DbUser> {
 interface UserContextType {
   user: User;
   loading: boolean;
-  loginAsGuest: (name: string, avatar?: string | null) => void;
-  loginWithPassword: (identifier: string, pass: string) => Promise<void>;
+  loginGuest: (name: string, avatar?: string | null) => void;
+  login: (identifier: string, pass: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -84,7 +84,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  const loginAsGuest = useCallback(
+  const loginGuest = useCallback(
     (name: string, avatar?: string | null) => {
       const newUserData: User = {
         name,
@@ -97,7 +97,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     [saveUser, user.avatar],
   );
 
-  const loginWithPassword = async (identifier: string, pass: string) => {
+  const login = async (identifier: string, pass: string) => {
     // Clear any existing local user data first
     localStorage.removeItem(USER_STORAGE_KEY);
 
@@ -145,8 +145,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const value = {
     user,
     loading,
-    loginAsGuest,
-    loginWithPassword,
+    loginGuest,
+    login,
     logout,
   };
 
