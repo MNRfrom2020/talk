@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, {
@@ -13,7 +12,6 @@ import { supabase } from "@/lib/supabase";
 
 const USER_STORAGE_KEY = "user_profile";
 
-
 export interface User extends Partial<DbUser> {
   name: string;
   avatar: string | null;
@@ -21,19 +19,18 @@ export interface User extends Partial<DbUser> {
   isGuest: boolean;
 }
 
-
 interface UserContextType {
   user: User;
   loading: boolean;
-  loginGuest: (name: string, avatar?: string | null) => void;
   login: (identifier: string, pass: string) => Promise<void>;
+  loginGuest: (name: string, avatar?: string | null) => void;
   logout: () => void;
 }
 
 const defaultUser: User = {
   name: "Guest",
   avatar: null,
-  isLoggedIn: false, 
+  isLoggedIn: false,
   isGuest: true,
 };
 
@@ -56,17 +53,13 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       const storedUser = localStorage.getItem(USER_STORAGE_KEY);
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
-         if (parsedUser.isGuest) {
-           setUser(parsedUser);
-        } else {
-           setUser(defaultUser);
-        }
+        setUser(parsedUser);
       } else {
         setUser(defaultUser);
       }
     } catch (error) {
       console.error("Failed to load user from storage", error);
-      setUser(defaultUser); 
+      setUser(defaultUser);
     } finally {
       setLoading(false);
     }
@@ -95,8 +88,6 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   );
 
   const login = async (identifier: string, pass: string) => {
-    localStorage.removeItem(USER_STORAGE_KEY);
-
     const isEmail = identifier.includes("@");
 
     const query = isEmail
@@ -108,13 +99,16 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     if (error || !data) {
       throw new Error("ব্যবহারকারী খুঁজে পাওয়া যায়নি।");
     }
-    
+
     const trimmedDbPass = data.pass?.trim();
     const trimmedInputPass = pass.trim();
 
     if (trimmedDbPass !== trimmedInputPass) {
       throw new Error("ভুল পাসওয়ার্ড।");
     }
+
+    // Clear previous guest/user data before setting new data
+    localStorage.removeItem(USER_STORAGE_KEY);
 
     const { pass: removedPass, ...userData } = data;
 
@@ -128,7 +122,6 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     saveUser(loggedInUser);
   };
 
-
   const logout = useCallback(() => {
     try {
       localStorage.removeItem(USER_STORAGE_KEY);
@@ -137,12 +130,12 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       console.error("Failed to clear storage", error);
     }
   }, []);
-  
+
   const value = {
     user,
     loading,
-    loginGuest,
     login,
+    loginGuest,
     logout,
   };
 
