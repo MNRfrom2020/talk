@@ -13,6 +13,7 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
+  getGlobalFacetedRowModel,
 } from "@tanstack/react-table";
 import { PlusCircle } from "lucide-react";
 
@@ -54,6 +55,7 @@ export function AudiosDataTable<TData extends Podcast, TValue>({
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
+  const [globalFilter, setGlobalFilter] = React.useState("");
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [selectedPodcast, setSelectedPodcast] = React.useState<TData | null>(
     null,
@@ -94,31 +96,43 @@ export function AudiosDataTable<TData extends Podcast, TValue>({
     getFilteredRowModel: getFilteredRowModel(),
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
+    onGlobalFilterChange: setGlobalFilter,
+    getGlobalFacetedRowModel: getGlobalFacetedRowModel(),
     state: {
       sorting,
       columnFilters,
       columnVisibility,
       rowSelection,
+      globalFilter,
     },
     initialState: {
       pagination: {
         pageSize: 20,
       },
-    }
+    },
+    filterFns: {
+      global: (row, columnId, filterValue) => {
+        const podcast = row.original as Podcast;
+        const search = filterValue.toLowerCase();
+        
+        return (
+          podcast.title.toLowerCase().includes(search) ||
+          podcast.artist.some(a => a.toLowerCase().includes(search)) ||
+          podcast.categories.some(c => c.toLowerCase().includes(search))
+        );
+      },
+    },
+    globalFilterFn: "global",
   });
-
-  const titleFilter = table.getColumn("title")?.getFilterValue() as string;
 
   return (
     <div className="w-full">
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <div className="flex flex-col gap-4 py-4 md:flex-row md:items-center md:justify-between">
           <Input
-            placeholder="Filter titles..."
-            value={titleFilter ?? ""}
-            onChange={(event) =>
-              table.getColumn("title")?.setFilterValue(event.target.value)
-            }
+            placeholder="শিরোনাম, আর্টিস্ট বা ক্যাটাগরি খুঁজুন..."
+            value={globalFilter ?? ""}
+            onChange={(event) => setGlobalFilter(event.target.value)}
             className="w-full md:max-w-sm"
           />
           <Button onClick={handleAddNew} className="w-full md:w-auto">
@@ -127,14 +141,14 @@ export function AudiosDataTable<TData extends Podcast, TValue>({
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {table.getRowModel().rows.map((row) => (
-              <AudioCard
-                key={row.id}
-                podcast={row.original}
-                onEdit={handleEdit}
-              />
-            ))}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-2 xl:grid-cols-3">
+          {table.getRowModel().rows.map((row) => (
+            <AudioCard
+              key={row.id}
+              podcast={row.original as TData}
+              onEdit={handleEdit}
+            />
+          ))}
         </div>
 
         <div className="flex items-center justify-between space-x-2 py-4">
