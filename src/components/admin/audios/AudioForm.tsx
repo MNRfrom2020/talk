@@ -1,11 +1,11 @@
 
 "use client";
 
-import { useForm, useFormState } from "react-hook-form";
+import { useForm, useFormState as useActionFormState } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useEffect } from "react";
-import { useFormState as useActionFormState } from "react-dom";
+import { format, parseISO } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +18,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { savePodcast, type PodcastState } from "@/lib/actions";
 import type { Podcast } from "@/lib/types";
@@ -31,6 +30,7 @@ const PodcastFormSchema = z.object({
   cover_art: z.string().url("Must be a valid URL"),
   cover_art_hint: z.string().optional(),
   audio_url: z.string().url("Must be a valid URL"),
+  created_at: z.string().optional(),
 });
 
 type PodcastFormValues = z.infer<typeof PodcastFormSchema>;
@@ -41,12 +41,12 @@ interface AudioFormProps {
 }
 
 const SubmitButton = () => {
-    const { pending } = useActionFormState(savePodcast, { message: null, errors: {} });
-    return (
-        <Button type="submit" disabled={pending}>
-        {pending ? "Saving..." : "Save"}
-        </Button>
-    );
+  const { pending } = useActionFormState(savePodcast, { message: null, errors: {} });
+  return (
+    <Button type="submit" disabled={pending}>
+      {pending ? "Saving..." : "Save"}
+    </Button>
+  );
 };
 
 
@@ -54,6 +54,18 @@ export default function AudioForm({ podcast, onClose }: AudioFormProps) {
   const { toast } = useToast();
   const initialState: PodcastState = { message: null, errors: {} };
   const [state, dispatch] = useActionFormState(savePodcast, initialState);
+  
+  const getFormattedDate = (dateString?: string) => {
+    if (!dateString) return "";
+    try {
+      // Supabase returns ISO 8601 format. We need YYYY-MM-DDTHH:mm for datetime-local input.
+      const date = parseISO(dateString);
+      return format(date, "yyyy-MM-dd'T'HH:mm");
+    } catch (error) {
+      // If parsing fails, return an empty string.
+      return "";
+    }
+  };
 
   const form = useForm<PodcastFormValues>({
     resolver: zodResolver(PodcastFormSchema),
@@ -65,6 +77,7 @@ export default function AudioForm({ podcast, onClose }: AudioFormProps) {
       cover_art: podcast?.coverArt || "",
       cover_art_hint: podcast?.coverArtHint || "",
       audio_url: podcast?.audioUrl || "",
+      created_at: getFormattedDate(podcast?.created_at),
     },
   });
 
@@ -128,14 +141,14 @@ export default function AudioForm({ podcast, onClose }: AudioFormProps) {
               <FormControl>
                 <Input placeholder="Category one, Category two" {...field} />
               </FormControl>
-               <FormDescription>
+              <FormDescription>
                 Separate multiple categories with a comma.
               </FormDescription>
               <FormMessage />
             </FormItem>
           )}
         />
-         <FormField
+        <FormField
           control={form.control}
           name="cover_art"
           render={({ field }) => (
@@ -174,9 +187,27 @@ export default function AudioForm({ podcast, onClose }: AudioFormProps) {
             </FormItem>
           )}
         />
+         <FormField
+          control={form.control}
+          name="created_at"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Created At</FormLabel>
+              <FormControl>
+                <Input type="datetime-local" {...field} />
+              </FormControl>
+               <FormDescription>
+                Leave blank to use the current time.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <div className="flex justify-end gap-2">
-            <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
-            <SubmitButton />
+          <Button type="button" variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <SubmitButton />
         </div>
       </form>
     </Form>

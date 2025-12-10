@@ -1,3 +1,4 @@
+
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -75,6 +76,7 @@ const PodcastFormSchema = z.object({
   cover_art: z.string().url("Must be a valid URL"),
   cover_art_hint: z.string().optional(),
   audio_url: z.string().url("Must be a valid URL"),
+  created_at: z.string().optional(),
 });
 
 export type PodcastState = {
@@ -85,6 +87,7 @@ export type PodcastState = {
     cover_art?: string[];
     cover_art_hint?: string[];
     audio_url?: string[];
+    created_at?: string[];
   };
   message?: string | null;
 };
@@ -101,6 +104,7 @@ export async function savePodcast(
     cover_art: formData.get("cover_art"),
     cover_art_hint: formData.get("cover_art_hint"),
     audio_url: formData.get("audio_url"),
+    created_at: formData.get("created_at") || undefined,
   });
 
   if (!validatedFields.success) {
@@ -112,7 +116,7 @@ export async function savePodcast(
 
   const { id, ...data } = validatedFields.data;
 
-  const podcastData = {
+  const podcastData: any = {
     title: data.title,
     artist: data.artist.split(",").map((s) => s.trim()),
     categories: data.categories.split(",").map((s) => s.trim()),
@@ -120,7 +124,11 @@ export async function savePodcast(
     cover_art_hint: data.cover_art_hint,
     audio_url: data.audio_url,
   };
-  
+
+  if (data.created_at) {
+    podcastData.created_at = new Date(data.created_at).toISOString();
+  }
+
   try {
     if (id) {
       // Update existing podcast
@@ -144,7 +152,6 @@ export async function savePodcast(
   revalidatePath("/"); // Also revalidate home page
   return { message: "Successfully saved podcast.", errors: {} };
 }
-
 
 export async function deletePodcast(id: string) {
   try {

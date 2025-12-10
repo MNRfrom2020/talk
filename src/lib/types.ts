@@ -7,7 +7,7 @@ export type Podcast = {
   coverArt: string;
   coverArtHint: string;
   audioUrl: string;
-  created_at?: string;
+  created_at: string;
 };
 
 export type Playlist = {
