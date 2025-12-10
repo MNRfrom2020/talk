@@ -67,7 +67,7 @@ const StatCard = ({
 );
 
 export default function ProfilePage() {
-  const { user, login, logout } = useUser();
+  const { user, loginAsGuest, logout } = useUser();
   const { history, listeningLog, isExpanded } = usePlayer();
   const { podcasts } = usePodcast();
   const { getPodcastsForPlaylist, FAVORITES_PLAYLIST_ID } = usePlaylist();
@@ -137,7 +137,7 @@ export default function ProfilePage() {
   };
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    login(values.name, avatarPreview);
+    loginAsGuest(values.name, avatarPreview);
     toast({
       title: "Profile Updated",
       description: "Your changes have been saved.",

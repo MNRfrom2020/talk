@@ -25,7 +25,7 @@ export interface User extends Partial<DbUser> {
 interface UserContextType {
   user: User;
   loading: boolean;
-  login: (name: string, avatar?: string | null) => void;
+  loginAsGuest: (name: string, avatar?: string | null) => void;
   loginWithPassword: (identifier: string, pass: string) => Promise<void>;
   logout: () => void;
 }
@@ -33,7 +33,7 @@ interface UserContextType {
 const defaultUser: User = {
   name: "Guest",
   avatar: null,
-  isLoggedIn: true,
+  isLoggedIn: false, // Start as logged out
   isGuest: true,
 };
 
@@ -56,13 +56,12 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       const storedUser = localStorage.getItem(USER_STORAGE_KEY);
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
-        // Only set guest users from storage, force re-login for registered users for security
-        if(parsedUser.isGuest) {
-          setUser(parsedUser);
+         // If a registered user's data is in storage, treat them as logged out
+         // until they log in again. This prevents stale data issues.
+        if (parsedUser.isGuest) {
+           setUser(parsedUser);
         } else {
-           // If a registered user's data is in storage, treat them as logged out
-           // until they log in again.
-           logout();
+           setUser(defaultUser);
         }
       } else {
         // If no user in storage, set the default guest user
@@ -85,7 +84,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  const login = useCallback(
+  const loginAsGuest = useCallback(
     (name: string, avatar?: string | null) => {
       const newUserData: User = {
         name,
@@ -143,14 +142,10 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
   
-  if (loading) {
-    return null; // Or a loading spinner
-  }
-
   const value = {
     user,
     loading,
-    login,
+    loginAsGuest,
     loginWithPassword,
     logout,
   };
