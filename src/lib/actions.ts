@@ -4,7 +4,6 @@
 import { revalidatePath } from "next/cache";
 import { supabase } from "./supabase";
 import { z } from "zod";
-import { randomUUID } from "crypto";
 
 export async function createUser(formData: FormData) {
   const name = formData.get("name") as string;
@@ -132,9 +131,8 @@ export async function savePodcast(
         .eq("id", id);
       if (error) throw error;
     } else {
-      // Create new podcast
-       const newId = randomUUID();
-       const { error } = await supabase.from("podcasts").insert({ id: newId, ...podcastData });
+      // Create new podcast - DB will generate UUID
+      const { error } = await supabase.from("podcasts").insert(podcastData);
       if (error) throw error;
     }
   } catch (error: any) {
@@ -144,6 +142,7 @@ export async function savePodcast(
   }
 
   revalidatePath("/admin/dashboard/audios");
+  revalidatePath("/"); // Also revalidate home page
   return { message: "Successfully saved podcast.", errors: {} };
 }
 
@@ -153,6 +152,7 @@ export async function deletePodcast(id: string) {
     const { error } = await supabase.from("podcasts").delete().eq("id", id);
     if (error) throw error;
     revalidatePath("/admin/dashboard/audios");
+    revalidatePath("/");
     return { message: "Deleted Podcast." };
   } catch (error: any) {
     return {
