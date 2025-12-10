@@ -1,3 +1,4 @@
+
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
@@ -98,6 +99,7 @@ export const CellActions = ({
     </AlertDialog>
   );
 };
+
 
 export const columns: ColumnDef<User>[] = [
   {

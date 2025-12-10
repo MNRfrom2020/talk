@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -14,14 +15,6 @@ import {
 } from "@tanstack/react-table";
 import { PlusCircle } from "lucide-react";
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -34,6 +27,7 @@ import UserForm from "./UserForm";
 import type { User } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CellActions } from "./columns";
+import UserCard from "./UserCard";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -91,7 +85,7 @@ export function UsersDataTable<TData extends User, TValue>({
     },
     initialState: {
       pagination: {
-        pageSize: 10,
+        pageSize: 12,
       },
     },
     globalFilterFn: (row, columnId, filterValue) => {
@@ -109,89 +103,60 @@ export function UsersDataTable<TData extends User, TValue>({
   return (
     <div className="w-full">
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <div className="flex items-center justify-between py-4">
+        <div className="flex flex-col gap-4 py-4 md:flex-row md:items-center md:justify-between">
           <Input
             placeholder="নাম, ইউজারনেম বা ইমেইল দিয়ে খুঁজুন..."
             value={globalFilter ?? ""}
             onChange={(event) => setGlobalFilter(event.target.value)}
-            className="max-w-sm"
+            className="w-full md:max-w-sm"
           />
-          <Button onClick={handleAddNew}>
+          <Button onClick={handleAddNew} className="w-full md:w-auto">
             <PlusCircle className="mr-2 h-4 w-4" />
             Add User
           </Button>
         </div>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead key={header.id}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
-                            )}
-                      </TableHead>
-                    );
-                  })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows?.length ? (
+        
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {table.getRowModel().rows?.length ? (
                 table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    ))}
-                  </TableRow>
+                    <UserCard
+                        key={row.id}
+                        user={row.original}
+                        onEdit={handleEdit}
+                    />
                 ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center"
-                  >
-                    No results.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+            ) : (
+                 <div className="col-span-full h-24 text-center">No results.</div>
+            )}
         </div>
+
+
         <div className="flex items-center justify-end space-x-2 py-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {table.getState().pagination.pageIndex + 1} of{" "}
-            {table.getPageCount()}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-          >
-            Next
-          </Button>
+           <div className="flex-1 text-sm text-muted-foreground">
+             {table.getFilteredRowModel().rows.length} of {data.length} user(s) found.
+          </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+            >
+              Previous
+            </Button>
+             <span className="text-sm">
+                Page {table.getState().pagination.pageIndex + 1} of{" "}
+                {table.getPageCount()}
+              </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
+              Next
+            </Button>
+          </div>
         </div>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
