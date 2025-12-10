@@ -95,7 +95,7 @@ export async function savePodcast(
   formData: FormData,
 ) {
   const validatedFields = PodcastFormSchema.safeParse({
-    id: formData.get("id"),
+    id: formData.get("id") || undefined,
     title: formData.get("title"),
     artist: formData.get("artist"),
     categories: formData.get("categories"),
