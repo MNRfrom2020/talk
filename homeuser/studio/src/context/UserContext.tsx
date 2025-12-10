@@ -33,7 +33,7 @@ interface UserContextType {
 const defaultUser: User = {
   name: "Guest",
   avatar: null,
-  isLoggedIn: false, // Start as logged out
+  isLoggedIn: false, 
   isGuest: true,
 };
 
@@ -56,20 +56,17 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       const storedUser = localStorage.getItem(USER_STORAGE_KEY);
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
-         // If a registered user's data is in storage, treat them as logged out
-         // until they log in again. This prevents stale data issues.
-        if (parsedUser.isGuest) {
+         if (parsedUser.isGuest) {
            setUser(parsedUser);
         } else {
            setUser(defaultUser);
         }
       } else {
-        // If no user in storage, set the default guest user
         setUser(defaultUser);
       }
     } catch (error) {
       console.error("Failed to load user from storage", error);
-      setUser(defaultUser); // Fallback to guest on error
+      setUser(defaultUser); 
     } finally {
       setLoading(false);
     }
@@ -98,7 +95,6 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   );
 
   const login = async (identifier: string, pass: string) => {
-    // Clear any existing local user data first
     localStorage.removeItem(USER_STORAGE_KEY);
 
     const isEmail = identifier.includes("@");
