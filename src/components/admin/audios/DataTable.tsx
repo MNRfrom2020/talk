@@ -31,7 +31,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import AudioForm from "./AudioForm";
 import type { Podcast } from "@/lib/types";
@@ -43,7 +42,7 @@ interface DataTableProps<TData, TValue> {
 }
 
 export function AudiosDataTable<TData extends Podcast, TValue>({
-  columns,
+  columns: initialColumns,
   data,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -57,6 +56,35 @@ export function AudiosDataTable<TData extends Podcast, TValue>({
   const [selectedPodcast, setSelectedPodcast] = React.useState<TData | null>(
     null,
   );
+
+  const handleAddNew = () => {
+    setSelectedPodcast(null);
+    setIsFormOpen(true);
+  };
+
+  const handleEdit = (podcast: TData) => {
+    setSelectedPodcast(podcast);
+    setIsFormOpen(true);
+  };
+
+  const columns = React.useMemo<ColumnDef<TData, TValue>[]>(() => {
+    return initialColumns.map(col => {
+      if ('id' in col && col.id === 'actions') {
+        const originalCell = col.cell;
+        return {
+          ...col,
+          cell: (props) => {
+            if (typeof originalCell === 'function') {
+               const CellComponent = originalCell as React.FunctionComponent<any>;
+               return <CellComponent {...props} onEdit={handleEdit} />;
+            }
+            return null;
+          },
+        };
+      }
+      return col;
+    });
+  }, [initialColumns]);
 
   const table = useReactTable({
     data,
@@ -76,35 +104,6 @@ export function AudiosDataTable<TData extends Podcast, TValue>({
       rowSelection,
     },
   });
-
-  const handleAddNew = () => {
-    setSelectedPodcast(null);
-    setIsFormOpen(true);
-  };
-
-  const handleEdit = (podcast: TData) => {
-    setSelectedPodcast(podcast);
-    setIsFormOpen(true);
-  };
-  
-  // By passing handleEdit to the columns, we can open the dialog from the cell action
-  const columnsWithActions = React.useMemo(
-    () =>
-      columns.map((col) => {
-        if (col.id === "actions") {
-          return {
-            ...col,
-            cell: ({ row }: { row: { original: TData } }) => {
-              const Comp = col.cell as any;
-              return <Comp row={row} onEdit={handleEdit} />;
-            },
-          };
-        }
-        return col;
-      }),
-    [columns],
-  );
-
 
   return (
     <div className="w-full">
