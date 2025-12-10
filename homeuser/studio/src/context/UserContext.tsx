@@ -33,7 +33,7 @@ interface UserContextType {
 const defaultUser: User = {
   name: "Guest",
   avatar: null,
-  isLoggedIn: false,
+  isLoggedIn: true,
   isGuest: true,
 };
 
@@ -56,12 +56,21 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       const storedUser = localStorage.getItem(USER_STORAGE_KEY);
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
-        if(parsedUser.isLoggedIn) {
+        // Only set guest users from storage, force re-login for registered users for security
+        if(parsedUser.isGuest) {
           setUser(parsedUser);
+        } else {
+           // If a registered user's data is in storage, treat them as logged out
+           // until they log in again.
+           logout();
         }
+      } else {
+        // If no user in storage, set the default guest user
+        setUser(defaultUser);
       }
     } catch (error) {
       console.error("Failed to load user from storage", error);
+      setUser(defaultUser); // Fallback to guest on error
     } finally {
       setLoading(false);
     }
@@ -90,6 +99,9 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   );
 
   const loginWithPassword = async (identifier: string, pass: string) => {
+    // Clear any existing local user data first
+    localStorage.removeItem(USER_STORAGE_KEY);
+
     const isEmail = identifier.includes("@");
 
     const query = isEmail
@@ -101,10 +113,13 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     if (error || !data) {
       throw new Error("ব্যবহারকারী খুঁজে পাওয়া যায়নি।");
     }
+    
+    const trimmedDbPass = data.pass?.trim();
+    const trimmedInputPass = pass.trim();
 
-    // if (data.pass !== pass) {
-    //   throw new Error("ভুল পাসওয়ার্ড।");
-    // }
+    if (trimmedDbPass !== trimmedInputPass) {
+      throw new Error("ভুল পাসওয়ার্ড।");
+    }
 
     const { pass: removedPass, ...userData } = data;
 
