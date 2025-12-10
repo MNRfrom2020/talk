@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter }from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useUser } from "@/context/UserContext";
@@ -31,7 +31,7 @@ const formSchema = z.object({
 });
 
 export default function LoginPage() {
-  const { loginWithPassword } = useUser();
+  const { login } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -45,7 +45,7 @@ export default function LoginPage() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await loginWithPassword(values.identifier, values.password);
+      await login(values.identifier, values.password);
       toast({
         title: "লগইন সফল হয়েছে",
         description: "আপনাকে প্রোফাইল পেজে নিয়ে যাওয়া হচ্ছে...",
