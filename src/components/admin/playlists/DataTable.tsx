@@ -94,6 +94,14 @@ export function PlaylistsDataTable<TData extends Playlist, TValue>({
         pageSize: 20,
       },
     },
+     globalFilterFn: (row, columnId, filterValue) => {
+        const playlist = row.original as Playlist;
+        const search = filterValue.toLowerCase();
+        
+        return (
+          playlist.name.toLowerCase().includes(search)
+        );
+      },
   });
 
   return (
@@ -126,11 +134,11 @@ export function PlaylistsDataTable<TData extends Playlist, TValue>({
           )}
         </div>
 
-        <div className="flex items-center justify-between space-x-2 py-4">
-          <div className="flex-1 text-sm text-muted-foreground">
+       <div className="flex items-center justify-between space-x-2 py-4">
+           <div className="flex-1 text-sm text-muted-foreground">
             {table.getFilteredRowModel().rows.length} playlist(s) found.
           </div>
-          <div className="space-x-2">
+           <div className="flex items-center space-x-2">
             <Button
               variant="outline"
               size="sm"
@@ -139,6 +147,10 @@ export function PlaylistsDataTable<TData extends Playlist, TValue>({
             >
               Previous
             </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {table.getState().pagination.pageIndex + 1} of{" "}
+              {table.getPageCount()}
+            </span>
             <Button
               variant="outline"
               size="sm"
