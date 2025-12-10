@@ -1,10 +1,10 @@
 
 "use client";
 
-import { useForm, useFormState as useActionFormState } from "react-hook-form";
+import { useForm, useFormState } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEffect } from "react";
+import { useEffect, useActionState } from "react";
 import { format, parseISO } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -41,10 +41,10 @@ interface AudioFormProps {
 }
 
 const SubmitButton = () => {
-  const { pending } = useActionFormState(savePodcast, { message: null, errors: {} });
+  const { isSubmitting } = useFormState();
   return (
-    <Button type="submit" disabled={pending}>
-      {pending ? "Saving..." : "Save"}
+    <Button type="submit" disabled={isSubmitting}>
+      {isSubmitting ? "Saving..." : "Save"}
     </Button>
   );
 };
@@ -53,7 +53,7 @@ const SubmitButton = () => {
 export default function AudioForm({ podcast, onClose }: AudioFormProps) {
   const { toast } = useToast();
   const initialState: PodcastState = { message: null, errors: {} };
-  const [state, dispatch] = useActionFormState(savePodcast, initialState);
+  const [state, dispatch] = useActionState(savePodcast, initialState);
   
   const getFormattedDate = (dateString?: string) => {
     if (!dateString) return "";
