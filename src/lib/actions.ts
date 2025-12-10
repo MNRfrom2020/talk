@@ -4,6 +4,7 @@
 import { revalidatePath } from "next/cache";
 import { supabase } from "./supabase";
 import { z } from "zod";
+import { randomUUID } from "crypto";
 
 export async function createUser(formData: FormData) {
   const name = formData.get("name") as string;
@@ -139,6 +140,7 @@ export async function savePodcast(
       if (error) throw error;
     } else {
       // Create new podcast
+      podcastData.id = randomUUID();
       const { error } = await supabase.from("podcasts").insert(podcastData);
       if (error) throw error;
     }
