@@ -75,38 +75,22 @@ const PodcastFormSchema = z.object({
   artist: z.string().min(1, "Artist is required"),
   categories: z.string().min(1, "Categories are required"),
   cover_art: z.string().url("Must be a valid URL"),
-  cover_art_hint: z.string().optional(),
+  cover_art_hint: z.string().optional().or(z.literal("")),
   audio_url: z.string().url("Must be a valid URL"),
   created_at: z.string().optional(),
 });
 
+type PodcastFormValues = z.infer<typeof PodcastFormSchema>;
+
 export type PodcastState = {
-  errors?: {
-    title?: string[];
-    artist?: string[];
-    categories?: string[];
-    cover_art?: string[];
-    cover_art_hint?: string[];
-    audio_url?: string[];
-    created_at?: string[];
-  };
+  errors?: z.ZodError<PodcastFormValues>["formErrors"]["fieldErrors"];
   message?: string | null;
 };
 
 export async function savePodcast(
-  prevState: PodcastState,
-  formData: FormData,
-) {
-  const validatedFields = PodcastFormSchema.safeParse({
-    id: formData.get("id") || undefined,
-    title: formData.get("title"),
-    artist: formData.get("artist"),
-    categories: formData.get("categories"),
-    cover_art: formData.get("cover_art"),
-    cover_art_hint: formData.get("cover_art_hint"),
-    audio_url: formData.get("audio_url"),
-    created_at: formData.get("created_at") || undefined,
-  });
+  values: PodcastFormValues,
+): Promise<PodcastState> {
+  const validatedFields = PodcastFormSchema.safeParse(values);
 
   if (!validatedFields.success) {
     return {
@@ -151,8 +135,8 @@ export async function savePodcast(
   }
 
   revalidatePath("/admin/dashboard/audios");
-  revalidatePath("/"); // Also revalidate home page
-  return { message: "Successfully saved podcast.", errors: {} };
+  revalidatePath("/");
+  return { message: "Successfully saved podcast." };
 }
 
 export async function deletePodcast(id: string) {

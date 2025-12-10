@@ -1,10 +1,10 @@
 
 "use client";
 
-import { useForm, useFormState } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEffect, useActionState } from "react";
+import { useEffect, useState } from "react";
 import { format, parseISO } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { savePodcast, type PodcastState } from "@/lib/actions";
+import { savePodcast } from "@/lib/actions";
 import type { Podcast } from "@/lib/types";
 
 const PodcastFormSchema = z.object({
@@ -28,7 +28,7 @@ const PodcastFormSchema = z.object({
   artist: z.string().min(1, "Artist is required"),
   categories: z.string().min(1, "Categories are required"),
   cover_art: z.string().url("Must be a valid URL"),
-  cover_art_hint: z.string().optional(),
+  cover_art_hint: z.string().optional().or(z.literal("")),
   audio_url: z.string().url("Must be a valid URL"),
   created_at: z.string().optional(),
 });
@@ -40,29 +40,16 @@ interface AudioFormProps {
   onClose: () => void;
 }
 
-const SubmitButton = () => {
-  const { isSubmitting } = useFormState();
-  return (
-    <Button type="submit" disabled={isSubmitting}>
-      {isSubmitting ? "Saving..." : "Save"}
-    </Button>
-  );
-};
-
-
 export default function AudioForm({ podcast, onClose }: AudioFormProps) {
   const { toast } = useToast();
-  const initialState: PodcastState = { message: null, errors: {} };
-  const [state, dispatch] = useActionState(savePodcast, initialState);
-  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const getFormattedDate = (dateString?: string) => {
     if (!dateString) return "";
     try {
-      // Supabase returns ISO 8601 format. We need YYYY-MM-DDTHH:mm for datetime-local input.
       const date = parseISO(dateString);
       return format(date, "yyyy-MM-dd'T'HH:mm");
     } catch (error) {
-      // If parsing fails, return an empty string.
       return "";
     }
   };
@@ -72,8 +59,8 @@ export default function AudioForm({ podcast, onClose }: AudioFormProps) {
     defaultValues: {
       id: podcast?.id || undefined,
       title: podcast?.title || "",
-      artist: podcast?.artist.join(", ") || "",
-      categories: podcast?.categories.join(", ") || "",
+      artist: Array.isArray(podcast?.artist) ? podcast.artist.join(", ") : "",
+      categories: Array.isArray(podcast?.categories) ? podcast.categories.join(", ") : "",
       cover_art: podcast?.coverArt || "",
       cover_art_hint: podcast?.coverArtHint || "",
       audio_url: podcast?.audioUrl || "",
@@ -81,28 +68,31 @@ export default function AudioForm({ podcast, onClose }: AudioFormProps) {
     },
   });
 
-  useEffect(() => {
-    if (state.message) {
-      if (state.errors && Object.keys(state.errors).length > 0) {
+  async function onSubmit(values: PodcastFormValues) {
+    setIsSubmitting(true);
+    const result = await savePodcast(values);
+    setIsSubmitting(false);
+
+    if (result.message) {
+      if (result.errors) {
         toast({
           variant: "destructive",
           title: "Error saving podcast",
-          description: state.message,
+          description: result.message,
         });
       } else {
         toast({
           title: "Success",
-          description: state.message,
+          description: result.message,
         });
         onClose();
       }
     }
-  }, [state, toast, onClose]);
+  }
 
   return (
     <Form {...form}>
-      <form action={dispatch} className="space-y-4">
-        {podcast && <input type="hidden" name="id" value={podcast.id} />}
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="title"
@@ -187,7 +177,7 @@ export default function AudioForm({ podcast, onClose }: AudioFormProps) {
             </FormItem>
           )}
         />
-         <FormField
+        <FormField
           control={form.control}
           name="created_at"
           render={({ field }) => (
@@ -196,7 +186,7 @@ export default function AudioForm({ podcast, onClose }: AudioFormProps) {
               <FormControl>
                 <Input type="datetime-local" {...field} />
               </FormControl>
-               <FormDescription>
+              <FormDescription>
                 Leave blank to use the current time.
               </FormDescription>
               <FormMessage />
@@ -207,7 +197,9 @@ export default function AudioForm({ podcast, onClose }: AudioFormProps) {
           <Button type="button" variant="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <SubmitButton />
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : "Save"}
+          </Button>
         </div>
       </form>
     </Form>
