@@ -1,6 +1,6 @@
 
 import { supabase } from "./supabase";
-import type { Podcast } from "./types";
+import type { Podcast, Playlist } from "./types";
 
 export async function getPodcastCount() {
     const { count, error } = await supabase
@@ -62,4 +62,18 @@ export async function getPodcasts(): Promise<Podcast[]> {
     audioUrl: item.audio_url,
     created_at: item.created_at,
   }));
+}
+
+export async function getPlaylists(): Promise<Playlist[]> {
+  const { data, error } = await supabase
+    .from("playlists")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching playlists:", error);
+    return [];
+  }
+
+  return data;
 }

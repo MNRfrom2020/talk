@@ -124,7 +124,6 @@ export async function savePodcast(
       if (error) throw error;
     } else {
       // Create new podcast
-      podcastData.id = randomUUID();
       const { error } = await supabase.from("podcasts").insert(podcastData);
       if (error) throw error;
     }
@@ -151,4 +150,77 @@ export async function deletePodcast(id: string) {
       message: `Database Error: Failed to Delete Podcast. ${error.message}`,
     };
   }
+}
+
+// Playlist Actions
+const PlaylistFormSchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().min(1, "Name is required"),
+  podcast_ids: z
+    .string()
+    .min(1, "At least one Podcast ID is required"),
+  cover: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  created_at: z.string().optional(),
+});
+
+type PlaylistFormValues = z.infer<typeof PlaylistFormSchema>;
+
+export type PlaylistState = {
+  errors?: z.ZodError<PlaylistFormValues>["formErrors"]["fieldErrors"];
+  message?: string | null;
+};
+
+export async function savePlaylist(
+  values: PlaylistFormValues,
+): Promise<PlaylistState> {
+  const validatedFields = PlaylistFormSchema.safeParse(values);
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: "Missing Fields. Failed to Save Playlist.",
+    };
+  }
+  
+  const { id, ...data } = validatedFields.data;
+
+  const playlistData = {
+      name: data.name,
+      podcast_ids: data.podcast_ids.split(",").map(s => s.trim()),
+      cover: data.cover,
+      created_at: data.created_at ? new Date(data.created_at).toISOString() : new Date().toISOString(),
+  }
+
+  try {
+    if (id) {
+       const { error } = await supabase
+        .from("playlists")
+        .update(playlistData)
+        .eq("id", id);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from("playlists").insert(playlistData);
+       if (error) throw error;
+    }
+  } catch (error: any) {
+     return {
+      message: `Database Error: Failed to ${id ? "Update" : "Create"} Playlist. ${error.message}`,
+    };
+  }
+
+  revalidatePath("/admin/dashboard/playlists");
+  return { message: "Successfully saved playlist." };
+}
+
+export async function deletePlaylist(id: string) {
+    try {
+        const { error } = await supabase.from("playlists").delete().eq("id", id);
+        if (error) throw error;
+        revalidatePath("/admin/dashboard/playlists");
+        return { message: "Deleted Playlist." };
+    } catch (error: any) {
+        return {
+             message: `Database Error: Failed to Delete Playlist. ${error.message}`,
+        }
+    }
 }

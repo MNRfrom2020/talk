@@ -1,0 +1,214 @@
+
+"use client";
+
+import * as React from "react";
+import {
+  ColumnDef,
+  ColumnFiltersState,
+  SortingState,
+  VisibilityState,
+  flexRender,
+  getCoreRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
+  getSortedRowModel,
+  useReactTable,
+} from "@tanstack/react-table";
+import { PlusCircle } from "lucide-react";
+
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import PlaylistForm from "./PlaylistForm";
+import type { Playlist } from "@/lib/types";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { CellActions } from "./columns";
+
+interface DataTableProps<TData, TValue> {
+  columns: ColumnDef<TData, TValue>[];
+  data: TData[];
+}
+
+export function PlaylistsDataTable<TData extends Playlist, TValue>({
+  columns: initialColumns,
+  data,
+}: DataTableProps<TData, TValue>) {
+  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+    [],
+  );
+  const [rowSelection, setRowSelection] = React.useState({});
+  const [globalFilter, setGlobalFilter] = React.useState("");
+  const [isFormOpen, setIsFormOpen] = React.useState(false);
+  const [selectedPlaylist, setSelectedPlaylist] =
+    React.useState<TData | null>(null);
+
+  const handleAddNew = () => {
+    setSelectedPlaylist(null);
+    setIsFormOpen(true);
+  };
+
+  const handleEdit = (playlist: TData) => {
+    setSelectedPlaylist(playlist);
+    setIsFormOpen(true);
+  };
+
+  const columns = React.useMemo<ColumnDef<TData, TValue>[]>(() => {
+    return initialColumns.map((col) => {
+      if ("id" in col && col.id === "actions") {
+        return {
+          ...col,
+          cell: (props) => (
+            <CellActions {...(props as any)} onEdit={handleEdit} />
+          ),
+        };
+      }
+      return col;
+    });
+  }, [initialColumns]);
+
+  const table = useReactTable({
+    data,
+    columns,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    getCoreRowModel: getCoreRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    onRowSelectionChange: setRowSelection,
+    onGlobalFilterChange: setGlobalFilter,
+    state: {
+      sorting,
+      columnFilters,
+      rowSelection,
+      globalFilter,
+    },
+    initialState: {
+      pagination: {
+        pageSize: 10,
+      },
+    },
+  });
+
+  return (
+    <div className="w-full">
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <div className="flex flex-col gap-4 py-4 md:flex-row md:items-center md:justify-between">
+          <Input
+            placeholder="প্লেলিস্ট খুঁজুন..."
+            value={globalFilter ?? ""}
+            onChange={(event) => setGlobalFilter(event.target.value)}
+            className="w-full md:max-w-sm"
+          />
+          <Button onClick={handleAddNew} className="w-full md:w-auto">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Add Playlist
+          </Button>
+        </div>
+
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => {
+                    return (
+                      <TableHead key={header.id}>
+                        {header.isPlaceholder
+                          ? null
+                          : flexRender(
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )}
+                      </TableHead>
+                    );
+                  })}
+                </TableRow>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {table.getRowModel().rows?.length ? (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    data-state={row.getIsSelected() && "selected"}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="h-24 text-center"
+                  >
+                    No results.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        <div className="flex items-center justify-end space-x-2 py-4">
+          <div className="flex-1 text-sm text-muted-foreground">
+            {table.getFilteredRowModel().rows.length} playlist(s) found.
+          </div>
+          <div className="space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedPlaylist ? "Edit Playlist" : "Add New Playlist"}
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[80vh] pr-6">
+            <PlaylistForm
+              playlist={selectedPlaylist}
+              onClose={() => setIsFormOpen(false)}
+            />
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

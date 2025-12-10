@@ -12,10 +12,10 @@ export type Podcast = {
 
 export type Playlist = {
   id: string;
-  name:string;
-  podcastIds: string[];
-  isPredefined?: boolean;
-  isFavorite?: boolean;
+  name: string;
+  podcast_ids: string[];
+  created_at: string;
+  cover: string | null;
 };
 
 export type Admin = {
