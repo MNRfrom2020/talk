@@ -31,7 +31,7 @@ import { deletePodcast } from "@/lib/actions";
 import { useToast } from "@/hooks/use-toast";
 import * as React from "react";
 
-const CellActions = ({
+export const CellActions = ({
   row,
   onEdit,
 }: {

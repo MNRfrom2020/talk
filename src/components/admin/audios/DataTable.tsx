@@ -35,6 +35,9 @@ import {
 import AudioForm from "./AudioForm";
 import type { Podcast } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useIsMobile } from "@/hooks/use-mobile";
+import AudioCard from "./AudioCard";
+import { CellActions } from "./columns";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -56,6 +59,7 @@ export function AudiosDataTable<TData extends Podcast, TValue>({
   const [selectedPodcast, setSelectedPodcast] = React.useState<TData | null>(
     null,
   );
+  const isMobile = useIsMobile();
 
   const handleAddNew = () => {
     setSelectedPodcast(null);
@@ -68,18 +72,13 @@ export function AudiosDataTable<TData extends Podcast, TValue>({
   };
 
   const columns = React.useMemo<ColumnDef<TData, TValue>[]>(() => {
-    return initialColumns.map(col => {
-      if ('id' in col && col.id === 'actions') {
-        const originalCell = col.cell;
+    return initialColumns.map((col) => {
+      if ("id" in col && col.id === "actions") {
         return {
           ...col,
-          cell: (props) => {
-            if (typeof originalCell === 'function') {
-               const CellComponent = originalCell as React.FunctionComponent<any>;
-               return <CellComponent {...props} onEdit={handleEdit} />;
-            }
-            return null;
-          },
+          cell: (props) => (
+            <CellActions {...(props as any)} onEdit={handleEdit} />
+          ),
         };
       }
       return col;
@@ -103,79 +102,99 @@ export function AudiosDataTable<TData extends Podcast, TValue>({
       columnVisibility,
       rowSelection,
     },
+    initialState: {
+      pagination: {
+        pageSize: 20,
+      },
+    }
   });
+
+  const titleFilter = table.getColumn("title")?.getFilterValue() as string;
 
   return (
     <div className="w-full">
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <div className="flex items-center justify-between py-4">
+        <div className="flex flex-col gap-4 py-4 md:flex-row md:items-center md:justify-between">
           <Input
             placeholder="Filter titles..."
-            value={(table.getColumn("title")?.getFilterValue() as string) ?? ""}
+            value={titleFilter ?? ""}
             onChange={(event) =>
               table.getColumn("title")?.setFilterValue(event.target.value)
             }
-            className="max-w-sm"
+            className="w-full md:max-w-sm"
           />
-          <Button onClick={handleAddNew}>
+          <Button onClick={handleAddNew} className="w-full md:w-auto">
             <PlusCircle className="mr-2 h-4 w-4" />
             Add Audio
           </Button>
         </div>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead key={header.id}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
-                            )}
-                      </TableHead>
-                    );
-                  })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow
-                    key={row.id}
-                    data-state={row.getIsSelected() && "selected"}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    ))}
+
+        {isMobile ? (
+          <div className="space-y-4">
+            {table.getRowModel().rows.map((row) => (
+              <AudioCard
+                key={row.id}
+                podcast={row.original}
+                onEdit={handleEdit}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <TableRow key={headerGroup.id}>
+                    {headerGroup.headers.map((header) => {
+                      return (
+                        <TableHead key={header.id}>
+                          {header.isPlaceholder
+                            ? null
+                            : flexRender(
+                                header.column.columnDef.header,
+                                header.getContext(),
+                              )}
+                        </TableHead>
+                      );
+                    })}
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={columns.length}
-                    className="h-24 text-center"
-                  >
-                    No results.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-        <div className="flex items-center justify-end space-x-2 py-4">
+                ))}
+              </TableHeader>
+              <TableBody>
+                {table.getRowModel().rows?.length ? (
+                  table.getRowModel().rows.map((row) => (
+                    <TableRow
+                      key={row.id}
+                      data-state={row.getIsSelected() && "selected"}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell key={cell.id}>
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext(),
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={columns.length}
+                      className="h-24 text-center"
+                    >
+                      No results.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between space-x-2 py-4">
           <div className="flex-1 text-sm text-muted-foreground">
-            {table.getFilteredSelectedRowModel().rows.length} of{" "}
-            {table.getFilteredRowModel().rows.length} row(s) selected.
+            {table.getFilteredRowModel().rows.length} audio(s) found.
           </div>
           <div className="space-x-2">
             <Button
