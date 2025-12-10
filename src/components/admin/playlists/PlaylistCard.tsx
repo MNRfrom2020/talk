@@ -2,7 +2,12 @@
 "use client";
 
 import Image from "next/image";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CellActions } from "./columns";
 import type { Playlist } from "@/lib/types";
@@ -34,7 +39,7 @@ export default function PlaylistCard({ playlist, onEdit }: PlaylistCardProps) {
         <div className="flex-1 space-y-1">
           <div className="flex items-start justify-between">
             <h3 className="font-semibold line-clamp-2">{playlist.name}</h3>
-            <div className="-mr-2">
+            <div className="-mr-2 -mt-2">
               <CellActions row={{ original: playlist }} onEdit={onEdit} />
             </div>
           </div>
@@ -48,3 +53,5 @@ export default function PlaylistCard({ playlist, onEdit }: PlaylistCardProps) {
     </Card>
   );
 }
+
+    

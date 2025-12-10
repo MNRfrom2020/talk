@@ -28,6 +28,115 @@ import type { Playlist, Podcast } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CellActions } from "./columns";
 import PlaylistCard from "./PlaylistCard";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import AudioCard from "../audios/AudioCard";
+import AudioForm from "../audios/AudioForm";
+
+
+const ITEMS_PER_PAGE = 20;
+
+const Pagination = ({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) => {
+  if (totalPages <= 1) return null;
+
+  const handlePrevious = () => {
+    onPageChange(currentPage - 1);
+  };
+
+  const handleNext = () => {
+    onPageChange(currentPage + 1);
+  };
+
+  return (
+    <div className="flex items-center justify-center space-x-2 pt-4">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handlePrevious}
+        disabled={currentPage === 1}
+      >
+        Previous
+      </Button>
+      <span className="text-sm text-muted-foreground">
+        Page {currentPage} of {totalPages}
+      </span>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleNext}
+        disabled={currentPage === totalPages}
+      >
+        Next
+      </Button>
+    </div>
+  );
+};
+
+
+const PlaylistDetailSheet = ({
+  playlist,
+  allPodcasts,
+  onEdit,
+}: {
+  playlist: Playlist;
+  allPodcasts: Podcast[];
+  onEdit: (podcast: Podcast) => void;
+}) => {
+  const [currentPage, setCurrentPage] = React.useState(1);
+
+  const podcastsInPlaylist = React.useMemo(() => {
+    const podcastMap = new Map(allPodcasts.map((p) => [p.id, p]));
+    return playlist.podcast_ids
+      .map((id) => podcastMap.get(id))
+      .filter((p): p is Podcast => !!p);
+  }, [playlist, allPodcasts]);
+
+  const totalPages = Math.ceil(podcastsInPlaylist.length / ITEMS_PER_PAGE);
+
+  const currentPodcasts = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return podcastsInPlaylist.slice(startIndex, endIndex);
+  }, [podcastsInPlaylist, currentPage]);
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  return (
+    <SheetContent className="sm:max-w-xl md:max-w-2xl">
+      <SheetHeader>
+        <SheetTitle>
+          {playlist.name} ({podcastsInPlaylist.length})
+        </SheetTitle>
+      </SheetHeader>
+      <div className="flex h-full flex-col">
+        <ScrollArea className="flex-1 pr-6">
+          <div className="grid grid-cols-1 gap-4 py-4 md:grid-cols-2">
+            {currentPodcasts.map((podcast) => (
+              <AudioCard key={podcast.id} podcast={podcast} onEdit={onEdit} />
+            ))}
+          </div>
+        </ScrollArea>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+        />
+      </div>
+    </SheetContent>
+  );
+};
+
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -47,6 +156,9 @@ export function PlaylistsDataTable<TData extends Playlist, TValue>({
   const [rowSelection, setRowSelection] = React.useState({});
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [isFormOpen, setIsFormOpen] = React.useState(false);
+  const [isAudioFormOpen, setIsAudioFormOpen] = React.useState(false);
+  const [selectedPodcast, setSelectedPodcast] = React.useState<Podcast | null>(null);
+
   const [selectedPlaylist, setSelectedPlaylist] =
     React.useState<TData | null>(null);
 
@@ -59,6 +171,12 @@ export function PlaylistsDataTable<TData extends Playlist, TValue>({
     setSelectedPlaylist(playlist);
     setIsFormOpen(true);
   };
+  
+  const handleAudioEdit = (podcast: Podcast) => {
+    setSelectedPodcast(podcast);
+    setIsAudioFormOpen(true);
+  };
+
 
   const columns = React.useMemo<ColumnDef<TData, TValue>[]>(() => {
     return initialColumns.map((col) => {
@@ -125,11 +243,21 @@ export function PlaylistsDataTable<TData extends Playlist, TValue>({
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => (
-              <PlaylistCard
-                key={row.id}
-                playlist={row.original}
-                onEdit={() => handleEdit(row.original)}
-              />
+               <Sheet key={row.original.id}>
+                <SheetTrigger asChild>
+                  <div className="cursor-pointer">
+                    <PlaylistCard
+                      playlist={row.original}
+                      onEdit={() => handleEdit(row.original)}
+                    />
+                  </div>
+                </SheetTrigger>
+                <PlaylistDetailSheet
+                  playlist={row.original}
+                  allPodcasts={podcasts}
+                  onEdit={handleAudioEdit}
+                />
+              </Sheet>
             ))
           ) : (
             <div className="col-span-full h-24 text-center">No results.</div>
@@ -180,6 +308,22 @@ export function PlaylistsDataTable<TData extends Playlist, TValue>({
           </ScrollArea>
         </DialogContent>
       </Dialog>
+      
+       <Dialog open={isAudioFormOpen} onOpenChange={setIsAudioFormOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Edit Audio</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[80vh] pr-6">
+            <AudioForm
+              podcast={selectedPodcast}
+              onClose={() => setIsAudioFormOpen(false)}
+            />
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
+    
