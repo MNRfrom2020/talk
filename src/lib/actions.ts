@@ -114,9 +114,12 @@ export async function savePodcast(
   const { id, ...data } = validatedFields.data;
 
   const podcastData = {
-    ...data,
+    title: data.title,
     artist: data.artist.split(",").map((s) => s.trim()),
     categories: data.categories.split(",").map((s) => s.trim()),
+    cover_art: data.cover_art,
+    cover_art_hint: data.cover_art_hint,
+    audio_url: data.audio_url,
   };
   
   try {

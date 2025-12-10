@@ -41,7 +41,7 @@ interface AudioFormProps {
 }
 
 const SubmitButton = () => {
-    const { pending } = useFormState();
+    const { pending } = useActionFormState(savePodcast, { message: null, errors: {} });
     return (
         <Button type="submit" disabled={pending}>
         {pending ? "Saving..." : "Save"}

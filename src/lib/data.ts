@@ -43,7 +43,7 @@ export async function getPlaylistCount() {
 export async function getPodcasts(): Promise<Podcast[]> {
   const { data, error } = await supabase
     .from("podcasts")
-    .select("*")
+    .select("*, created_at")
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -63,4 +63,3 @@ export async function getPodcasts(): Promise<Podcast[]> {
     created_at: item.created_at,
   }));
 }
-
