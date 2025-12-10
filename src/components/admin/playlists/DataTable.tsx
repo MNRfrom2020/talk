@@ -93,7 +93,7 @@ export function PlaylistsDataTable<TData extends Playlist, TValue>({
     },
     initialState: {
       pagination: {
-        pageSize: 20,
+        pageSize: 12,
       },
     },
      globalFilterFn: (row, columnId, filterValue) => {
@@ -122,7 +122,7 @@ export function PlaylistsDataTable<TData extends Playlist, TValue>({
           </Button>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => (
               <PlaylistCard
@@ -136,20 +136,12 @@ export function PlaylistsDataTable<TData extends Playlist, TValue>({
           )}
         </div>
 
-        <div className="flex items-center justify-end space-x-2 py-4">
+        <div className="flex items-center justify-between space-x-2 py-4">
             <div className="flex-1 text-sm text-muted-foreground">
               {table.getFilteredRowModel().rows.length} of {data.length}{" "}
               playlist(s).
             </div>
             <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.setPageIndex(0)}
-                disabled={!table.getCanPreviousPage()}
-              >
-                First
-              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -169,14 +161,6 @@ export function PlaylistsDataTable<TData extends Playlist, TValue>({
                 disabled={!table.getCanNextPage()}
               >
                 Next
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-                disabled={!table.getCanNextPage()}
-              >
-                Last
               </Button>
             </div>
           </div>
