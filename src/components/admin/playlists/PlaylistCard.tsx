@@ -17,7 +17,7 @@ export default function PlaylistCard({ playlist, onEdit }: PlaylistCardProps) {
   return (
     <Card>
       <CardContent className="flex flex-col p-4">
-        <div className="relative mb-2 aspect-video w-full">
+        <div className="relative mb-2 aspect-square w-full">
           {playlist.cover ? (
             <Image
               src={playlist.cover}
