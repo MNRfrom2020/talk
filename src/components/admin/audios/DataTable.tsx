@@ -147,10 +147,10 @@ export function AudiosDataTable<TData extends Podcast, TValue>({
         </div>
 
         <div className="flex items-center justify-between space-x-2 py-4">
-          <div className="flex-1 text-sm text-muted-foreground">
+           <div className="flex-1 text-sm text-muted-foreground">
             {table.getFilteredRowModel().rows.length} audio(s) found.
           </div>
-          <div className="space-x-2">
+           <div className="flex items-center space-x-2">
             <Button
               variant="outline"
               size="sm"
@@ -159,6 +159,10 @@ export function AudiosDataTable<TData extends Podcast, TValue>({
             >
               Previous
             </Button>
+            <span className="text-sm text-muted-foreground">
+              Page {table.getState().pagination.pageIndex + 1} of{" "}
+              {table.getPageCount()}
+            </span>
             <Button
               variant="outline"
               size="sm"
