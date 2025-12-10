@@ -35,7 +35,6 @@ import {
 import AudioForm from "./AudioForm";
 import type { Podcast } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useIsMobile } from "@/hooks/use-mobile";
 import AudioCard from "./AudioCard";
 import { CellActions } from "./columns";
 
@@ -59,7 +58,6 @@ export function AudiosDataTable<TData extends Podcast, TValue>({
   const [selectedPodcast, setSelectedPodcast] = React.useState<TData | null>(
     null,
   );
-  const isMobile = useIsMobile();
 
   const handleAddNew = () => {
     setSelectedPodcast(null);
@@ -129,8 +127,7 @@ export function AudiosDataTable<TData extends Podcast, TValue>({
           </Button>
         </div>
 
-        {isMobile ? (
-          <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {table.getRowModel().rows.map((row) => (
               <AudioCard
                 key={row.id}
@@ -138,59 +135,7 @@ export function AudiosDataTable<TData extends Podcast, TValue>({
                 onEdit={handleEdit}
               />
             ))}
-          </div>
-        ) : (
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <TableRow key={headerGroup.id}>
-                    {headerGroup.headers.map((header) => {
-                      return (
-                        <TableHead key={header.id}>
-                          {header.isPlaceholder
-                            ? null
-                            : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext(),
-                              )}
-                        </TableHead>
-                      );
-                    })}
-                  </TableRow>
-                ))}
-              </TableHeader>
-              <TableBody>
-                {table.getRowModel().rows?.length ? (
-                  table.getRowModel().rows.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      data-state={row.getIsSelected() && "selected"}
-                    >
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
-                          {flexRender(
-                            cell.column.columnDef.cell,
-                            cell.getContext(),
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell
-                      colSpan={columns.length}
-                      className="h-24 text-center"
-                    >
-                      No results.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+        </div>
 
         <div className="flex items-center justify-between space-x-2 py-4">
           <div className="flex-1 text-sm text-muted-foreground">
