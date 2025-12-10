@@ -24,7 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import PlaylistForm from "./PlaylistForm";
-import type { Playlist } from "@/lib/types";
+import type { Playlist, Podcast } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CellActions } from "./columns";
 import PlaylistCard from "./PlaylistCard";
@@ -32,11 +32,13 @@ import PlaylistCard from "./PlaylistCard";
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
+  podcasts: Podcast[];
 }
 
 export function PlaylistsDataTable<TData extends Playlist, TValue>({
   columns: initialColumns,
   data,
+  podcasts,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -134,43 +136,61 @@ export function PlaylistsDataTable<TData extends Playlist, TValue>({
           )}
         </div>
 
-       <div className="flex items-center justify-between space-x-2 py-4">
-           <div className="flex-1 text-sm text-muted-foreground">
-            {table.getFilteredRowModel().rows.length} playlist(s) found.
+        <div className="flex items-center justify-end space-x-2 py-4">
+            <div className="flex-1 text-sm text-muted-foreground">
+              {table.getFilteredRowModel().rows.length} of {data.length}{" "}
+              playlist(s).
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => table.setPageIndex(0)}
+                disabled={!table.getCanPreviousPage()}
+              >
+                First
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => table.previousPage()}
+                disabled={!table.getCanPreviousPage()}
+              >
+                Previous
+              </Button>
+              <span className="text-sm">
+                Page {table.getState().pagination.pageIndex + 1} of{" "}
+                {table.getPageCount()}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => table.nextPage()}
+                disabled={!table.getCanNextPage()}
+              >
+                Next
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+                disabled={!table.getCanNextPage()}
+              >
+                Last
+              </Button>
+            </div>
           </div>
-           <div className="flex items-center space-x-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              Previous
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              Page {table.getState().pagination.pageIndex + 1} of{" "}
-              {table.getPageCount()}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
 
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[800px]">
           <DialogHeader>
             <DialogTitle>
               {selectedPlaylist ? "Edit Playlist" : "Add New Playlist"}
             </DialogTitle>
           </DialogHeader>
-          <ScrollArea className="max-h-[80vh] pr-6">
+          <ScrollArea className="max-h-[80vh]">
             <PlaylistForm
               playlist={selectedPlaylist}
+              allPodcasts={podcasts}
               onClose={() => setIsFormOpen(false)}
             />
           </ScrollArea>
