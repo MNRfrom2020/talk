@@ -1,5 +1,6 @@
 
 import { supabase } from "./supabase";
+import type { Podcast } from "./types";
 
 export async function getPodcastCount() {
     const { count, error } = await supabase
@@ -37,3 +38,29 @@ export async function getPlaylistCount() {
     }
     return count ?? 0;
 }
+
+
+export async function getPodcasts(): Promise<Podcast[]> {
+  const { data, error } = await supabase
+    .from("podcasts")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching podcasts:", error);
+    return [];
+  }
+
+  // Map snake_case to camelCase
+  return data.map((item) => ({
+    id: item.id,
+    title: item.title,
+    artist: item.artist,
+    categories: item.categories,
+    coverArt: item.cover_art,
+    coverArtHint: item.cover_art_hint,
+    audioUrl: item.audio_url,
+    created_at: item.created_at,
+  }));
+}
+

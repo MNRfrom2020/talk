@@ -1,7 +1,9 @@
+
 "use server";
 
 import { revalidatePath } from "next/cache";
 import { supabase } from "./supabase";
+import { z } from "zod";
 
 export async function createUser(formData: FormData) {
   const name = formData.get("name") as string;
@@ -64,4 +66,92 @@ export async function updateUser(formData: FormData) {
     success: true,
     data,
   };
+}
+
+const PodcastFormSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().min(1, "Title is required"),
+  artist: z.string().min(1, "Artist is required"),
+  categories: z.string().min(1, "Categories are required"),
+  cover_art: z.string().url("Must be a valid URL"),
+  cover_art_hint: z.string().optional(),
+  audio_url: z.string().url("Must be a valid URL"),
+});
+
+export type PodcastState = {
+  errors?: {
+    title?: string[];
+    artist?: string[];
+    categories?: string[];
+    cover_art?: string[];
+    cover_art_hint?: string[];
+    audio_url?: string[];
+  };
+  message?: string | null;
+};
+
+export async function savePodcast(
+  prevState: PodcastState,
+  formData: FormData,
+) {
+  const validatedFields = PodcastFormSchema.safeParse({
+    id: formData.get("id"),
+    title: formData.get("title"),
+    artist: formData.get("artist"),
+    categories: formData.get("categories"),
+    cover_art: formData.get("cover_art"),
+    cover_art_hint: formData.get("cover_art_hint"),
+    audio_url: formData.get("audio_url"),
+  });
+
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: "Missing Fields. Failed to Save Podcast.",
+    };
+  }
+
+  const { id, ...data } = validatedFields.data;
+
+  const podcastData = {
+    ...data,
+    artist: data.artist.split(",").map((s) => s.trim()),
+    categories: data.categories.split(",").map((s) => s.trim()),
+  };
+  
+  try {
+    if (id) {
+      // Update existing podcast
+      const { error } = await supabase
+        .from("podcasts")
+        .update(podcastData)
+        .eq("id", id);
+      if (error) throw error;
+    } else {
+      // Create new podcast
+      const { error } = await supabase.from("podcasts").insert(podcastData);
+      if (error) throw error;
+    }
+  } catch (error: any) {
+    return {
+      message: `Database Error: Failed to ${id ? "Update" : "Create"} Podcast. ${error.message}`,
+    };
+  }
+
+  revalidatePath("/admin/dashboard/audios");
+  return { message: "Successfully saved podcast.", errors: {} };
+}
+
+
+export async function deletePodcast(id: string) {
+  try {
+    const { error } = await supabase.from("podcasts").delete().eq("id", id);
+    if (error) throw error;
+    revalidatePath("/admin/dashboard/audios");
+    return { message: "Deleted Podcast." };
+  } catch (error: any) {
+    return {
+      message: `Database Error: Failed to Delete Podcast. ${error.message}`,
+    };
+  }
 }
