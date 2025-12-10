@@ -13,7 +13,6 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
-  getGlobalFacetedRowModel,
 } from "@tanstack/react-table";
 import { PlusCircle } from "lucide-react";
 
@@ -97,7 +96,6 @@ export function AudiosDataTable<TData extends Podcast, TValue>({
     onColumnVisibilityChange: setColumnVisibility,
     onRowSelectionChange: setRowSelection,
     onGlobalFilterChange: setGlobalFilter,
-    getGlobalFacetedRowModel: getGlobalFacetedRowModel(),
     state: {
       sorting,
       columnFilters,
@@ -110,8 +108,7 @@ export function AudiosDataTable<TData extends Podcast, TValue>({
         pageSize: 20,
       },
     },
-    filterFns: {
-      global: (row, columnId, filterValue) => {
+    globalFilterFn: (row, columnId, filterValue) => {
         const podcast = row.original as Podcast;
         const search = filterValue.toLowerCase();
         
@@ -121,8 +118,6 @@ export function AudiosDataTable<TData extends Podcast, TValue>({
           podcast.categories.some(c => c.toLowerCase().includes(search))
         );
       },
-    },
-    globalFilterFn: "global",
   });
 
   return (
