@@ -3,7 +3,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Music, Users, LogOut, ListMusic } from "lucide-react";
+import {
+  Home,
+  Music,
+  Users,
+  LogOut,
+  ListMusic,
+  LayoutGrid,
+  MicVocal,
+} from "lucide-react";
 import { useAdminAuth } from "@/context/AdminAuthContext";
 import {
   Sidebar,
@@ -19,7 +27,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const NavItem = ({ href, label, icon: Icon, isActive }: { href: string; label: string; icon: React.ElementType; isActive: boolean }) => (
+const NavItem = ({
+  href,
+  label,
+  icon: Icon,
+  isActive,
+}: {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  isActive: boolean;
+}) => (
   <Link
     href={href}
     className={cn(
@@ -29,11 +47,10 @@ const NavItem = ({ href, label, icon: Icon, isActive }: { href: string; label: s
         : "text-muted-foreground hover:text-foreground",
     )}
   >
-    <Icon className="h-6 w-6" />
-    <span>{label}</span>
+    <Icon className="h-5 w-5" />
+    <span className="text-[10px]">{label}</span>
   </Link>
 );
-
 
 export default function DashboardLayout({
   children,
@@ -48,7 +65,7 @@ export default function DashboardLayout({
       <div className="flex min-h-screen flex-col md:flex-row">
         <Sidebar>
           <SidebarHeader>
-             <div className="flex items-center gap-2 p-2">
+            <div className="flex items-center gap-2 p-2">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 192 171.000002"
@@ -87,7 +104,25 @@ export default function DashboardLayout({
                   অডিও
                 </SidebarMenuButton>
               </SidebarMenuItem>
-               <SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  href="/admin/dashboard/categories"
+                  isActive={pathname === "/admin/dashboard/categories"}
+                >
+                  <LayoutGrid />
+                  ক্যাটাগরি
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  href="/admin/dashboard/artists"
+                  isActive={pathname === "/admin/dashboard/artists"}
+                >
+                  <MicVocal />
+                  আর্টিস্ট
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
                 <SidebarMenuButton
                   href="/admin/dashboard/playlists"
                   isActive={pathname === "/admin/dashboard/playlists"}
@@ -96,7 +131,7 @@ export default function DashboardLayout({
                   প্লেলিস্ট
                 </SidebarMenuButton>
               </SidebarMenuItem>
-               <SidebarMenuItem>
+              <SidebarMenuItem>
                 <SidebarMenuButton
                   href="/admin/dashboard/users"
                   isActive={pathname === "/admin/dashboard/users"}
@@ -107,34 +142,46 @@ export default function DashboardLayout({
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarContent>
-           <SidebarFooter>
+          <SidebarFooter>
             <Button variant="ghost" onClick={signOut} className="justify-start">
-               <LogOut className="mr-2 h-4 w-4"/>
+              <LogOut className="mr-2 h-4 w-4" />
               লগআউট
             </Button>
           </SidebarFooter>
         </Sidebar>
         <SidebarInset className="flex-1 pb-16 md:pb-0">{children}</SidebarInset>
-         <div className="fixed bottom-0 left-0 right-0 z-50 grid h-16 grid-cols-4 border-t border-border/50 bg-card/80 backdrop-blur-sm md:hidden">
-          <NavItem 
+        <div className="fixed bottom-0 left-0 right-0 z-50 grid h-16 grid-cols-6 border-t border-border/50 bg-card/80 backdrop-blur-sm md:hidden">
+          <NavItem
             href="/admin/dashboard"
             label="ড্যাশবোর্ড"
             icon={Home}
             isActive={pathname === "/admin/dashboard"}
           />
-          <NavItem 
+          <NavItem
             href="/admin/dashboard/audios"
             label="অডিও"
             icon={Music}
             isActive={pathname === "/admin/dashboard/audios"}
           />
-          <NavItem 
+          <NavItem
+            href="/admin/dashboard/categories"
+            label="ক্যাটাগরি"
+            icon={LayoutGrid}
+            isActive={pathname === "/admin/dashboard/categories"}
+          />
+          <NavItem
+            href="/admin/dashboard/artists"
+            label="আর্টিস্ট"
+            icon={MicVocal}
+            isActive={pathname === "/admin/dashboard/artists"}
+          />
+          <NavItem
             href="/admin/dashboard/playlists"
             label="প্লেলিস্ট"
             icon={ListMusic}
             isActive={pathname === "/admin/dashboard/playlists"}
           />
-           <NavItem 
+          <NavItem
             href="/admin/dashboard/users"
             label="ইউজার"
             icon={Users}
