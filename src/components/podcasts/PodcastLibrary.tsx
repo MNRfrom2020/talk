@@ -16,6 +16,10 @@ const CATEGORY_INCREMENT = 10;
 
 // Fisher-Yates (aka Knuth) Shuffle
 function shuffleArray<T>(array: T[]): T[] {
+  if (typeof window === "undefined") {
+    // Return original array on server
+    return array;
+  }
   const newArray = [...array];
   for (let i = newArray.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -50,9 +54,11 @@ export default function PodcastLibrary({
   }, []);
 
   const predefinedPlaylists = useMemo(() => {
-    return [...playlists.filter((p) => p.isPredefined)].sort((a, b) =>
-      b.id.localeCompare(a.id),
-    );
+    return [...playlists.filter((p) => p.isPredefined)].sort((a, b) => {
+        const dateA = new Date(a.created_at).getTime();
+        const dateB = new Date(b.created_at).getTime();
+        return dateB - dateA;
+    });
   }, [playlists]);
 
   const quranCategory = useMemo(() => {
