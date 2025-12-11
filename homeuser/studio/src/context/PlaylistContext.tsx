@@ -215,73 +215,80 @@ export const PlaylistProvider = ({
     [playlists, user],
   );
 
-  const addPodcastToPlaylist = useCallback(
-    async (playlistId: string, podcastId: string) => {
+  const addPodcastToPlaylistForGuest = (playlistId: string, podcastId: string) => {
+    const playlist = playlists.find((p) => p.id === playlistId);
+    if (!playlist || playlist.isPredefined || !playlist.podcast_ids.includes(podcastId)) {
+        const updatedPlaylists = playlists.map((p) =>
+            p.id === playlistId ? { ...p, podcast_ids: [...p.podcast_ids, podcastId] } : p
+        );
+        savePlaylistsForGuest(updatedPlaylists);
+    }
+  };
+
+  const addPodcastToPlaylistForUser = async (playlistId: string, podcastId: string) => {
+      const playlist = playlists.find((p) => p.id === playlistId);
+      if (!playlist || playlist.isPredefined || !user.uid || playlist.podcast_ids.includes(podcastId)) return;
+      
+      const newPodcastIds = [...playlist.podcast_ids, podcastId];
+      const { error } = await supabase
+        .from('user_playlists')
+        .update({ podcast_ids: newPodcastIds })
+        .eq('id', playlistId)
+        .eq('user_uid', user.uid);
+      
+      if (!error) {
+          setPlaylists(prev => prev.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p));
+      } else {
+          console.error("Error adding podcast to user playlist:", error.message);
+      }
+  };
+
+  const addPodcastToPlaylist = useCallback((playlistId: string, podcastId: string) => {
+      if (user.isGuest) {
+          addPodcastToPlaylistForGuest(playlistId, podcastId);
+      } else {
+          addPodcastToPlaylistForUser(playlistId, podcastId);
+      }
+  }, [playlists, user]);
+
+
+  const removePodcastFromPlaylistForGuest = (playlistId: string, podcastId: string) => {
       const playlist = playlists.find((p) => p.id === playlistId);
       if (!playlist || playlist.isPredefined) return;
-
-      if (!playlist.podcast_ids.includes(podcastId)) {
-        const newPodcastIds = [...playlist.podcast_ids, podcastId];
-        
-        if (user.isGuest) {
-          const updatedPlaylists = playlists.map((p) =>
-            p.id === playlistId ? { ...p, podcast_ids: newPodcastIds } : p
-          );
-          savePlaylistsForGuest(updatedPlaylists);
-        } else {
-           if (!user.uid) return;
-           const result = await savePlaylistAction({
-              id: playlist.id,
-              name: playlist.name,
-              podcast_ids: newPodcastIds,
-              cover: playlist.cover,
-              created_at: playlist.created_at,
-              user_uid: user.uid,
-           });
-          
-          if (result.message && !result.errors) {
-            setPlaylists(prev => prev.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p));
-          } else {
-            console.error("Error adding podcast to playlist:", result.message);
-          }
-        }
-      }
-    },
-    [playlists, user],
-  );
-
-  const removePodcastFromPlaylist = useCallback(
-    async (playlistId: string, podcastId: string) => {
-      const playlist = playlists.find((p) => p.id === playlistId);
-       if (!playlist || playlist.isPredefined) return;
       
       const newPodcastIds = playlist.podcast_ids.filter((id) => id !== podcastId);
+      const updatedPlaylists = playlists.map((p) =>
+          p.id === playlistId ? { ...p, podcast_ids: newPodcastIds } : p
+      );
+      savePlaylistsForGuest(updatedPlaylists);
+  };
 
-       if (user.isGuest) {
-          const updatedPlaylists = playlists.map((p) =>
-            p.id === playlistId ? { ...p, podcast_ids: newPodcastIds } : p
-          );
-          savePlaylistsForGuest(updatedPlaylists);
-       } else {
-          if (!user.uid) return;
-           const result = await savePlaylistAction({
-              id: playlist.id,
-              name: playlist.name,
-              podcast_ids: newPodcastIds,
-              cover: playlist.cover,
-              created_at: playlist.created_at,
-              user_uid: user.uid,
-           });
-          
-          if (result.message && !result.errors) {
-            setPlaylists(prev => prev.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p));
-          } else {
-            console.error("Error removing podcast from playlist:", result.message);
-          }
-       }
-    },
-    [playlists, user],
-  );
+  const removePodcastFromPlaylistForUser = async (playlistId: string, podcastId: string) => {
+      const playlist = playlists.find((p) => p.id === playlistId);
+      if (!playlist || playlist.isPredefined || !user.uid) return;
+      
+      const newPodcastIds = playlist.podcast_ids.filter((id) => id !== podcastId);
+      const { error } = await supabase
+        .from('user_playlists')
+        .update({ podcast_ids: newPodcastIds })
+        .eq('id', playlistId)
+        .eq('user_uid', user.uid);
+      
+      if (!error) {
+          setPlaylists(prev => prev.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p));
+      } else {
+          console.error("Error removing podcast from user playlist:", error.message);
+      }
+  };
+
+  const removePodcastFromPlaylist = useCallback((playlistId: string, podcastId: string) => {
+      if (user.isGuest) {
+          removePodcastFromPlaylistForGuest(playlistId, podcastId);
+      } else {
+          removePodcastFromPlaylistForUser(playlistId, podcastId);
+      }
+  }, [playlists, user]);
+
 
   const getPodcastsForPlaylist = useCallback(
     (playlistId: string, allPodcasts: Podcast[]) => {
@@ -366,3 +373,5 @@ export const PlaylistProvider = ({
     <PlaylistContext.Provider value={value}>{children}</PlaylistContext.Provider>
   );
 };
+
+    
