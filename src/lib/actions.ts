@@ -106,7 +106,6 @@ const PlaylistFormSchema = z.object({
   podcast_ids: z.array(z.string()).min(0, "Select at least one podcast").optional(),
   cover: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   created_at: z.string().optional(),
-  user_uid: z.string().uuid().optional(),
 });
 
 
@@ -145,7 +144,6 @@ export async function savePlaylist(
       name: data.name,
       podcast_ids: data.podcast_ids,
       cover: data.cover,
-      user_uid: data.user_uid
   };
   
   if(data.created_at) {
@@ -158,12 +156,12 @@ export async function savePlaylist(
   try {
     if (id) {
        const { error } = await supabase
-        .from("user_playlists")
+        .from("playlists")
         .update(playlistData)
         .eq("id", id);
       if (error) throw error;
     } else {
-      const { error } = await supabase.from("user_playlists").insert(playlistData);
+      const { error } = await supabase.from("playlists").insert(playlistData);
        if (error) throw error;
     }
   } catch (error: any) {
@@ -179,7 +177,7 @@ export async function savePlaylist(
 
 export async function deletePlaylist(id: string) {
     try {
-        const { error } = await supabase.from("user_playlists").delete().eq("id", id);
+        const { error } = await supabase.from("playlists").delete().eq("id", id);
         if (error) throw error;
         revalidatePath("/admin/dashboard/playlists");
         revalidatePath("/library");

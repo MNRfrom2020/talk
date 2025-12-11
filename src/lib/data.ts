@@ -29,7 +29,7 @@ export async function getUserCount() {
 
 export async function getPlaylistCount() {
      const { count, error } = await supabase
-        .from('user_playlists')
+        .from('playlists')
         .select('*', { count: 'exact', head: true });
 
     if (error) {
@@ -66,7 +66,7 @@ export async function getPodcasts(): Promise<Podcast[]> {
 
 export async function getPlaylists(): Promise<Playlist[]> {
   const { data, error } = await supabase
-    .from("user_playlists")
+    .from("playlists")
     .select("*")
     .order("created_at", { ascending: false });
 

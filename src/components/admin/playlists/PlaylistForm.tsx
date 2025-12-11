@@ -28,7 +28,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 const PlaylistFormSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1, "Name is required"),
-  podcast_ids: z.array(z.string()).min(1, "Select at least one podcast"),
+  podcast_ids: z.array(z.string()).min(0, "Select at least one podcast").optional(),
   cover: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   created_at: z.string().optional(),
 });
@@ -85,7 +85,7 @@ export default function PlaylistForm({
     setIsSubmitting(true);
     const payload = {
         ...values,
-        podcast_ids: values.podcast_ids.join(',')
+        podcast_ids: values.podcast_ids?.join(',') ?? ''
     }
     const result = await savePlaylist(payload as any);
     setIsSubmitting(false);
