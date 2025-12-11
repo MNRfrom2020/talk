@@ -241,8 +241,32 @@ export async function saveUser(values: UserFormValues): Promise<UserState> {
       if (error) throw error;
     } else {
       // Create new user
-      const { error } = await supabase.from("users").insert(userData);
+      const { data: newUser, error } = await supabase
+        .from("users")
+        .insert(userData)
+        .select()
+        .single();
+
       if (error) throw error;
+
+      if (newUser) {
+        // Create a default "Favorites" playlist for the new user
+        const { error: playlistError } = await supabase
+          .from("user_playlists")
+          .insert({
+            user_uid: newUser.uid,
+            name: "Favorites",
+            podcast_ids: [],
+          });
+
+        if (playlistError) {
+          // Log the error, but don't block the user creation response
+          console.error(
+            `Failed to create favorites playlist for user ${newUser.uid}:`,
+            playlistError,
+          );
+        }
+      }
     }
   } catch (error: any) {
     return {
