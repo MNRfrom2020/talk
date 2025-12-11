@@ -9,14 +9,12 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import initialPlaylistsData from "@/lib/playlist.json";
 import { useUser } from "./UserContext";
 import { supabase } from "@/lib/supabase";
 import { savePlaylist as savePlaylistAction, deletePlaylist as deletePlaylistAction } from "@/lib/actions";
 
 
 const PLAYLIST_STORAGE_KEY = "podcast_playlists_guest";
-export const FAVORITES_PLAYLIST_ID = 'favorites';
 const FAVORITES_PLAYLIST_NAME = "Favorites";
 
 
@@ -58,11 +56,20 @@ export const PlaylistProvider = ({
 
   useEffect(() => {
     const loadPlaylists = async () => {
-      const predefinedPlaylists: Playlist[] = (initialPlaylistsData as any[]).map(p => ({
-        ...p, 
-        podcast_ids: p.podcastIds,
+      // Fetch predefined playlists from the 'playlists' table
+      const { data: predefinedPlaylistsDb, error: predefinedError } = await supabase
+        .from('playlists')
+        .select('*');
+      
+      if (predefinedError) {
+        console.error("Failed to fetch predefined playlists:", predefinedError);
+      }
+
+      const predefinedPlaylists: Playlist[] = (predefinedPlaylistsDb || []).map(p => ({
+        ...p,
         isPredefined: true,
       }));
+
 
       if (user.isGuest) {
         // --- GUEST USER ---
@@ -79,7 +86,7 @@ export const PlaylistProvider = ({
           
           let favoritesPlaylist = userOnlyPlaylists.find((p: Playlist) => p.name === FAVORITES_PLAYLIST_NAME);
           if (!favoritesPlaylist) {
-            favoritesPlaylist = { id: FAVORITES_PLAYLIST_ID, name: FAVORITES_PLAYLIST_NAME, podcast_ids: [], isPredefined: false, isFavorite: false };
+            favoritesPlaylist = { id: 'favorites-guest', name: FAVORITES_PLAYLIST_NAME, podcast_ids: [], isPredefined: false, isFavorite: false };
             userOnlyPlaylists.unshift(favoritesPlaylist);
           }
 
@@ -108,21 +115,6 @@ export const PlaylistProvider = ({
         }
         
         const userPlaylists = userPlaylistsDb || [];
-
-        let favoritesPlaylist = userPlaylists.find(p => p.name === FAVORITES_PLAYLIST_NAME);
-         if (!favoritesPlaylist) {
-            const { data: newFav, error: newFavError } = await supabase.from('user_playlists').insert({
-                name: FAVORITES_PLAYLIST_NAME, 
-                podcast_ids: [],
-                user_uid: user.uid
-            }).select().single();
-
-            if (newFavError) {
-              console.error("Failed to create Favorites playlist for user:", newFavError);
-            } else if (newFav) {
-              userPlaylists.push(newFav);
-            }
-        }
         
         setPlaylists([...predefinedPlaylists, ...userPlaylists]);
       }
@@ -134,12 +126,14 @@ export const PlaylistProvider = ({
   const savePlaylistsForGuest = (updatedPlaylists: Playlist[]) => {
       try {
         const playlistsToSave = updatedPlaylists.map(p => {
+          // For predefined, only save favorite status
           if (p.isPredefined) {
             if (p.isFavorite) {
               return { id: p.id, isFavorite: true };
             }
             return null;
           }
+          // For user-created, save all details
           return { id: p.id, name: p.name, podcast_ids: p.podcast_ids, isFavorite: p.isFavorite };
         }).filter(Boolean);
 
@@ -152,7 +146,7 @@ export const PlaylistProvider = ({
 
   const createPlaylist = useCallback(
     async (name: string, podcastIds: string[] = []) => {
-      if (name === FAVORITES_PLAYLIST_NAME) return; // Prevent creating another "Favorites"
+      if (name === FAVORITES_PLAYLIST_NAME) return;
 
       if (user.isGuest) {
         const newPlaylist: Playlist = {
@@ -170,7 +164,7 @@ export const PlaylistProvider = ({
          if (!user.uid) return;
          const result = await savePlaylistAction({
             name,
-            podcast_ids: podcastIds.join(','),
+            podcast_ids: podcastIds,
             user_uid: user.uid
          } as any);
 
@@ -227,7 +221,7 @@ export const PlaylistProvider = ({
            const result = await savePlaylistAction({
               id: playlist.id,
               name: playlist.name,
-              podcast_ids: newPodcastIds.join(','),
+              podcast_ids: newPodcastIds,
               cover: playlist.cover,
               created_at: playlist.created_at,
               user_uid: user.uid,
@@ -261,7 +255,7 @@ export const PlaylistProvider = ({
            const result = await savePlaylistAction({
               id: playlist.id,
               name: playlist.name,
-              podcast_ids: newPodcastIds.join(','),
+              podcast_ids: newPodcastIds,
               cover: playlist.cover,
               created_at: playlist.created_at,
               user_uid: user.uid,
@@ -307,7 +301,6 @@ export const PlaylistProvider = ({
           savePlaylistsForGuest(updatedPlaylists);
        } else {
           if(!user.uid) return;
-          // For logged-in users, this state is ephemeral as there's no DB field for it.
           setPlaylists(playlists.map(p => p.id === playlistId ? updatedPlaylist : p));
        }
     },
@@ -361,5 +354,3 @@ export const PlaylistProvider = ({
     <PlaylistContext.Provider value={value}>{children}</PlaylistContext.Provider>
   );
 };
-
-    
