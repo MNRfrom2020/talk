@@ -96,7 +96,7 @@ export const PlaylistProvider = ({
           return;
         }
 
-        const { data: userPlaylists, error } = await supabase
+        const { data: userPlaylistsDb, error } = await supabase
           .from('user_playlists')
           .select('*')
           .eq('user_uid', user.uid);
@@ -106,11 +106,10 @@ export const PlaylistProvider = ({
           setPlaylists(predefinedPlaylists); // Fallback to predefined
           return;
         }
+        
+        const userPlaylists = userPlaylistsDb || [];
 
-        const combinedPlaylists = [...predefinedPlaylists.map(p => {
-            const userVersion = userPlaylists.find(up => up.id === p.id);
-            return userVersion ? { ...p, isFavorite: userVersion.isFavorite, podcast_ids: p.podcast_ids } : p;
-        }), ...userPlaylists];
+        const combinedPlaylists = [...predefinedPlaylists, ...userPlaylists];
         
         let favoritesPlaylist = combinedPlaylists.find(p => p.id === FAVORITES_PLAYLIST_ID && p.user_uid === user.uid);
          if (!favoritesPlaylist) {
@@ -165,29 +164,20 @@ export const PlaylistProvider = ({
         savePlaylistsForGuest(updatedPlaylists);
       } else {
          if (!user.uid) return;
-         const { data, error } = await savePlaylistAction({
+         const result = await savePlaylistAction({
             name,
             podcast_ids: podcastIds.join(','),
             user_uid: user.uid
          } as any);
 
-        if (error) {
-            console.error("Error creating playlist:", error);
-            return;
+        if (result.message && !result.errors) {
+            const { data: newPlaylist, error } = await supabase.from('user_playlists').select().eq('name', name).eq('user_uid', user.uid).single();
+            if (newPlaylist && !error) {
+                 setPlaylists(prev => [...prev, newPlaylist]);
+            }
+        } else {
+             console.error("Error creating playlist:", result.message);
         }
-        
-        // Optimistically update UI, but better to refetch or get new playlist from server action
-        // For now, let's just refetch all playlists for simplicity
-        const { data: userPlaylists, error: fetchError } = await supabase
-          .from('user_playlists')
-          .select('*')
-          .eq('user_uid', user.uid);
-        
-        if (fetchError) {
-          console.error("Failed to refetch user playlists:", fetchError);
-          return;
-        }
-        setPlaylists(prev => [...prev.filter(p => p.isPredefined), ...userPlaylists]);
       }
     },
     [playlists, user],
@@ -203,11 +193,11 @@ export const PlaylistProvider = ({
         );
         savePlaylistsForGuest(updatedPlaylists);
       } else {
-        const { error } = await deletePlaylistAction(playlistId);
-        if (error) {
-            console.error("Error deleting playlist:", error);
-        } else {
+        const result = await deletePlaylistAction(playlistId);
+        if (result.message && !result.message.includes("Error")) {
             setPlaylists(prev => prev.filter(p => p.id !== playlistId));
+        } else {
+            console.error("Error deleting playlist:", result.message);
         }
       }
     },
@@ -217,7 +207,7 @@ export const PlaylistProvider = ({
   const addPodcastToPlaylist = useCallback(
     async (playlistId: string, podcastId: string) => {
       const playlist = playlists.find((p) => p.id === playlistId);
-      if (!playlist || playlist.isPredefined) return;
+      if (!playlist || (playlist.isPredefined && playlistId !== FAVORITES_PLAYLIST_ID)) return;
 
       if (!playlist.podcast_ids.includes(podcastId)) {
         const newPodcastIds = [...playlist.podcast_ids, podcastId];
@@ -252,7 +242,7 @@ export const PlaylistProvider = ({
   const removePodcastFromPlaylist = useCallback(
     async (playlistId: string, podcastId: string) => {
       const playlist = playlists.find((p) => p.id === playlistId);
-      if (!playlist || playlist.isPredefined) return;
+       if (!playlist || (playlist.isPredefined && playlistId !== FAVORITES_PLAYLIST_ID)) return;
       
       const newPodcastIds = playlist.podcast_ids.filter((id) => id !== podcastId);
 
@@ -303,7 +293,7 @@ export const PlaylistProvider = ({
   const toggleFavorite = useCallback(
     async (playlistId: string) => {
        const playlist = playlists.find(p => p.id === playlistId);
-       if (!playlist) return;
+       if (!playlist || !playlist.isPredefined) return;
        
        const updatedPlaylist = { ...playlist, isFavorite: !playlist.isFavorite };
 
@@ -312,8 +302,7 @@ export const PlaylistProvider = ({
           savePlaylistsForGuest(updatedPlaylists);
        } else {
           if(!user.uid) return;
-          // For logged-in users, this would ideally be a separate table or a field in user_playlists
-          // For now, let's just update the state optimistically, it won't persist for logged-in users
+          // For logged-in users, this state is ephemeral as there's no DB field for it.
           setPlaylists(playlists.map(p => p.id === playlistId ? updatedPlaylist : p));
        }
     },
@@ -322,16 +311,16 @@ export const PlaylistProvider = ({
 
   const isFavoritePodcast = useCallback(
     (podcastId: string) => {
-      const favoritesPlaylist = playlists.find(p => p.id === FAVORITES_PLAYLIST_ID && (user.isGuest || p.user_uid === user.uid));
+      const favoritesPlaylist = playlists.find(p => p.id === FAVORITES_PLAYLIST_ID);
       return favoritesPlaylist?.podcast_ids?.includes(podcastId) ?? false;
     },
-    [playlists, user],
+    [playlists],
   );
 
 
   const toggleFavoritePodcast = useCallback(
     (podcastId: string) => {
-      let favoritesPlaylist = playlists.find(p => p.id === FAVORITES_PLAYLIST_ID && (user.isGuest || p.user_uid === user.uid));
+      const favoritesPlaylist = playlists.find(p => p.id === FAVORITES_PLAYLIST_ID);
       
       if(favoritesPlaylist) {
           const isAlreadyFavorite = favoritesPlaylist.podcast_ids.includes(podcastId);
@@ -342,7 +331,7 @@ export const PlaylistProvider = ({
           }
       }
     },
-    [playlists, user, addPodcastToPlaylist, removePodcastFromPlaylist],
+    [playlists, addPodcastToPlaylist, removePodcastFromPlaylist],
   );
 
 
