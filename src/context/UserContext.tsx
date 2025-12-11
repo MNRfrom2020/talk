@@ -116,7 +116,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
     const loggedInUser: User = {
       ...userData,
-      name: userData.full_name,
+      name: data.full_name,
       avatar: userData.image,
       isLoggedIn: true,
       isGuest: false,
