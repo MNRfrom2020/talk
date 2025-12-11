@@ -207,7 +207,7 @@ export const PlaylistProvider = ({
   const addPodcastToPlaylist = useCallback(
     async (playlistId: string, podcastId: string) => {
       const playlist = playlists.find((p) => p.id === playlistId);
-      if (!playlist || (playlist.isPredefined && playlistId !== FAVORITES_PLAYLIST_ID)) return;
+      if (!playlist || (playlist.isPredefined && playlist.id !== FAVORITES_PLAYLIST_ID)) return;
 
       if (!playlist.podcast_ids.includes(podcastId)) {
         const newPodcastIds = [...playlist.podcast_ids, podcastId];
@@ -242,7 +242,7 @@ export const PlaylistProvider = ({
   const removePodcastFromPlaylist = useCallback(
     async (playlistId: string, podcastId: string) => {
       const playlist = playlists.find((p) => p.id === playlistId);
-       if (!playlist || (playlist.isPredefined && playlistId !== FAVORITES_PLAYLIST_ID)) return;
+       if (!playlist || (playlist.isPredefined && playlist.id !== FAVORITES_PLAYLIST_ID)) return;
       
       const newPodcastIds = playlist.podcast_ids.filter((id) => id !== podcastId);
 
@@ -311,16 +311,20 @@ export const PlaylistProvider = ({
 
   const isFavoritePodcast = useCallback(
     (podcastId: string) => {
-      const favoritesPlaylist = playlists.find(p => p.id === FAVORITES_PLAYLIST_ID);
+      const favoritesPlaylist = playlists.find(
+        (p) => p.id === FAVORITES_PLAYLIST_ID && (p.user_uid === user.uid || user.isGuest)
+      );
       return favoritesPlaylist?.podcast_ids?.includes(podcastId) ?? false;
     },
-    [playlists],
+    [playlists, user],
   );
 
 
   const toggleFavoritePodcast = useCallback(
     (podcastId: string) => {
-      const favoritesPlaylist = playlists.find(p => p.id === FAVORITES_PLAYLIST_ID);
+      const favoritesPlaylist = playlists.find(
+        (p) => p.id === FAVORITES_PLAYLIST_ID && (p.user_uid === user.uid || user.isGuest)
+      );
       
       if(favoritesPlaylist) {
           const isAlreadyFavorite = favoritesPlaylist.podcast_ids.includes(podcastId);
@@ -331,7 +335,7 @@ export const PlaylistProvider = ({
           }
       }
     },
-    [playlists, addPodcastToPlaylist, removePodcastFromPlaylist],
+    [playlists, user, addPodcastToPlaylist, removePodcastFromPlaylist],
   );
 
 
