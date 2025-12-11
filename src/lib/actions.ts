@@ -5,6 +5,14 @@ import { revalidatePath } from "next/cache";
 import { supabase } from "./supabase";
 import { z } from "zod";
 
+// Function to get current time in Bangladesh Standard Time (UTC+6)
+const getBstDate = () => {
+  const now = new Date();
+  const bstOffset = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  return new Date(utc + bstOffset);
+}
+
 // Podcast Actions
 const PodcastFormSchema = z.object({
   id: z.string().optional(),
@@ -49,6 +57,8 @@ export async function savePodcast(
 
   if (data.created_at) {
     podcastData.created_at = new Date(data.created_at).toISOString();
+  } else if (!id) {
+    podcastData.created_at = getBstDate().toISOString();
   }
 
   try {
@@ -140,6 +150,8 @@ export async function savePlaylist(
   
   if(data.created_at) {
     playlistData.created_at = new Date(data.created_at).toISOString()
+  } else if (!id) {
+    playlistData.created_at = getBstDate().toISOString();
   }
 
 
@@ -236,11 +248,13 @@ export async function saveUser(values: UserFormValues): Promise<UserState> {
   try {
     if (uid) {
       // Update existing user
-      userData.updated_at = new Date().toISOString();
+      userData.updated_at = getBstDate().toISOString();
       const { error } = await supabase.from("users").update(userData).eq("uid", uid);
       if (error) throw error;
     } else {
       // Create new user
+       userData.created_at = getBstDate().toISOString();
+       userData.updated_at = getBstDate().toISOString();
       const { data: newUser, error } = await supabase
         .from("users")
         .insert(userData)
@@ -257,6 +271,7 @@ export async function saveUser(values: UserFormValues): Promise<UserState> {
             user_uid: newUser.uid,
             name: "Favorites",
             podcast_ids: [],
+            created_at: getBstDate().toISOString(),
           });
 
         if (playlistError) {
@@ -291,5 +306,3 @@ export async function deleteUser(uid: string) {
     };
   }
 }
-
-    
