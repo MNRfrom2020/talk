@@ -12,8 +12,8 @@ import CategorySection from "./CategorySection";
 import { Loader2 } from "lucide-react";
 import { Button } from "../ui/button";
 
-const INITIAL_VISIBLE_CATEGORIES = 10;
-const CATEGORY_INCREMENT = 10;
+const INITIAL_VISIBLE_SECTIONS = 10;
+const SECTION_INCREMENT = 10;
 
 const getItemsPerRow = () => {
   if (typeof window === "undefined") {
@@ -48,6 +48,10 @@ const Loader = () => (
   </div>
 );
 
+type Section =
+  | { type: "category"; name: string; podcasts: Podcast[] }
+  | { type: "artist"; name: string; podcasts: Podcast[] };
+
 export default function PodcastLibrary({
   showTitle = true,
 }: {
@@ -55,12 +59,12 @@ export default function PodcastLibrary({
 }) {
   const { podcasts } = usePodcast();
   const { playlists } = usePlaylist();
-  const [visibleCategories, setVisibleCategories] = useState(
-    INITIAL_VISIBLE_CATEGORIES,
+  const [visibleSections, setVisibleSections] = useState(
+    INITIAL_VISIBLE_SECTIONS,
   );
-  const [shuffledCategories, setShuffledCategories] = useState<[string, Podcast[]][]>([]);
-  const categoryLoaderRef = useRef<HTMLDivElement>(null);
-  const [isCategoryLoading, setIsCategoryLoading] = useState(false);
+  const [shuffledSections, setShuffledSections] = useState<Section[]>([]);
+  const sectionLoaderRef = useRef<HTMLDivElement>(null);
+  const [isSectionLoading, setIsSectionLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
   
   const [itemsPerRow, setItemsPerRow] = useState(getItemsPerRow());
@@ -92,54 +96,78 @@ export default function PodcastLibrary({
         categoryMap.get(category)?.push(podcast);
       });
     });
-    const allCategories = Array.from(categoryMap.entries());
-    const quranIndex = allCategories.findIndex(([key]) => key === "Quran");
-    return quranIndex > -1 ? allCategories[quranIndex] : null;
+    const quranPodcasts = categoryMap.get("Quran");
+    return quranPodcasts ? { name: "Quran", podcasts: quranPodcasts } : null;
   }, [podcasts]);
   
   useEffect(() => {
-     const categoryMap = new Map<string, Podcast[]>();
+     // Prepare categories
+    const categoryMap = new Map<string, Podcast[]>();
     podcasts.forEach((podcast) => {
       podcast.categories.forEach((category) => {
         if (!categoryMap.has(category)) {
           categoryMap.set(category, []);
         }
-        categoryMap.get(category)?.push(podcast);
+        categoryMap.get(category)!.push(podcast);
       });
     });
-    const otherCategories = Array.from(categoryMap.entries()).filter(([key]) => key !== "Quran");
-    setShuffledCategories(shuffleArray(otherCategories));
+    const categorySections: Section[] = Array.from(categoryMap.entries())
+        .filter(([key]) => key !== "Quran") // Exclude Quran category
+        .map(([name, podcasts]) => ({ type: "category", name, podcasts }));
+    
+     // Prepare artists
+    const artistsToExclude = [
+      "Dr Muhammad Ibrahim", "Mahmud Huzaifa", "Mazharul Islam",
+      "Moeen Uddin", "Usaid Zahid Siddique", "MercifulServant",
+    ];
+    const artistMap = new Map<string, Podcast[]>();
+    podcasts.forEach(p => {
+        p.artist.forEach(artist => {
+            if (!artistsToExclude.includes(artist)) {
+                if (!artistMap.has(artist)) {
+                    artistMap.set(artist, []);
+                }
+                artistMap.get(artist)!.push(p);
+            }
+        });
+    });
+    const artistSections: Section[] = Array.from(artistMap.entries())
+        .map(([name, podcasts]) => ({ type: "artist", name, podcasts }));
+
+    // Combine and shuffle
+    const combinedSections = [...categorySections, ...artistSections];
+    setShuffledSections(shuffleArray(combinedSections));
   }, [podcasts]);
 
 
-  const displayedCategories = useMemo(() => {
-    return shuffledCategories.slice(0, visibleCategories);
-  }, [shuffledCategories, visibleCategories]);
+  const displayedSections = useMemo(() => {
+    return shuffledSections.slice(0, visibleSections);
+  }, [shuffledSections, visibleSections]);
 
-  const hasMoreCategories = visibleCategories < shuffledCategories.length;
+  const hasMoreSections = visibleSections < shuffledSections.length;
 
-  const loadMoreCategories = useCallback(() => {
-    if (isCategoryLoading) return;
-    setIsCategoryLoading(true);
+  const loadMoreSections = useCallback(() => {
+    if (isSectionLoading) return;
+    setIsSectionLoading(true);
     setTimeout(() => {
-      setVisibleCategories(
-        (prev) => prev + CATEGORY_INCREMENT,
+      setVisibleSections(
+        (prev) => prev + SECTION_INCREMENT,
       );
-      setIsCategoryLoading(false);
+      setIsSectionLoading(false);
     }, 500); // Simulate network delay
-  }, [isCategoryLoading]);
+  }, [isSectionLoading]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMoreCategories && !isCategoryLoading) {
-          loadMoreCategories();
+        if (entries[0].isIntersecting && hasMoreSections && !isSectionLoading) {
+          loadMoreSections();
         }
       },
       { rootMargin: "200px" },
     );
 
-    const loader = categoryLoaderRef.current;
+    const loader = sectionLoaderRef.current;
     if (loader) {
       observer.observe(loader);
     }
@@ -149,7 +177,7 @@ export default function PodcastLibrary({
         observer.unobserve(loader);
       }
     };
-  }, [hasMoreCategories, isCategoryLoading, loadMoreCategories]);
+  }, [hasMoreSections, isSectionLoading, loadMoreSections]);
   
    useEffect(() => {
     const handleResize = () => {
@@ -257,22 +285,22 @@ export default function PodcastLibrary({
 
         {quranCategory && (
            <CategorySection
-            key={quranCategory[0]}
-            title={quranCategory[0]}
-            podcasts={quranCategory[1]}
+            key={quranCategory.name}
+            title={quranCategory.name}
+            podcasts={quranCategory.podcasts}
           />
         )}
 
-        {displayedCategories.map(([category, categoryPodcasts]) => (
+        {displayedSections.map((section) => (
           <CategorySection
-            key={category}
-            title={category}
-            podcasts={categoryPodcasts}
+            key={`${section.type}-${section.name}`}
+            title={section.name}
+            podcasts={section.podcasts}
           />
         ))}
 
-        <div ref={categoryLoaderRef}>
-           {hasMoreCategories && <Loader />}
+        <div ref={sectionLoaderRef}>
+           {hasMoreSections && <Loader />}
         </div>
 
       </div>
