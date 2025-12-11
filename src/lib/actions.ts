@@ -93,9 +93,10 @@ export async function deletePodcast(id: string) {
 const PlaylistFormSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1, "Name is required"),
-  podcast_ids: z.array(z.string()).min(1, "Select at least one podcast"),
+  podcast_ids: z.array(z.string()).min(0, "Select at least one podcast").optional(),
   cover: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   created_at: z.string().optional(),
+  user_uid: z.string().uuid().optional(),
 });
 
 
@@ -115,7 +116,7 @@ export async function savePlaylist(
 
    const transformedValues = {
     ...values,
-    podcast_ids: values.podcast_ids.split(',').map(s => s.trim()).filter(Boolean),
+    podcast_ids: values.podcast_ids ? values.podcast_ids.split(',').map(s => s.trim()).filter(Boolean) : [],
   };
 
   const validatedFields = PlaylistFormSchema.safeParse(transformedValues);
@@ -130,22 +131,27 @@ export async function savePlaylist(
   
   const { id, ...data } = validatedFields.data;
 
-  const playlistData = {
+  const playlistData: { [key: string]: any } = {
       name: data.name,
       podcast_ids: data.podcast_ids,
       cover: data.cover,
-      created_at: data.created_at ? new Date(data.created_at).toISOString() : new Date().toISOString(),
+      user_uid: data.user_uid
+  };
+  
+  if(data.created_at) {
+    playlistData.created_at = new Date(data.created_at).toISOString()
   }
+
 
   try {
     if (id) {
        const { error } = await supabase
-        .from("playlists")
+        .from("user_playlists")
         .update(playlistData)
         .eq("id", id);
       if (error) throw error;
     } else {
-      const { error } = await supabase.from("playlists").insert(playlistData);
+      const { error } = await supabase.from("user_playlists").insert(playlistData);
        if (error) throw error;
     }
   } catch (error: any) {
@@ -155,14 +161,16 @@ export async function savePlaylist(
   }
 
   revalidatePath("/admin/dashboard/playlists");
+  revalidatePath("/library");
   return { message: "Successfully saved playlist." };
 }
 
 export async function deletePlaylist(id: string) {
     try {
-        const { error } = await supabase.from("playlists").delete().eq("id", id);
+        const { error } = await supabase.from("user_playlists").delete().eq("id", id);
         if (error) throw error;
         revalidatePath("/admin/dashboard/playlists");
+        revalidatePath("/library");
         return { message: "Deleted Playlist." };
     } catch (error: any) {
         return {

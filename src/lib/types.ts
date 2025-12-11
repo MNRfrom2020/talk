@@ -16,6 +16,9 @@ export type Playlist = {
   podcast_ids: string[];
   created_at: string;
   cover: string | null;
+  user_uid?: string; // For user-created playlists in DB
+  isPredefined?: boolean; // For local predefined playlists
+  isFavorite?: boolean; // For local state management
 };
 
 export type Admin = {

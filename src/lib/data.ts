@@ -29,7 +29,7 @@ export async function getUserCount() {
 
 export async function getPlaylistCount() {
      const { count, error } = await supabase
-        .from('playlists')
+        .from('user_playlists')
         .select('*', { count: 'exact', head: true });
 
     if (error) {
@@ -59,13 +59,14 @@ export async function getPodcasts(): Promise<Podcast[]> {
     categories: item.categories,
     coverArt: item.cover_art,
     coverArtHint: item.cover_art_hint,
+    audioUrl: item.audio_url,
     created_at: item.created_at,
   }));
 }
 
 export async function getPlaylists(): Promise<Playlist[]> {
   const { data, error } = await supabase
-    .from("playlists")
+    .from("user_playlists")
     .select("*")
     .order("created_at", { ascending: false });
 
