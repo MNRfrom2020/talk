@@ -1,8 +1,6 @@
 
 "use client";
 
-export const runtime = 'edge';
-
 import Link from "next/link";
 import { AnimatePresence } from "framer-motion";
 import { Card } from "@/components/ui/card";
@@ -10,15 +8,17 @@ import AppSidebar from "@/components/layout/AppSidebar";
 import BottomNavBar from "@/components/layout/BottomNavBar";
 import Player from "@/components/layout/Player";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { podcasts } from "@/lib/podcasts";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import MobileHeader from "@/components/layout/MobileHeader";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
 import { usePlayer } from "@/context/PlayerContext";
+import { usePodcast } from "@/context/PodcastContext";
 
 const Page = () => {
   const { isExpanded } = usePlayer();
+  const { podcasts } = usePodcast();
+
   const allCategories = Array.from(
     new Set(podcasts.flatMap((p) => p.categories)),
   ).sort();
