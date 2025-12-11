@@ -40,6 +40,12 @@ import { usePodcast } from "@/context/PodcastContext";
 import CategorySection from "@/components/podcasts/CategorySection";
 import { LoginDialog } from "@/components/auth/LoginDialog";
 import { saveUser as updateUserInDb } from "@/lib/actions";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const guestFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -391,7 +397,7 @@ export default function ProfilePage() {
                <div className="mx-auto max-w-2xl">
                 <div className="space-y-8">
                   <h1 className="text-center font-headline text-3xl font-bold tracking-tight">
-                    Edit Profile
+                    Profile
                   </h1>
 
                   <div className="flex justify-center">
@@ -428,18 +434,27 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                  <Form {...form}>
-                    <form
-                      id="profile-form"
-                      onSubmit={form.handleSubmit(onSubmit)}
-                      className="w-full space-y-6"
-                    >
-                      {user.isGuest ? renderGuestForm() : renderUserForm()}
-                      <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                         {form.formState.isSubmitting ? "Saving..." : "Save Changes"}
-                      </Button>
-                    </form>
-                  </Form>
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="item-1">
+                      <AccordionTrigger>Edit Profile</AccordionTrigger>
+                      <AccordionContent>
+                        <div>
+                          <Form {...form}>
+                            <form
+                              id="profile-form"
+                              onSubmit={form.handleSubmit(onSubmit)}
+                              className="w-full space-y-6"
+                            >
+                              {user.isGuest ? renderGuestForm() : renderUserForm()}
+                              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                                 {form.formState.isSubmitting ? "Saving..." : "Save Changes"}
+                              </Button>
+                            </form>
+                          </Form>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
                   
                   <Separator />
                   
