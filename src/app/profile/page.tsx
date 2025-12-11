@@ -15,7 +15,7 @@ import AppSidebar from "@/components/layout/AppSidebar";
 import BottomNavBar from "@/components/layout/BottomNavBar";
 import Player from "@/components/layout/Player";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
@@ -436,8 +436,15 @@ export default function ProfilePage() {
 
                   <Accordion type="single" collapsible className="w-full">
                     <AccordionItem value="item-1">
-                      <AccordionTrigger>Edit Profile</AccordionTrigger>
-                      <AccordionContent>
+                      <AccordionTrigger
+                        className={cn(
+                          buttonVariants({ variant: "outline" }),
+                          "w-full justify-between",
+                        )}
+                      >
+                        Edit Profile
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-4">
                         <div>
                           <Form {...form}>
                             <form
