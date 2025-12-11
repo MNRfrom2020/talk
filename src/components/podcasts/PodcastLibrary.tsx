@@ -43,7 +43,7 @@ function shuffleArray<T>(array: T[]): T[] {
 }
 
 const Loader = () => (
-  <div className="flex items-center justify-center py-8">
+  <div className="col-span-full flex items-center justify-center py-8">
     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
   </div>
 );
@@ -59,13 +59,15 @@ export default function PodcastLibrary({
     INITIAL_VISIBLE_CATEGORIES,
   );
   const [shuffledCategories, setShuffledCategories] = useState<[string, Podcast[]][]>([]);
-  const loaderRef = useRef<HTMLDivElement>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const categoryLoaderRef = useRef<HTMLDivElement>(null);
+  const [isCategoryLoading, setIsCategoryLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
   
   const [itemsPerRow, setItemsPerRow] = useState(getItemsPerRow());
   const [visiblePlaylistsCount, setVisiblePlaylistsCount] = useState(itemsPerRow);
   const [isPlaylistsExpanded, setIsPlaylistsExpanded] = useState(false);
+  const [isPlaylistLoading, setIsPlaylistLoading] = useState(false);
+  const playlistLoaderRef = useRef<HTMLDivElement>(null);
   
 
   useEffect(() => {
@@ -117,27 +119,27 @@ export default function PodcastLibrary({
   const hasMoreCategories = visibleCategories < shuffledCategories.length;
 
   const loadMoreCategories = useCallback(() => {
-    if (isLoading) return;
-    setIsLoading(true);
+    if (isCategoryLoading) return;
+    setIsCategoryLoading(true);
     setTimeout(() => {
       setVisibleCategories(
         (prev) => prev + CATEGORY_INCREMENT,
       );
-      setIsLoading(false);
+      setIsCategoryLoading(false);
     }, 500); // Simulate network delay
-  }, [isLoading]);
+  }, [isCategoryLoading]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMoreCategories && !isLoading) {
+        if (entries[0].isIntersecting && hasMoreCategories && !isCategoryLoading) {
           loadMoreCategories();
         }
       },
       { rootMargin: "200px" },
     );
 
-    const loader = loaderRef.current;
+    const loader = categoryLoaderRef.current;
     if (loader) {
       observer.observe(loader);
     }
@@ -147,7 +149,7 @@ export default function PodcastLibrary({
         observer.unobserve(loader);
       }
     };
-  }, [hasMoreCategories, isLoading, loadMoreCategories]);
+  }, [hasMoreCategories, isCategoryLoading, loadMoreCategories]);
   
    useEffect(() => {
     const handleResize = () => {
@@ -167,14 +169,48 @@ export default function PodcastLibrary({
   const displayedPlaylists = predefinedPlaylists.slice(0, visiblePlaylistsCount);
   const hasMorePlaylists = predefinedPlaylists.length > visiblePlaylistsCount;
 
-  const handleTogglePlaylists = () => {
+  const handleToggleSeeAllPlaylists = () => {
     if (isPlaylistsExpanded) {
-      setVisiblePlaylistsCount(itemsPerRow);
+        setIsPlaylistsExpanded(false);
+        setVisiblePlaylistsCount(itemsPerRow);
     } else {
-      setVisiblePlaylistsCount(predefinedPlaylists.length);
+        setIsPlaylistsExpanded(true);
+        setVisiblePlaylistsCount(itemsPerRow * 3);
     }
-    setIsPlaylistsExpanded(!isPlaylistsExpanded);
   };
+
+  const loadMorePlaylists = useCallback(() => {
+    if (isPlaylistLoading) return;
+    setIsPlaylistLoading(true);
+    setTimeout(() => {
+      setVisiblePlaylistsCount(prev => Math.min(prev + itemsPerRow, predefinedPlaylists.length));
+      setIsPlaylistLoading(false);
+    }, 500); // Simulate network delay
+  }, [isPlaylistLoading, itemsPerRow, predefinedPlaylists.length]);
+
+  useEffect(() => {
+    if (!isPlaylistsExpanded || !hasMorePlaylists) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMorePlaylists();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+
+    const currentLoaderRef = playlistLoaderRef.current;
+    if (currentLoaderRef) {
+      observer.observe(currentLoaderRef);
+    }
+
+    return () => {
+      if (currentLoaderRef) {
+        observer.unobserve(currentLoaderRef);
+      }
+    };
+  }, [isPlaylistsExpanded, hasMorePlaylists, loadMorePlaylists]);
 
 
   if (!isClient) {
@@ -204,7 +240,7 @@ export default function PodcastLibrary({
                 Playlists
               </h2>
               {predefinedPlaylists.length > itemsPerRow && (
-                 <Button variant="link" onClick={handleTogglePlaylists}>
+                 <Button variant="link" onClick={handleToggleSeeAllPlaylists}>
                   {isPlaylistsExpanded ? "Show less" : "See all"}
                 </Button>
               )}
@@ -213,7 +249,9 @@ export default function PodcastLibrary({
               {displayedPlaylists.map((playlist) => (
                 <PlaylistCard key={playlist.id} playlist={playlist} />
               ))}
+               {isPlaylistsExpanded && isPlaylistLoading && <Loader />}
             </div>
+             <div ref={playlistLoaderRef} />
           </section>
         )}
 
@@ -233,7 +271,7 @@ export default function PodcastLibrary({
           />
         ))}
 
-        <div ref={loaderRef}>
+        <div ref={categoryLoaderRef}>
            {hasMoreCategories && <Loader />}
         </div>
 
