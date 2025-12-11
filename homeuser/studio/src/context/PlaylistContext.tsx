@@ -16,7 +16,7 @@ import { savePlaylist as savePlaylistAction, deletePlaylist as deletePlaylistAct
 
 
 const PLAYLIST_STORAGE_KEY = "podcast_playlists_guest";
-export const FAVORITES_PLAYLIST_ID = 'favorites';
+const FAVORITES_PLAYLIST_NAME = "Favorites";
 
 
 interface PlaylistContextType {
@@ -33,7 +33,6 @@ interface PlaylistContextType {
   toggleFavorite: (playlistId: string) => void;
   toggleFavoritePodcast: (podcastId: string) => void;
   isFavoritePodcast: (podcastId: string) => boolean;
-  FAVORITES_PLAYLIST_ID: string;
 }
 
 const PlaylistContext = createContext<PlaylistContextType | undefined>(
@@ -77,9 +76,9 @@ export const PlaylistProvider = ({
 
           let userOnlyPlaylists = userPlaylists.filter((p: Playlist) => !predefinedPlaylists.some(pre => pre.id === p.id));
           
-          let favoritesPlaylist = userOnlyPlaylists.find((p: Playlist) => p.id === FAVORITES_PLAYLIST_ID);
+          let favoritesPlaylist = userOnlyPlaylists.find((p: Playlist) => p.name === FAVORITES_PLAYLIST_NAME);
           if (!favoritesPlaylist) {
-            favoritesPlaylist = { id: FAVORITES_PLAYLIST_ID, name: "Favorites", podcast_ids: [], isPredefined: false, isFavorite: false };
+            favoritesPlaylist = { id: 'favorites', name: FAVORITES_PLAYLIST_NAME, podcast_ids: [], isPredefined: false, isFavorite: false };
             userOnlyPlaylists.unshift(favoritesPlaylist);
           }
 
@@ -91,7 +90,12 @@ export const PlaylistProvider = ({
         }
       } else {
         // --- LOGGED-IN USER ---
-        const { data: userPlaylists, error } = await supabase
+        if (!user.uid) {
+          setPlaylists(predefinedPlaylists);
+          return;
+        }
+
+        const { data: userPlaylistsDb, error } = await supabase
           .from('user_playlists')
           .select('*')
           .eq('user_uid', user.uid);
@@ -101,59 +105,54 @@ export const PlaylistProvider = ({
           setPlaylists(predefinedPlaylists); // Fallback to predefined
           return;
         }
-
-        const combinedPlaylists = [...predefinedPlaylists, ...userPlaylists];
         
-        let favoritesPlaylist = combinedPlaylists.find(p => p.id === FAVORITES_PLAYLIST_ID && p.user_uid === user.uid);
+        const userPlaylists = userPlaylistsDb || [];
+
+        let favoritesPlaylist = userPlaylists.find(p => p.name === FAVORITES_PLAYLIST_NAME);
          if (!favoritesPlaylist) {
-            const { data: newFav } = await supabase.from('user_playlists').insert({
-                id: FAVORITES_PLAYLIST_ID,
-                name: "Favorites", 
+            const { data: newFav, error: newFavError } = await supabase.from('user_playlists').insert({
+                name: FAVORITES_PLAYLIST_NAME, 
                 podcast_ids: [],
                 user_uid: user.uid
             }).select().single();
-            if(newFav) combinedPlaylists.push(newFav);
+
+            if (newFavError) {
+              console.error("Failed to create Favorites playlist for user:", newFavError);
+            } else if (newFav) {
+              userPlaylists.push(newFav);
+            }
         }
         
-        setPlaylists(combinedPlaylists);
+        setPlaylists([...predefinedPlaylists, ...userPlaylists]);
       }
     };
 
     loadPlaylists();
   }, [user]);
 
-  const savePlaylists = async (updatedPlaylists: Playlist[], playlistToUpdate?: Playlist) => {
-    if (user.isGuest) {
+  const savePlaylistsForGuest = (updatedPlaylists: Playlist[]) => {
       try {
         const playlistsToSave = updatedPlaylists.map(p => {
-          const playlistData: Partial<Playlist> = { id: p.id };
           if (p.isPredefined) {
             if (p.isFavorite) {
-              playlistData.isFavorite = true;
-            } else {
-              return null;
+              return { id: p.id, isFavorite: true };
             }
-          } else {
-            playlistData.name = p.name;
-            playlistData.podcast_ids = p.podcast_ids || [];
-            playlistData.isFavorite = p.isFavorite;
+            return null;
           }
-          return playlistData;
+          return { id: p.id, name: p.name, podcast_ids: p.podcast_ids, isFavorite: p.isFavorite };
         }).filter(Boolean);
 
         localStorage.setItem(PLAYLIST_STORAGE_KEY, JSON.stringify(playlistsToSave));
       } catch (error) {
         console.error("Failed to save guest playlists to localStorage", error);
       }
-    } else if (playlistToUpdate && !playlistToUpdate.isPredefined) {
-        // For logged-in users, we save directly to DB, this function will just update state
-        // The actual DB operation is in the calling function (create, delete, etc.)
-    }
-    setPlaylists(updatedPlaylists);
+      setPlaylists(updatedPlaylists);
   };
 
   const createPlaylist = useCallback(
     async (name: string, podcastIds: string[] = []) => {
+      if (name === FAVORITES_PLAYLIST_NAME) return; // Prevent creating another "Favorites"
+
       if (user.isGuest) {
         const newPlaylist: Playlist = {
           id: Date.now().toString(),
@@ -165,19 +164,22 @@ export const PlaylistProvider = ({
           cover: null,
         };
         const updatedPlaylists = [...playlists, newPlaylist];
-        savePlaylists(updatedPlaylists);
+        savePlaylistsForGuest(updatedPlaylists);
       } else {
-        const { data: newPlaylist, error } = await supabase
-            .from('user_playlists')
-            .insert({ name, podcast_ids: podcastIds, user_uid: user.uid })
-            .select()
-            .single();
-        if (error) {
-            console.error("Error creating playlist:", error);
-            return;
-        }
-        if (newPlaylist) {
-            setPlaylists(prev => [...prev, newPlaylist]);
+         if (!user.uid) return;
+         const result = await savePlaylistAction({
+            name,
+            podcast_ids: podcastIds.join(','),
+            user_uid: user.uid
+         } as any);
+
+        if (result.message && !result.errors) {
+            const { data: newPlaylist, error } = await supabase.from('user_playlists').select().eq('name', name).eq('user_uid', user.uid).single();
+            if (newPlaylist && !error) {
+                 setPlaylists(prev => [...prev, newPlaylist]);
+            }
+        } else {
+             console.error("Error creating playlist:", result.message);
         }
       }
     },
@@ -186,19 +188,20 @@ export const PlaylistProvider = ({
 
   const deletePlaylist = useCallback(
     async (playlistId: string) => {
-      if (playlistId === FAVORITES_PLAYLIST_ID) return;
+      const playlistToDelete = playlists.find(p => p.id === playlistId);
+      if (!playlistToDelete || playlistToDelete.name === FAVORITES_PLAYLIST_NAME) return;
 
       if (user.isGuest) {
         const updatedPlaylists = playlists.filter(
           (playlist) => playlist.id !== playlistId
         );
-        savePlaylists(updatedPlaylists);
+        savePlaylistsForGuest(updatedPlaylists);
       } else {
-        const { error } = await deletePlaylistAction(playlistId);
-        if (error) {
-            console.error("Error deleting playlist:", error);
-        } else {
+        const result = await deletePlaylistAction(playlistId);
+        if (result.message && !result.message.includes("Error")) {
             setPlaylists(prev => prev.filter(p => p.id !== playlistId));
+        } else {
+            console.error("Error deleting playlist:", result.message);
         }
       }
     },
@@ -217,16 +220,22 @@ export const PlaylistProvider = ({
           const updatedPlaylists = playlists.map((p) =>
             p.id === playlistId ? { ...p, podcast_ids: newPodcastIds } : p
           );
-          savePlaylists(updatedPlaylists);
+          savePlaylistsForGuest(updatedPlaylists);
         } else {
-           const { error } = await supabase
-            .from('user_playlists')
-            .update({ podcast_ids: newPodcastIds })
-            .eq('id', playlistId);
-          if (error) {
-            console.error("Error adding podcast to playlist:", error);
-          } else {
+           if (!user.uid) return;
+           const result = await savePlaylistAction({
+              id: playlist.id,
+              name: playlist.name,
+              podcast_ids: newPodcastIds.join(','),
+              cover: playlist.cover,
+              created_at: playlist.created_at,
+              user_uid: user.uid,
+           });
+          
+          if (result.message && !result.errors) {
             setPlaylists(prev => prev.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p));
+          } else {
+            console.error("Error adding podcast to playlist:", result.message);
           }
         }
       }
@@ -237,7 +246,7 @@ export const PlaylistProvider = ({
   const removePodcastFromPlaylist = useCallback(
     async (playlistId: string, podcastId: string) => {
       const playlist = playlists.find((p) => p.id === playlistId);
-      if (!playlist || playlist.isPredefined) return;
+       if (!playlist || playlist.isPredefined) return;
       
       const newPodcastIds = playlist.podcast_ids.filter((id) => id !== podcastId);
 
@@ -245,17 +254,22 @@ export const PlaylistProvider = ({
           const updatedPlaylists = playlists.map((p) =>
             p.id === playlistId ? { ...p, podcast_ids: newPodcastIds } : p
           );
-          savePlaylists(updatedPlaylists);
+          savePlaylistsForGuest(updatedPlaylists);
        } else {
-          const { error } = await supabase
-            .from('user_playlists')
-            .update({ podcast_ids: newPodcastIds })
-            .eq('id', playlistId);
+          if (!user.uid) return;
+           const result = await savePlaylistAction({
+              id: playlist.id,
+              name: playlist.name,
+              podcast_ids: newPodcastIds.join(','),
+              cover: playlist.cover,
+              created_at: playlist.created_at,
+              user_uid: user.uid,
+           });
           
-          if (error) {
-            console.error("Error removing podcast from playlist:", error);
-          } else {
+          if (result.message && !result.errors) {
             setPlaylists(prev => prev.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p));
+          } else {
+            console.error("Error removing podcast from playlist:", result.message);
           }
        }
     },
@@ -280,26 +294,30 @@ export const PlaylistProvider = ({
     [playlists],
   );
   
-  // This is a local-only operation for predefined playlists
   const toggleFavorite = useCallback(
-    (playlistId: string) => {
-       const updatedPlaylists = playlists.map((playlist) => {
-        if (playlist.id === playlistId && playlist.isPredefined) {
-          return { ...playlist, isFavorite: !playlist.isFavorite };
-        }
-        return playlist;
-      });
-      // For guest, this saves the favorite state to local storage
-      // For logged-in users, this state is ephemeral and will reset on reload.
-      // A separate DB table would be needed for persistent user favorites of predefined playlists.
-      savePlaylists(updatedPlaylists);
+    async (playlistId: string) => {
+       const playlist = playlists.find(p => p.id === playlistId);
+       if (!playlist || !playlist.isPredefined) return;
+       
+       const updatedPlaylist = { ...playlist, isFavorite: !playlist.isFavorite };
+
+       if (user.isGuest) {
+          const updatedPlaylists = playlists.map(p => p.id === playlistId ? updatedPlaylist : p);
+          savePlaylistsForGuest(updatedPlaylists);
+       } else {
+          if(!user.uid) return;
+          // For logged-in users, this state is ephemeral as there's no DB field for it.
+          setPlaylists(playlists.map(p => p.id === playlistId ? updatedPlaylist : p));
+       }
     },
-    [playlists, user.isGuest]
+    [playlists, user]
   );
 
   const isFavoritePodcast = useCallback(
     (podcastId: string) => {
-      const favoritesPlaylist = playlists.find(p => p.id === FAVORITES_PLAYLIST_ID && (user.isGuest || p.user_uid === user.uid));
+      const favoritesPlaylist = playlists.find(
+        (p) => p.name === FAVORITES_PLAYLIST_NAME && (p.user_uid === user.uid || user.isGuest)
+      );
       return favoritesPlaylist?.podcast_ids?.includes(podcastId) ?? false;
     },
     [playlists, user],
@@ -308,7 +326,9 @@ export const PlaylistProvider = ({
 
   const toggleFavoritePodcast = useCallback(
     (podcastId: string) => {
-      let favoritesPlaylist = playlists.find(p => p.id === FAVORITES_PLAYLIST_ID && (user.isGuest || p.user_uid === user.uid));
+      const favoritesPlaylist = playlists.find(
+        (p) => p.name === FAVORITES_PLAYLIST_NAME && (p.user_uid === user.uid || user.isGuest)
+      );
       
       if(favoritesPlaylist) {
           const isAlreadyFavorite = favoritesPlaylist.podcast_ids.includes(podcastId);
@@ -334,7 +354,6 @@ export const PlaylistProvider = ({
     toggleFavorite,
     toggleFavoritePodcast,
     isFavoritePodcast,
-    FAVORITES_PLAYLIST_ID,
   };
 
   return (
