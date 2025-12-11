@@ -7,7 +7,7 @@ import { Heart, ListMusic, Lock, MoreVertical, Share2, Trash2 } from "lucide-rea
 import { useState } from "react";
 
 import { usePodcast } from "@/context/PodcastContext";
-import { usePlaylist, FAVORITES_PLAYLIST_ID } from "@/context/PlaylistContext";
+import { usePlaylist } from "@/context/PlaylistContext";
 import type { Playlist } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,8 @@ import PlaylistCover from "./PlaylistCover";
 interface PlaylistCardProps {
   playlist: Playlist;
 }
+
+const FAVORITES_PLAYLIST_NAME = "Favorites";
 
 export default function PlaylistCard({ playlist }: PlaylistCardProps) {
   const { podcasts } = usePodcast();
@@ -131,7 +133,7 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
                   <span>Share</span>
                 </DropdownMenuItem>
                 
-                {!playlist.isPredefined && playlist.id !== FAVORITES_PLAYLIST_ID && (
+                {!playlist.isPredefined && playlist.name !== FAVORITES_PLAYLIST_NAME && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleDelete} className="text-destructive">
@@ -197,3 +199,5 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
     </>
   );
 }
+
+    

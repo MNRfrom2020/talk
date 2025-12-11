@@ -10,7 +10,6 @@ import {
   Trash2,
   ListPlus,
   Share2,
-  Pause,
 } from "lucide-react";
 import type { Podcast } from "@/lib/types";
 import { usePlayer } from "@/context/PlayerContext";
@@ -42,6 +41,8 @@ interface PodcastCardProps {
   onRemove?: (podcastId: string, playlistId: string) => void; // Callback to remove
 }
 
+const FAVORITES_PLAYLIST_NAME = "Favorites";
+
 export default function PodcastCard({
   podcast,
   playlist,
@@ -54,7 +55,6 @@ export default function PodcastCard({
     isPlaying,
     addToQueue,
     getPodcastProgress,
-    togglePlay,
   } = usePlayer();
   const { podcasts: allPodcasts } = usePodcast();
   const {
@@ -62,7 +62,6 @@ export default function PodcastCard({
     addPodcastToPlaylist,
     toggleFavoritePodcast,
     isFavoritePodcast,
-    FAVORITES_PLAYLIST_ID,
     getPlaylistById,
   } = usePlaylist();
   const { toast } = useToast();
@@ -86,7 +85,7 @@ export default function PodcastCard({
 
 
   const userPlaylists = playlists.filter(
-    (p) => !p.isPredefined && p.id !== FAVORITES_PLAYLIST_ID,
+    (p) => !p.isPredefined && p.name !== FAVORITES_PLAYLIST_NAME,
   );
 
   const handleAddToPlaylist = (playlistId: string) => {
@@ -145,16 +144,6 @@ export default function PodcastCard({
   const artistText = Array.isArray(podcast.artist)
     ? podcast.artist.join(", ")
     : podcast.artist || "Unknown Artist";
-
-  const handlePlayPauseClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (isActive) {
-      togglePlay();
-    } else {
-      play(podcast.id, playlist ?? allPodcasts);
-    }
-  };
-
 
   return (
     <Card className="group relative w-full overflow-hidden border-none bg-card shadow-lg transition-colors duration-300 hover:bg-secondary/80">
@@ -285,53 +274,18 @@ export default function PodcastCard({
       <div className="absolute bottom-24 right-6">
         <button
           type="button"
-          onClick={handlePlayPauseClick}
-          aria-label={`Play or pause ${podcast.title}`}
+          onClick={() => play(podcast.id, playlist ?? allPodcasts)}
+          aria-label={`Play ${podcast.title}`}
           className={cn(
-            "flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl transform transition-all duration-300 opacity-0 group-hover:opacity-100 group-hover:scale-100 scale-90",
-            { "opacity-100 scale-100": isActive },
+            "flex h-12 w-12 items-center justify-center rounded-full bg-accent text-accent-foreground shadow-xl transform transition-all duration-300 opacity-0 group-hover:opacity-100 group-hover:scale-100 scale-90",
+            { "opacity-100 scale-100": isActive && isPlaying },
           )}
         >
-          {isActive && isPlaying ? (
-             <svg width="24" height="24" viewBox="0 0 24 24">
-              <rect x="6" y="4" width="4" height="16" fill="currentColor" rx="1">
-                <animate
-                  attributeName="height"
-                  values="16;8;16"
-                  dur="1s"
-                  repeatCount="indefinite"
-                  begin="0s"
-                />
-                  <animate
-                  attributeName="y"
-                  values="4;10;4"
-                  dur="1s"
-                  repeatCount="indefinite"
-                  begin="0s"
-                />
-              </rect>
-              <rect x="14" y="4" width="4" height="16" fill="currentColor" rx="1">
-                <animate
-                  attributeName="height"
-                  values="16;8;16"
-                  dur="1s"
-                  repeatCount="indefinite"
-                  begin="0.2s"
-                />
-                <animate
-                  attributeName="y"
-                  values="4;10;4"
-                  dur="1s"
-                  repeatCount="indefinite"
-                  begin="0.2s"
-                />
-              </rect>
-            </svg>
-          ) : (
-            <Play className="ml-1 h-6 w-6 fill-current" />
-          )}
+          <Play className="ml-1 h-6 w-6 fill-current" />
         </button>
       </div>
     </Card>
   );
 }
+
+    
