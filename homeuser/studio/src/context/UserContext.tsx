@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, {
@@ -9,6 +10,7 @@ import React, {
 } from "react";
 import type { User as DbUser } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
+import { saveUser as saveUserAction } from "@/lib/actions";
 
 const USER_STORAGE_KEY = "user_profile";
 
@@ -22,8 +24,9 @@ export interface User extends Partial<DbUser> {
 interface UserContextType {
   user: User;
   loading: boolean;
-  login: (identifier: string, pass: string) => Promise<void>;
-  loginGuest: (name: string, avatar?: string | null) => void;
+  loginUser: (identifier: string, pass: string) => Promise<void>;
+  loginAsGuest: (name: string, avatar?: string | null) => void;
+  updateUser: (data: { name?: string; avatar?: string | null }) => Promise<void>;
   logout: () => void;
 }
 
@@ -48,24 +51,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User>(defaultUser);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem(USER_STORAGE_KEY);
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-      } else {
-        setUser(defaultUser);
-      }
-    } catch (error) {
-      console.error("Failed to load user from storage", error);
-      setUser(defaultUser);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const saveUser = useCallback((userData: User) => {
+  const saveUserToStorage = useCallback((userData: User) => {
     try {
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
       setUser(userData);
@@ -74,7 +60,63 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  const loginGuest = useCallback(
+  useEffect(() => {
+    const revalidateUser = async () => {
+      setLoading(true);
+      try {
+        const storedUserJson = localStorage.getItem(USER_STORAGE_KEY);
+        if (storedUserJson) {
+          const storedUser = JSON.parse(storedUserJson) as User;
+          
+          // If the user is not a guest, re-fetch their data from the database
+          if (!storedUser.isGuest && storedUser.uid) {
+            const { data, error } = await supabase
+              .from("users")
+              .select("uid, full_name, image, username, email, created_at, updated_at")
+              .eq("uid", storedUser.uid)
+              .single();
+
+            if (error) {
+              console.error("Revalidation error, logging out:", error.message);
+              // If user not found in DB, logout
+              logout();
+              return;
+            }
+            
+            if (data) {
+              const updatedUser: User = {
+                ...storedUser, // keep pass from local if needed for some reason, though it's risky
+                ...data,
+                name: data.full_name,
+                avatar: data.image,
+                isLoggedIn: true,
+                isGuest: false,
+              };
+              saveUserToStorage(updatedUser);
+            } else {
+              // User not found in DB, maybe deleted. Logout.
+              logout();
+            }
+          } else {
+            // It's a guest, trust localStorage
+            setUser(storedUser);
+          }
+        } else {
+          setUser(defaultUser);
+        }
+      } catch (error) {
+        console.error("Failed to load or revalidate user from storage", error);
+        logout(); // Clear corrupted data
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    revalidateUser();
+  }, []); // Run only once on mount
+
+
+  const loginAsGuest = useCallback(
     (name: string, avatar?: string | null) => {
       const newUserData: User = {
         name,
@@ -82,12 +124,12 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         isLoggedIn: true,
         isGuest: true,
       };
-      saveUser(newUserData);
+      saveUserToStorage(newUserData);
     },
-    [saveUser, user.avatar],
+    [saveUserToStorage, user.avatar],
   );
 
-  const login = async (identifier: string, pass: string) => {
+  const loginUser = async (identifier: string, pass: string) => {
     const isEmail = identifier.includes("@");
 
     const query = isEmail
@@ -107,20 +149,32 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       throw new Error("ভুল পাসওয়ার্ড।");
     }
 
-    // Clear previous guest/user data before setting new data
     localStorage.removeItem(USER_STORAGE_KEY);
 
     const { pass: removedPass, ...userData } = data;
 
     const loggedInUser: User = {
       ...userData,
-      name: userData.name,
+      name: data.full_name,
       avatar: userData.image,
       isLoggedIn: true,
       isGuest: false,
     };
-    saveUser(loggedInUser);
+    saveUserToStorage(loggedInUser);
   };
+
+  const updateUser = async (data: { name?: string; avatar?: string | null }) => {
+    if (!user.isLoggedIn) return;
+
+    const updatedUser = { ...user, ...data };
+    
+    if (user.isGuest) {
+      loginAsGuest(updatedUser.name, updatedUser.avatar);
+    } else {
+       saveUserToStorage(updatedUser);
+    }
+  };
+
 
   const logout = useCallback(() => {
     try {
@@ -134,8 +188,9 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const value = {
     user,
     loading,
-    login,
-    loginGuest,
+    loginUser,
+    loginAsGuest,
+    updateUser,
     logout,
   };
 
