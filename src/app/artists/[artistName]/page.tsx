@@ -7,7 +7,6 @@ import BottomNavBar from "@/components/layout/BottomNavBar";
 import Player from "@/components/layout/Player";
 import PodcastCard from "@/components/podcasts/PodcastCard";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { podcasts as allPodcasts } from "@/lib/podcasts";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import MobileHeader from "@/components/layout/MobileHeader";
 import { cn } from "@/lib/utils";
@@ -24,6 +23,7 @@ import { Input } from "@/components/ui/input";
 import { usePlayer } from "@/context/PlayerContext";
 import { Button } from "@/components/ui/button";
 import { Play } from "lucide-react";
+import { usePodcast } from "@/context/PodcastContext";
 
 export const runtime = 'edge';
 
@@ -37,6 +37,7 @@ const ArtistPage = ({ params }: ArtistPageProps) => {
   const { artistName: encodedArtistName } = React.use(params);
   const artistName = decodeURIComponent(encodedArtistName);
   const { isExpanded, play } = usePlayer();
+  const { podcasts: allPodcasts } = usePodcast();
 
   const [sortOrder, setSortOrder] = React.useState("newest");
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -65,15 +66,15 @@ const ArtistPage = ({ params }: ArtistPageProps) => {
         podcasts.sort((a, b) => b.title.localeCompare(a.title));
         break;
       case "oldest":
-        podcasts.sort((a, b) => parseInt(a.id) - parseInt(b.id));
+        podcasts.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
         break;
       case "newest":
       default:
-        podcasts.sort((a, b) => parseInt(b.id) - parseInt(a.id));
+        podcasts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
         break;
     }
     return podcasts;
-  }, [artistName, sortOrder, searchTerm]);
+  }, [artistName, sortOrder, searchTerm, allPodcasts]);
 
   const handlePlayAll = () => {
     if (podcastsByArtist.length > 0) {
