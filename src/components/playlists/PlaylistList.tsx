@@ -8,18 +8,16 @@ import { Button } from "../ui/button";
 import { Plus } from "lucide-react";
 import { useUser } from "@/context/UserContext";
 
-const FAVORITES_PLAYLIST_NAME = "Favorites";
-
 export default function PlaylistList() {
-  const { playlists } = usePlaylist();
+  const { playlists, FAVORITES_PLAYLIST_ID } = usePlaylist();
   const { user } = useUser();
 
   const favoritesPlaylist = playlists.find(
-    (p) => p.name === FAVORITES_PLAYLIST_NAME && (p.user_uid === user.uid || user.isGuest),
+    (p) => p.id === FAVORITES_PLAYLIST_ID
   );
   
   const otherUserPlaylists = playlists
-    .filter((p) => p.name !== FAVORITES_PLAYLIST_NAME && !p.isPredefined)
+    .filter((p) => p.id !== FAVORITES_PLAYLIST_ID && !p.isPredefined)
     .sort((a, b) => {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
@@ -30,7 +28,7 @@ export default function PlaylistList() {
   ];
 
 
-  if (allUserPlaylists.length === 0) {
+  if (allUserPlaylists.length === 0 && user.isGuest) {
     return null; 
   }
 

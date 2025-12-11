@@ -108,10 +108,10 @@ export default function ProfilePage() {
         },
   });
 
-  const favoritePodcasts = React.useMemo(() =>
-    getPodcastsForPlaylist(FAVORITES_PLAYLIST_ID, podcasts),
-    [getPodcastsForPlaylist, FAVORITES_PLAYLIST_ID, podcasts]
-  );
+  const favoritePodcasts = React.useMemo(() => {
+    if (!FAVORITES_PLAYLIST_ID) return [];
+    return getPodcastsForPlaylist(FAVORITES_PLAYLIST_ID, podcasts)
+  }, [getPodcastsForPlaylist, FAVORITES_PLAYLIST_ID, podcasts]);
 
   const stats = React.useMemo(() => {
     if (history.length === 0) {
@@ -213,7 +213,7 @@ export default function ProfilePage() {
     try {
       const userProfile = localStorage.getItem("user_profile");
       const podcastHistory = localStorage.getItem("podcast_history");
-      const podcastPlaylists = localStorage.getItem("podcast_playlists");
+      const podcastPlaylists = localStorage.getItem("podcast_playlists_guest");
       const listeningLog = localStorage.getItem("listening_log");
 
 
@@ -275,7 +275,7 @@ export default function ProfilePage() {
         }
         if (data.podcastPlaylists) {
           localStorage.setItem(
-            "podcast_playlists",
+            "podcast_playlists_guest",
             JSON.stringify(data.podcastPlaylists),
           );
         }
@@ -561,3 +561,5 @@ export default function ProfilePage() {
     </SidebarProvider>
   );
 }
+
+    

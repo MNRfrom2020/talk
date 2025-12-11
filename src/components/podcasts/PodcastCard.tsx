@@ -41,8 +41,6 @@ interface PodcastCardProps {
   onRemove?: (podcastId: string, playlistId: string) => void; // Callback to remove
 }
 
-const FAVORITES_PLAYLIST_NAME = "Favorites";
-
 export default function PodcastCard({
   podcast,
   playlist,
@@ -62,6 +60,7 @@ export default function PodcastCard({
     addPodcastToPlaylist,
     toggleFavoritePodcast,
     isFavoritePodcast,
+    FAVORITES_PLAYLIST_ID,
     getPlaylistById,
   } = usePlaylist();
   const { toast } = useToast();
@@ -85,7 +84,7 @@ export default function PodcastCard({
 
 
   const userPlaylists = playlists.filter(
-    (p) => !p.isPredefined && p.name !== FAVORITES_PLAYLIST_NAME,
+    (p) => !p.isPredefined && p.id !== FAVORITES_PLAYLIST_ID,
   );
 
   const handleAddToPlaylist = (playlistId: string) => {

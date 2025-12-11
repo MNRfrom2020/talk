@@ -37,11 +37,9 @@ interface PlaylistCardProps {
   playlist: Playlist;
 }
 
-const FAVORITES_PLAYLIST_NAME = "Favorites";
-
 export default function PlaylistCard({ playlist }: PlaylistCardProps) {
   const { podcasts } = usePodcast();
-  const { getPodcastsForPlaylist, deletePlaylist, toggleFavorite } = usePlaylist();
+  const { getPodcastsForPlaylist, deletePlaylist, toggleFavorite, FAVORITES_PLAYLIST_ID } = usePlaylist();
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const { toast } = useToast();
 
@@ -133,7 +131,7 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
                   <span>Share</span>
                 </DropdownMenuItem>
                 
-                {!playlist.isPredefined && playlist.name !== FAVORITES_PLAYLIST_NAME && (
+                {!playlist.isPredefined && playlist.id !== FAVORITES_PLAYLIST_ID && (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleDelete} className="text-destructive">
