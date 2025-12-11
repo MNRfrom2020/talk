@@ -59,7 +59,8 @@ export const PlaylistProvider = ({
       // Fetch predefined playlists from the 'playlists' table
       const { data: predefinedPlaylistsDb, error: predefinedError } = await supabase
         .from('playlists')
-        .select('*');
+        .select('*')
+        .order('created_at', { ascending: false });
       
       if (predefinedError) {
         console.error("Failed to fetch predefined playlists:", predefinedError);
@@ -354,3 +355,5 @@ export const PlaylistProvider = ({
     <PlaylistContext.Provider value={value}>{children}</PlaylistContext.Provider>
   );
 };
+
+    
