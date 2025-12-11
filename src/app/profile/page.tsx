@@ -41,6 +41,7 @@ import { usePodcast } from "@/context/PodcastContext";
 import CategorySection from "@/components/podcasts/CategorySection";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { LoginDialog } from "@/components/auth/LoginDialog";
+import { saveUser } from "@/lib/actions";
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -67,7 +68,7 @@ const StatCard = ({
 );
 
 export default function ProfilePage() {
-  const { user, loginAsGuest, logout } = useUser();
+  const { user, updateUser, logout } = useUser();
   const { history, listeningLog, isExpanded } = usePlayer();
   const { podcasts } = usePodcast();
   const { getPodcastsForPlaylist, FAVORITES_PLAYLIST_ID } = usePlaylist();
@@ -136,8 +137,8 @@ export default function ProfilePage() {
     }
   };
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    loginAsGuest(values.name, avatarPreview);
+  async function onSubmit(values: z.infer<typeof formSchema>) {
+    await updateUser({ name: values.name, avatar: avatarPreview });
     toast({
       title: "Profile Updated",
       description: "Your changes have been saved.",
@@ -323,8 +324,8 @@ export default function ProfilePage() {
                           </FormItem>
                         )}
                       />
-                      <Button type="submit" className="w-full">
-                        Save Changes
+                      <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                         {form.formState.isSubmitting ? "Saving..." : "Save Changes"}
                       </Button>
                     </form>
                   </Form>
@@ -405,11 +406,13 @@ export default function ProfilePage() {
                     >
                       Logout
                     </Button>
-                    <LoginDialog>
-                      <Button variant="outline" className="w-full">
-                          Login
-                      </Button>
-                    </LoginDialog>
+                    {!user.isLoggedIn && (
+                        <LoginDialog>
+                        <Button variant="outline" className="w-full">
+                            Login
+                        </Button>
+                        </LoginDialog>
+                    )}
                   </div>
                 </div>
                 </div>

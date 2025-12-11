@@ -10,6 +10,7 @@ import React, {
 } from "react";
 import type { User as DbUser } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
+import { saveUser as saveUserAction } from "@/lib/actions";
 
 const USER_STORAGE_KEY = "user_profile";
 
@@ -25,6 +26,7 @@ interface UserContextType {
   loading: boolean;
   loginUser: (identifier: string, pass: string) => Promise<void>;
   loginAsGuest: (name: string, avatar?: string | null) => void;
+  updateUser: (data: { name?: string; avatar?: string | null }) => Promise<void>;
   logout: () => void;
 }
 
@@ -66,7 +68,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
-  const saveUser = useCallback((userData: User) => {
+  const saveUserToStorage = useCallback((userData: User) => {
     try {
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
       setUser(userData);
@@ -83,9 +85,9 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         isLoggedIn: true,
         isGuest: true,
       };
-      saveUser(newUserData);
+      saveUserToStorage(newUserData);
     },
-    [saveUser, user.avatar],
+    [saveUserToStorage, user.avatar],
   );
 
   const loginUser = async (identifier: string, pass: string) => {
@@ -108,20 +110,46 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       throw new Error("ভুল পাসওয়ার্ড।");
     }
 
-    // Clear previous guest/user data before setting new data
     localStorage.removeItem(USER_STORAGE_KEY);
 
     const { pass: removedPass, ...userData } = data;
 
     const loggedInUser: User = {
       ...userData,
-      name: userData.name,
+      name: userData.full_name,
       avatar: userData.image,
       isLoggedIn: true,
       isGuest: false,
     };
-    saveUser(loggedInUser);
+    saveUserToStorage(loggedInUser);
   };
+
+  const updateUser = async (data: { name?: string; avatar?: string | null }) => {
+    if (!user.isLoggedIn) return;
+
+    const updatedUser = { ...user, ...data };
+    
+    if (user.isGuest) {
+      loginAsGuest(updatedUser.name, updatedUser.avatar);
+    } else {
+      // For registered users, update the database
+      if (user.uid && user.email && user.username) {
+        const result = await saveUserAction({
+          uid: user.uid,
+          full_name: updatedUser.name,
+          image: updatedUser.avatar,
+          email: user.email, // email and username are not changeable from this form
+          username: user.username,
+        });
+        
+        if (result.errors) {
+            throw new Error(result.message || "Failed to update user in database.");
+        }
+      }
+       saveUserToStorage(updatedUser);
+    }
+  };
+
 
   const logout = useCallback(() => {
     try {
@@ -137,6 +165,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     loading,
     loginUser,
     loginAsGuest,
+    updateUser,
     logout,
   };
 
@@ -144,3 +173,5 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     <UserContext.Provider value={value}>{children}</UserContext.Provider>
   );
 };
+
+    
