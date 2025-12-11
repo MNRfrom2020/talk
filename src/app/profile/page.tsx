@@ -281,22 +281,26 @@ export default function ProfilePage() {
                           <User className="h-16 w-16" />
                         </AvatarFallback>
                       </Avatar>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="absolute bottom-1 right-1 rounded-full border-2 border-background"
-                        onClick={() => fileInputRef.current?.click()}
-                      >
-                        <Camera className="h-5 w-5" />
-                        <span className="sr-only">Change avatar</span>
-                      </Button>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        className="hidden"
-                        accept="image/*"
-                        onChange={handleAvatarChange}
-                      />
+                      {user.isGuest && (
+                        <>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="absolute bottom-1 right-1 rounded-full border-2 border-background"
+                            onClick={() => fileInputRef.current?.click()}
+                          >
+                            <Camera className="h-5 w-5" />
+                            <span className="sr-only">Change avatar</span>
+                          </Button>
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            className="hidden"
+                            accept="image/*"
+                            onChange={handleAvatarChange}
+                          />
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -421,3 +425,5 @@ export default function ProfilePage() {
     </SidebarProvider>
   );
 }
+
+    
