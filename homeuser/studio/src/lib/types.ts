@@ -7,14 +7,18 @@ export type Podcast = {
   coverArt: string;
   coverArtHint: string;
   audioUrl: string;
+  created_at: string;
 };
 
 export type Playlist = {
   id: string;
-  name:string;
-  podcastIds: string[];
-  isPredefined?: boolean;
-  isFavorite?: boolean;
+  name: string;
+  podcast_ids: string[];
+  created_at: string;
+  cover: string | null;
+  user_uid?: string; // For user-created playlists in DB
+  isPredefined?: boolean; // For local predefined playlists
+  isFavorite?: boolean; // For local state management
 };
 
 export type Admin = {
@@ -27,10 +31,11 @@ export type Admin = {
 
 export type User = {
   uid: string;
-  name: string;
+  full_name: string;
   image: string | null;
   username: string;
   email: string;
   pass: string;
   created_at: string;
+  updated_at: string;
 };
