@@ -10,9 +10,23 @@ import { usePlaylist } from "@/context/PlaylistContext";
 import PlaylistCard from "../playlists/PlaylistCard";
 import CategorySection from "./CategorySection";
 import { Loader2 } from "lucide-react";
+import { Button } from "../ui/button";
 
 const INITIAL_VISIBLE_CATEGORIES = 10;
 const CATEGORY_INCREMENT = 10;
+
+const getItemsPerRow = () => {
+  if (typeof window === "undefined") {
+    return 6; // Default for server-side rendering
+  }
+  if (window.innerWidth >= 1536) return 6; // 2xl
+  if (window.innerWidth >= 1280) return 5; // xl
+  if (window.innerWidth >= 1024) return 4; // lg
+  if (window.innerWidth >= 768) return 3; // md
+  if (window.innerWidth >= 640) return 3; // sm
+  return 2; // mobile
+};
+
 
 // Fisher-Yates (aka Knuth) Shuffle
 function shuffleArray<T>(array: T[]): T[] {
@@ -48,6 +62,11 @@ export default function PodcastLibrary({
   const loaderRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  
+  const [itemsPerRow, setItemsPerRow] = useState(getItemsPerRow());
+  const [visiblePlaylistsCount, setVisiblePlaylistsCount] = useState(itemsPerRow);
+  const [isPlaylistsExpanded, setIsPlaylistsExpanded] = useState(false);
+  
 
   useEffect(() => {
     setIsClient(true);
@@ -129,6 +148,34 @@ export default function PodcastLibrary({
       }
     };
   }, [hasMoreCategories, isLoading, loadMoreCategories]);
+  
+   useEffect(() => {
+    const handleResize = () => {
+      const newItemsPerRow = getItemsPerRow();
+      setItemsPerRow(newItemsPerRow);
+      if (!isPlaylistsExpanded) {
+        setVisiblePlaylistsCount(newItemsPerRow);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    handleResize();
+
+    return () => window.removeEventListener("resize", handleResize);
+  }, [isPlaylistsExpanded]);
+
+  const displayedPlaylists = predefinedPlaylists.slice(0, visiblePlaylistsCount);
+  const hasMorePlaylists = predefinedPlaylists.length > visiblePlaylistsCount;
+
+  const handleTogglePlaylists = () => {
+    if (isPlaylistsExpanded) {
+      setVisiblePlaylistsCount(itemsPerRow);
+    } else {
+      setVisiblePlaylistsCount(predefinedPlaylists.length);
+    }
+    setIsPlaylistsExpanded(!isPlaylistsExpanded);
+  };
+
 
   if (!isClient) {
     return (
@@ -156,9 +203,14 @@ export default function PodcastLibrary({
               <h2 className="font-headline text-2xl font-bold tracking-tight">
                 Playlists
               </h2>
+              {predefinedPlaylists.length > itemsPerRow && (
+                 <Button variant="link" onClick={handleTogglePlaylists}>
+                  {isPlaylistsExpanded ? "Show less" : "See all"}
+                </Button>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
-              {predefinedPlaylists.map((playlist) => (
+              {displayedPlaylists.map((playlist) => (
                 <PlaylistCard key={playlist.id} playlist={playlist} />
               ))}
             </div>
