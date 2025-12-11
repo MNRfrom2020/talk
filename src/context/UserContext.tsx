@@ -16,6 +16,7 @@ const USER_STORAGE_KEY = "user_profile";
 
 export interface User extends Partial<DbUser> {
   name: string;
+  guest_name?: string;
   avatar: string | null;
   isLoggedIn: boolean;
   isGuest: boolean;
@@ -51,23 +52,6 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User>(defaultUser);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    try {
-      const storedUser = localStorage.getItem(USER_STORAGE_KEY);
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-      } else {
-        setUser(defaultUser);
-      }
-    } catch (error) {
-      console.error("Failed to load user from storage", error);
-      setUser(defaultUser);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   const saveUserToStorage = useCallback((userData: User) => {
     try {
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(userData));
@@ -77,10 +61,67 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
+  useEffect(() => {
+    const revalidateUser = async () => {
+      setLoading(true);
+      try {
+        const storedUserJson = localStorage.getItem(USER_STORAGE_KEY);
+        if (storedUserJson) {
+          const storedUser = JSON.parse(storedUserJson) as User;
+          
+          // If the user is not a guest, re-fetch their data from the database
+          if (!storedUser.isGuest && storedUser.uid) {
+            const { data, error } = await supabase
+              .from("users")
+              .select("uid, full_name, image, username, email, created_at, updated_at")
+              .eq("uid", storedUser.uid)
+              .single();
+
+            if (error) {
+              console.error("Revalidation error, logging out:", error.message);
+              // If user not found in DB, logout
+              logout();
+              return;
+            }
+            
+            if (data) {
+              const updatedUser: User = {
+                ...storedUser,
+                ...data,
+                name: data.full_name,
+                avatar: data.image,
+                isLoggedIn: true,
+                isGuest: false,
+              };
+              saveUserToStorage(updatedUser);
+            } else {
+              // User not found in DB, maybe deleted. Logout.
+              logout();
+            }
+          } else {
+            // It's a guest, trust localStorage
+            setUser(storedUser);
+          }
+        } else {
+          setUser(defaultUser);
+        }
+      } catch (error) {
+        console.error("Failed to load or revalidate user from storage", error);
+        logout(); // Clear corrupted data
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    revalidateUser();
+  }, []);
+
+
   const loginAsGuest = useCallback(
     (name: string, avatar?: string | null) => {
       const newUserData: User = {
-        name,
+        name: "Guest",
+        guest_name: name,
         avatar: avatar === undefined ? user.avatar : avatar,
         isLoggedIn: true,
         isGuest: true,
@@ -127,11 +168,10 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const updateUser = async (data: { name?: string; avatar?: string | null }) => {
     if (!user.isLoggedIn) return;
 
-    const updatedUser = { ...user, ...data };
-    
     if (user.isGuest) {
-      loginAsGuest(updatedUser.name, updatedUser.avatar);
+      loginAsGuest(data.name || user.guest_name || "Guest", data.avatar);
     } else {
+       const updatedUser = { ...user, ...data };
        saveUserToStorage(updatedUser);
     }
   };
@@ -147,7 +187,10 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const value = {
-    user,
+    user: {
+      ...user,
+      name: user.name || user.guest_name || "Guest",
+    },
     loading,
     loginUser,
     loginAsGuest,
