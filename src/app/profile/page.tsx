@@ -8,7 +8,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence } from "framer-motion";
 import { Camera, Clapperboard, Mic, User, TrendingUp } from "lucide-react";
 import Image from "next/image";
-import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -39,13 +38,25 @@ import ListeningChart from "@/components/podcasts/ListeningChart";
 import { usePlaylist } from "@/context/PlaylistContext";
 import { usePodcast } from "@/context/PodcastContext";
 import CategorySection from "@/components/podcasts/CategorySection";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { LoginDialog } from "@/components/auth/LoginDialog";
-import { saveUser } from "@/lib/actions";
+import { saveUser as updateUserInDb } from "@/lib/actions";
 
-const formSchema = z.object({
+const guestFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  avatar: z.string().nullable(),
 });
+
+const userFormSchema = z.object({
+  full_name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+  image: z.string().url("Must be a valid URL").nullable().or(z.literal("")),
+  email: z.string().email("Please enter a valid email address."),
+  pass: z
+    .string()
+    .min(6, "Password must be at least 6 characters")
+    .optional()
+    .or(z.literal("")),
+});
+
 
 const StatCard = ({
   title,
@@ -78,13 +89,17 @@ export default function ProfilePage() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const importFileInputRef = React.useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const isMobile = useIsMobile();
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: user.name,
-    },
+  const form = useForm({
+    resolver: zodResolver(user.isGuest ? guestFormSchema : userFormSchema),
+    defaultValues: user.isGuest
+      ? { name: user.name, avatar: user.avatar }
+      : {
+          full_name: user.name,
+          image: user.avatar,
+          email: user.email || "",
+          pass: "",
+        },
   });
 
   const favoritePodcasts = React.useMemo(() =>
@@ -122,7 +137,16 @@ export default function ProfilePage() {
   }, [history]);
 
   React.useEffect(() => {
-    form.reset({ name: user.name });
+    if (user.isGuest) {
+        form.reset({ name: user.name, avatar: user.avatar });
+    } else {
+        form.reset({
+            full_name: user.name,
+            image: user.avatar,
+            email: user.email || "",
+            pass: "",
+        });
+    }
     setAvatarPreview(user.avatar);
   }, [user, form]);
 
@@ -131,18 +155,44 @@ export default function ProfilePage() {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setAvatarPreview(reader.result as string);
+        const result = reader.result as string;
+        setAvatarPreview(result);
+        if (user.isGuest) {
+            form.setValue('avatar', result);
+        } else {
+            form.setValue('image', result);
+        }
       };
       reader.readAsDataURL(file);
     }
   };
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    await updateUser({ name: values.name, avatar: avatarPreview });
-    toast({
-      title: "Profile Updated",
-      description: "Your changes have been saved.",
-    });
+  async function onSubmit(values: any) {
+    try {
+      if (user.isGuest) {
+        await updateUser({ name: values.name, avatar: values.avatar });
+      } else {
+         if (!user.uid || !user.username) {
+            throw new Error("User information is incomplete.");
+        }
+        await updateUserInDb({
+          uid: user.uid,
+          username: user.username,
+          ...values
+        });
+        await updateUser({ name: values.full_name, avatar: values.image });
+      }
+      toast({
+        title: "Profile Updated",
+        description: "Your changes have been saved.",
+      });
+    } catch (error: any) {
+         toast({
+            variant: "destructive",
+            title: "Update Failed",
+            description: error.message || "Could not update profile.",
+        });
+    }
   }
 
   function handleLogout() {
@@ -251,6 +301,79 @@ export default function ProfilePage() {
     reader.readAsText(file);
   };
 
+  const renderGuestForm = () => (
+     <FormField
+        control={form.control}
+        name="name"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Display Name</FormLabel>
+            <FormControl>
+              <Input placeholder="Your Name" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+  );
+
+  const renderUserForm = () => (
+    <>
+      <FormField
+        control={form.control}
+        name="full_name"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Full Name</FormLabel>
+            <FormControl>
+              <Input placeholder="Your full name" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+       <FormField
+        control={form.control}
+        name="email"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Email</FormLabel>
+            <FormControl>
+              <Input type="email" placeholder="your@email.com" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+       <FormField
+        control={form.control}
+        name="image"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Avatar URL</FormLabel>
+            <FormControl>
+              <Input placeholder="https://example.com/avatar.png" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name="pass"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>New Password</FormLabel>
+            <FormControl>
+              <Input type="password" placeholder="Leave blank to keep current" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </>
+  );
+
   return (
     <SidebarProvider>
        <div className="relative flex h-screen flex-col bg-background">
@@ -282,7 +405,7 @@ export default function ProfilePage() {
                           <User className="h-16 w-16" />
                         </AvatarFallback>
                       </Avatar>
-                      {user.isGuest && (
+                      {(user.isGuest) && (
                         <>
                           <Button
                             variant="outline"
@@ -311,19 +434,7 @@ export default function ProfilePage() {
                       onSubmit={form.handleSubmit(onSubmit)}
                       className="w-full space-y-6"
                     >
-                      <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Display Name</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Your Name" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      {user.isGuest ? renderGuestForm() : renderUserForm()}
                       <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
                          {form.formState.isSubmitting ? "Saving..." : "Save Changes"}
                       </Button>
@@ -428,5 +539,3 @@ export default function ProfilePage() {
     </SidebarProvider>
   );
 }
-
-    

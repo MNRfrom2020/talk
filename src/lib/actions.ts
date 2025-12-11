@@ -1,9 +1,9 @@
+
 "use server";
 
 import { revalidatePath } from "next/cache";
 import { supabase } from "./supabase";
 import { z } from "zod";
-import { randomUUID } from "crypto";
 
 // Podcast Actions
 const PodcastFormSchema = z.object({
@@ -243,6 +243,7 @@ export async function saveUser(values: UserFormValues): Promise<UserState> {
   }
 
   revalidatePath("/admin/dashboard/users");
+  revalidatePath("/profile");
   return { message: `Successfully ${uid ? "updated" : "created"} user.` };
 }
 

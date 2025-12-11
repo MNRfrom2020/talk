@@ -132,20 +132,6 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     if (user.isGuest) {
       loginAsGuest(updatedUser.name, updatedUser.avatar);
     } else {
-      // For registered users, update the database
-      if (user.uid && user.email && user.username) {
-        const result = await saveUserAction({
-          uid: user.uid,
-          full_name: updatedUser.name,
-          image: updatedUser.avatar,
-          email: user.email, // email and username are not changeable from this form
-          username: user.username,
-        });
-        
-        if (result.errors) {
-            throw new Error(result.message || "Failed to update user in database.");
-        }
-      }
        saveUserToStorage(updatedUser);
     }
   };
@@ -173,5 +159,3 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     <UserContext.Provider value={value}>{children}</UserContext.Provider>
   );
 };
-
-    
