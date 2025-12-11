@@ -5,6 +5,14 @@ import { revalidatePath } from "next/cache";
 import { supabase } from "./supabase";
 import { z } from "zod";
 
+// Function to get current time in Bangladesh Standard Time (UTC+6)
+const getBstDate = () => {
+  const now = new Date();
+  const bstOffset = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  return new Date(utc + bstOffset);
+}
+
 // Podcast Actions
 const PodcastFormSchema = z.object({
   id: z.string().optional(),
@@ -49,6 +57,8 @@ export async function savePodcast(
 
   if (data.created_at) {
     podcastData.created_at = new Date(data.created_at).toISOString();
+  } else if (!id) {
+    podcastData.created_at = getBstDate().toISOString();
   }
 
   try {
@@ -93,17 +103,14 @@ export async function deletePodcast(id: string) {
 const PlaylistFormSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1, "Name is required"),
-  podcast_ids: z.array(z.string()).min(1, "Select at least one podcast"),
+  podcast_ids: z.array(z.string()).min(0, "Select at least one podcast").optional(),
   cover: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   created_at: z.string().optional(),
   user_uid: z.string().uuid().optional(),
 });
 
 
-type PlaylistFormValues = Omit<z.infer<typeof PlaylistFormSchema>, "podcast_ids"> & {
-    podcast_ids: string;
-};
-
+type PlaylistFormValues = z.infer<typeof PlaylistFormSchema>;
 
 export type PlaylistState = {
   errors?: z.ZodError<z.infer<typeof PlaylistFormSchema>>["formErrors"]["fieldErrors"];
@@ -113,14 +120,7 @@ export type PlaylistState = {
 export async function savePlaylist(
   values: PlaylistFormValues,
 ): Promise<PlaylistState> {
-
-   const transformedValues = {
-    ...values,
-    podcast_ids: values.podcast_ids.split(',').map(s => s.trim()).filter(Boolean),
-  };
-
-  const validatedFields = PlaylistFormSchema.safeParse(transformedValues);
-
+  const validatedFields = PlaylistFormSchema.safeParse(values);
 
   if (!validatedFields.success) {
     return {
@@ -238,8 +238,35 @@ export async function saveUser(values: UserFormValues): Promise<UserState> {
       if (error) throw error;
     } else {
       // Create new user
-      const { error } = await supabase.from("users").insert(userData);
+       userData.created_at = getBstDate().toISOString();
+       userData.updated_at = getBstDate().toISOString();
+      const { data: newUser, error } = await supabase
+        .from("users")
+        .insert(userData)
+        .select()
+        .single();
+
       if (error) throw error;
+
+      if (newUser) {
+        // Create a default "Favorites" playlist for the new user
+        const { error: playlistError } = await supabase
+          .from("user_playlists")
+          .insert({
+            user_uid: newUser.uid,
+            name: "Favorites",
+            podcast_ids: [],
+            created_at: getBstDate().toISOString(),
+          });
+
+        if (playlistError) {
+          // Log the error, but don't block the user creation response
+          console.error(
+            `Failed to create favorites playlist for user ${newUser.uid}:`,
+            playlistError,
+          );
+        }
+      }
     }
   } catch (error: any) {
     return {
