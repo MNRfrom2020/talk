@@ -1,3 +1,4 @@
+
 "use client";
 
 import { usePlaylist } from "@/context/PlaylistContext";
@@ -10,11 +11,11 @@ import { FAVORITES_PLAYLIST_ID } from "@/context/PlaylistContext";
 export default function PlaylistList() {
   const { playlists } = usePlaylist();
 
-  const favoritesPlaylist = playlists.find(p => p.id === FAVORITES_PLAYLIST_ID);
+  const favoritesPlaylist = playlists.find((p) => p.id === FAVORITES_PLAYLIST_ID);
+  
   const otherUserPlaylists = playlists
-    .filter((p) => !p.isPredefined && p.id !== FAVORITES_PLAYLIST_ID)
+    .filter((p) => p.id !== FAVORITES_PLAYLIST_ID && !p.isPredefined)
     .sort((a, b) => {
-      // Assuming 'created_at' is a string that can be compared, or use Date.parse
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
