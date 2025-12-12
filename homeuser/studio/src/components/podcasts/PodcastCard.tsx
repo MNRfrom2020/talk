@@ -90,19 +90,6 @@ export default function PodcastCard({
     (p) => !p.isPredefined && p.id !== FAVORITES_PLAYLIST_ID,
   );
 
-  const handleAddToPlaylist = (playlistId: string) => {
-    if (user.isGuest) {
-      addPodcastToGuestPlaylist(playlistId, podcast.id);
-    } else {
-      addPodcastToUserPlaylist(playlistId, podcast.id);
-    }
-    const playlist = playlists.find((p) => p.id === playlistId);
-    toast({
-      title: "Added to playlist",
-      description: `"${podcast.title}" has been added to "${playlist?.name}".`,
-    });
-  };
-
   const handleToggleFavorite = (e: MouseEvent) => {
     e.stopPropagation();
     toggleFavoritePodcast(podcast.id);
@@ -200,7 +187,16 @@ export default function PodcastCard({
                 {userPlaylists.map((p) => (
                   <DropdownMenuItem
                     key={p.id}
-                    onClick={() => handleAddToPlaylist(p.id)}
+                    onClick={() => {
+                      const addFunction = user.isGuest
+                        ? addPodcastToGuestPlaylist
+                        : addPodcastToUserPlaylist;
+                      addFunction(p.id, podcast.id);
+                       toast({
+                        title: "Added to playlist",
+                        description: `"${podcast.title}" has been added to "${p.name}".`,
+                      });
+                    }}
                   >
                     {p.name}
                   </DropdownMenuItem>
