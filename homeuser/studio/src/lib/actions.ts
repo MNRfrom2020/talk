@@ -143,14 +143,15 @@ export async function savePlaylist(
   }
 
   try {
+    const table = data.user_uid ? 'user_playlists' : 'playlists';
     if (id) {
        const { error } = await supabase
-        .from("user_playlists")
+        .from(table)
         .update(playlistData)
         .eq("id", id);
       if (error) throw error;
     } else {
-      const { error } = await supabase.from("user_playlists").insert(playlistData);
+      const { error } = await supabase.from(table).insert(playlistData);
        if (error) throw error;
     }
   } catch (error: any) {
@@ -165,8 +166,14 @@ export async function savePlaylist(
 
 export async function deletePlaylist(id: string) {
     try {
-        const { error } = await supabase.from("user_playlists").delete().eq("id", id);
-        if (error) throw error;
+        const { error: userPlaylistError } = await supabase.from("user_playlists").delete().eq("id", id);
+        // Also try deleting from predefined playlists in case it's one of those, though UI should prevent this.
+        const { error: playlistError } = await supabase.from("playlists").delete().eq("id", id);
+
+        if (userPlaylistError && playlistError) {
+            console.error("Error deleting from both playlist tables:", {userPlaylistError, playlistError});
+        }
+        
         revalidatePath("/admin/dashboard/playlists");
         return { message: "Deleted Playlist." };
     } catch (error: any) {

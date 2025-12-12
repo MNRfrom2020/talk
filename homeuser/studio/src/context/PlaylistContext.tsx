@@ -89,7 +89,7 @@ export const PlaylistProvider = ({
           
           let favoritesPlaylist = userOnlyPlaylists.find((p: Playlist) => p.name === FAVORITES_PLAYLIST_NAME);
           if (!favoritesPlaylist) {
-            favoritesPlaylist = { id: 'favorites-guest', name: FAVORITES_PLAYLIST_NAME, podcast_ids: [], isPredefined: false, isFavorite: false };
+            favoritesPlaylist = { id: 'favorites-guest', name: FAVORITES_PLAYLIST_NAME, podcast_ids: [], isPredefined: false, isFavorite: false, created_at: new Date().toISOString(), cover: null };
             userOnlyPlaylists.unshift(favoritesPlaylist);
           }
           setFavoritesPlaylistId(favoritesPlaylist.id);
@@ -143,7 +143,7 @@ export const PlaylistProvider = ({
             return null;
           }
           // For user-created, save all details
-          return { id: p.id, name: p.name, podcast_ids: p.podcast_ids, isFavorite: p.isFavorite };
+          return { id: p.id, name: p.name, podcast_ids: p.podcast_ids, isFavorite: p.isFavorite, created_at: p.created_at, cover: p.cover };
         }).filter(Boolean);
 
         localStorage.setItem(PLAYLIST_STORAGE_KEY, JSON.stringify(playlistsToSave));
@@ -171,18 +171,19 @@ export const PlaylistProvider = ({
         savePlaylistsForGuest(updatedPlaylists);
       } else {
          if (!user.uid) return;
-         const result = await savePlaylistAction({
-            name,
-            podcast_ids: podcastIds,
-         } as any);
-
-        if (result.message && !result.errors) {
-            const { data: newPlaylist, error } = await supabase.from('user_playlists').select().eq('name', name).eq('user_uid', user.uid).single();
-            if (newPlaylist && !error) {
-                 setPlaylists(prev => [...prev, newPlaylist]);
-            }
+         const { error } = await supabase
+          .from("user_playlists")
+          .insert({ name, podcast_ids: podcastIds, user_uid: user.uid });
+        
+        if (!error) {
+          const { data: newPlaylist, error: fetchError } = await supabase.from('user_playlists').select().eq('name', name).eq('user_uid', user.uid).single();
+          if (newPlaylist && !fetchError) {
+              setPlaylists(prev => [...prev, newPlaylist]);
+          } else {
+            console.error("Error fetching new playlist:", fetchError?.message)
+          }
         } else {
-             console.error("Error creating playlist:", result.message);
+             console.error("Error creating playlist:", error.message);
         }
       }
     },
@@ -374,3 +375,5 @@ export const PlaylistProvider = ({
     <PlaylistContext.Provider value={value}>{children}</PlaylistContext.Provider>
   );
 };
+
+    
