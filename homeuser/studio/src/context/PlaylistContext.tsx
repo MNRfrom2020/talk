@@ -22,8 +22,10 @@ interface PlaylistContextType {
   playlists: Playlist[];
   createPlaylist: (name: string, podcastIds?: string[]) => void;
   deletePlaylist: (playlistId: string) => void;
-  addPodcastToPlaylist: (playlistId: string, podcastId: string) => void;
-  removePodcastFromPlaylist: (playlistId: string, podcastId: string) => void;
+  addPodcastToGuestPlaylist: (playlistId: string, podcastId: string) => void;
+  removePodcastFromGuestPlaylist: (playlistId: string, podcastId: string) => void;
+  addPodcastToUserPlaylist: (playlistId: string, podcastId: string) => Promise<void>;
+  removePodcastFromUserPlaylist: (playlistId: string, podcastId: string) => Promise<void>;
   getPodcastsForPlaylist: (
     playlistId: string,
     allPodcasts: Podcast[],
@@ -171,19 +173,16 @@ export const PlaylistProvider = ({
         savePlaylistsForGuest(updatedPlaylists);
       } else {
          if (!user.uid) return;
-         const { error } = await supabase
+         const { data, error } = await supabase
           .from("user_playlists")
-          .insert({ name, podcast_ids: podcastIds, user_uid: user.uid });
+          .insert({ name, podcast_ids: podcastIds, user_uid: user.uid })
+          .select()
+          .single();
         
-        if (!error) {
-          const { data: newPlaylist, error: fetchError } = await supabase.from('user_playlists').select().eq('name', name).eq('user_uid', user.uid).single();
-          if (newPlaylist && !fetchError) {
-              setPlaylists(prev => [...prev, newPlaylist]);
-          } else {
-            console.error("Error fetching new playlist:", fetchError?.message)
-          }
+        if (data && !error) {
+            setPlaylists(prev => [...prev, data]);
         } else {
-             console.error("Error creating playlist:", error.message);
+             console.error("Error creating playlist:", error?.message);
         }
       }
     },
@@ -201,11 +200,11 @@ export const PlaylistProvider = ({
         );
         savePlaylistsForGuest(updatedPlaylists);
       } else {
-        const result = await deletePlaylistAction(playlistId);
-        if (result.message && !result.message.includes("Error")) {
+        const { error } = await supabase.from('user_playlists').delete().eq('id', playlistId);
+        if (!error) {
             setPlaylists(prev => prev.filter(p => p.id !== playlistId));
         } else {
-            console.error("Error deleting playlist:", result.message);
+            console.error("Error deleting playlist:", error.message);
         }
       }
     },
@@ -227,32 +226,21 @@ export const PlaylistProvider = ({
 
   const addPodcastToUserPlaylist = async (playlistId: string, podcastId: string) => {
       const playlist = playlists.find((p) => p.id === playlistId);
-      if (!playlist || playlist.isPredefined || !user.uid) return;
-
-      if (!playlist.podcast_ids.includes(podcastId)) {
-          const newPodcastIds = [...playlist.podcast_ids, podcastId];
-          const { error } = await supabase
-            .from('user_playlists')
-            .update({ podcast_ids: newPodcastIds })
-            .eq('id', playlistId)
-            .eq('user_uid', user.uid);
-          
-          if (!error) {
-              setPlaylists(prev => prev.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p));
-          } else {
-              console.error("Error adding podcast to user playlist:", error.message);
-          }
+      if (!playlist || playlist.isPredefined || !user.uid || playlist.podcast_ids.includes(podcastId)) return;
+      
+      const newPodcastIds = [...playlist.podcast_ids, podcastId];
+      const { error } = await supabase
+        .from('user_playlists')
+        .update({ podcast_ids: newPodcastIds })
+        .eq('id', playlistId)
+        .eq('user_uid', user.uid);
+      
+      if (!error) {
+          setPlaylists(prev => prev.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p));
+      } else {
+          console.error("Error adding podcast to user playlist:", error.message);
       }
   };
-  
-  const addPodcastToPlaylist = useCallback((playlistId: string, podcastId: string) => {
-      if (user.isGuest) {
-          addPodcastToGuestPlaylist(playlistId, podcastId);
-      } else {
-          addPodcastToUserPlaylist(playlistId, podcastId);
-      }
-  }, [playlists, user]);
-
 
   const removePodcastFromGuestPlaylist = (playlistId: string, podcastId: string) => {
       const playlist = playlists.find((p) => p.id === playlistId);
@@ -282,15 +270,6 @@ export const PlaylistProvider = ({
           console.error("Error removing podcast from user playlist:", error.message);
       }
   };
-
-  const removePodcastFromPlaylist = useCallback((playlistId: string, podcastId: string) => {
-      if (user.isGuest) {
-          removePodcastFromGuestPlaylist(playlistId, podcastId);
-      } else {
-          removePodcastFromUserPlaylist(playlistId, podcastId);
-      }
-  }, [playlists, user]);
-
 
   const getPodcastsForPlaylist = useCallback(
     (playlistId: string, allPodcasts: Podcast[]) => {
@@ -344,16 +323,24 @@ export const PlaylistProvider = ({
     (podcastId: string) => {
       if (FAVORITES_PLAYLIST_ID) {
           const isAlreadyFavorite = isFavoritePodcast(podcastId);
-          if (isAlreadyFavorite) {
-              removePodcastFromPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
+          if (user.isGuest) {
+             if (isAlreadyFavorite) {
+              removePodcastFromGuestPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
+            } else {
+              addPodcastToGuestPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
+            }
           } else {
-              addPodcastToPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
+             if (isAlreadyFavorite) {
+              removePodcastFromUserPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
+            } else {
+              addPodcastToUserPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
+            }
           }
       } else {
         console.error("Favorites playlist ID not found");
       }
     },
-    [FAVORITES_PLAYLIST_ID, isFavoritePodcast, addPodcastToPlaylist, removePodcastFromPlaylist],
+    [FAVORITES_PLAYLIST_ID, isFavoritePodcast, user.isGuest, addPodcastToGuestPlaylist, removePodcastFromGuestPlaylist, addPodcastToUserPlaylist, removePodcastFromUserPlaylist],
   );
 
 
@@ -361,8 +348,10 @@ export const PlaylistProvider = ({
     playlists,
     createPlaylist,
     deletePlaylist,
-    addPodcastToPlaylist,
-    removePodcastFromPlaylist,
+    addPodcastToGuestPlaylist,
+    removePodcastFromGuestPlaylist,
+    addPodcastToUserPlaylist,
+    removePodcastFromUserPlaylist,
     getPodcastsForPlaylist,
     getPlaylistById,
     toggleFavorite,
@@ -375,5 +364,3 @@ export const PlaylistProvider = ({
     <PlaylistContext.Provider value={value}>{children}</PlaylistContext.Provider>
   );
 };
-
-    

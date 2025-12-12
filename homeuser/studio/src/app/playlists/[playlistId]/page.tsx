@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { usePlayer } from "@/context/PlayerContext";
+import { useUser } from "@/context/UserContext";
 
 interface PlaylistPageProps {
   params: Promise<{
@@ -36,12 +37,14 @@ interface PlaylistPageProps {
 
 const PlaylistPage = ({ params }: PlaylistPageProps) => {
   const { playlistId } = React.use(params);
+  const { user } = useUser();
   const { play, isExpanded } = usePlayer();
   const {
     getPlaylistById,
     getPodcastsForPlaylist,
     toggleFavorite,
-    removePodcastFromPlaylist,
+    removePodcastFromGuestPlaylist,
+    removePodcastFromUserPlaylist,
   } = usePlaylist();
   const { podcasts: allPodcasts } = usePodcast();
   const { toast } = useToast();
@@ -50,6 +53,8 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
   const [searchTerm, setSearchTerm] = React.useState("");
 
   const playlist = getPlaylistById(playlistId);
+
+  const onRemove = user.isGuest ? removePodcastFromGuestPlaylist : removePodcastFromUserPlaylist;
 
   const podcastsInPlaylist = React.useMemo(() => {
     if (!playlist) return [];
@@ -225,7 +230,7 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
                         podcast={podcast}
                         playlist={podcastsInPlaylist}
                         playlistId={playlist.id}
-                        onRemove={removePodcastFromPlaylist}
+                        onRemove={onRemove}
                       />
                     ))}
                   </div>

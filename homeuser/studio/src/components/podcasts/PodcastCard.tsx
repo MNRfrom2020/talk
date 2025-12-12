@@ -33,12 +33,13 @@ import { CreatePlaylistDialog } from "../playlists/CreatePlaylistDialog";
 import { type MouseEvent, useEffect, useState } from "react";
 import { Progress } from "../ui/progress";
 import { usePodcast } from "@/context/PodcastContext";
+import { useUser } from "@/context/UserContext";
 
 interface PodcastCardProps {
   podcast: Podcast;
   playlist?: Podcast[];
   playlistId?: string; // To identify which playlist the card is in
-  onRemove?: (podcastId: string, playlistId: string) => void; // Callback to remove
+  onRemove?: (playlistId: string, podcastId: string) => void;
 }
 
 export default function PodcastCard({
@@ -47,6 +48,7 @@ export default function PodcastCard({
   playlistId,
   onRemove,
 }: PodcastCardProps) {
+  const { user } = useUser();
   const {
     play,
     currentTrack,
@@ -57,7 +59,8 @@ export default function PodcastCard({
   const { podcasts: allPodcasts } = usePodcast();
   const {
     playlists,
-    addPodcastToPlaylist,
+    addPodcastToGuestPlaylist,
+    addPodcastToUserPlaylist,
     toggleFavoritePodcast,
     isFavoritePodcast,
     FAVORITES_PLAYLIST_ID,
@@ -88,7 +91,11 @@ export default function PodcastCard({
   );
 
   const handleAddToPlaylist = (playlistId: string) => {
-    addPodcastToPlaylist(playlistId, podcast.id);
+    if (user.isGuest) {
+      addPodcastToGuestPlaylist(playlistId, podcast.id);
+    } else {
+      addPodcastToUserPlaylist(playlistId, podcast.id);
+    }
     const playlist = playlists.find((p) => p.id === playlistId);
     toast({
       title: "Added to playlist",
@@ -110,7 +117,7 @@ export default function PodcastCard({
   const handleRemoveFromPlaylist = (e: MouseEvent) => {
     e.stopPropagation();
     if (onRemove && playlistId) {
-      onRemove(podcast.id, playlistId);
+      onRemove(playlistId, podcast.id);
       toast({
         title: "Podcast Removed",
         description: `"${podcast.title}" has been removed from the playlist.`,
