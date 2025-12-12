@@ -89,7 +89,7 @@ export const PlaylistProvider = ({
           
           let favoritesPlaylist = userOnlyPlaylists.find((p: Playlist) => p.name === FAVORITES_PLAYLIST_NAME);
           if (!favoritesPlaylist) {
-            favoritesPlaylist = { id: 'favorites-guest', name: FAVORITES_PLAYLIST_NAME, podcast_ids: [], isPredefined: false, isFavorite: false };
+            favoritesPlaylist = { id: 'favorites-guest', name: FAVORITES_PLAYLIST_NAME, podcast_ids: [], isPredefined: false, isFavorite: false, created_at: new Date().toISOString(), cover: null };
             userOnlyPlaylists.unshift(favoritesPlaylist);
           }
           setFavoritesPlaylistId(favoritesPlaylist.id);
@@ -143,7 +143,7 @@ export const PlaylistProvider = ({
             return null;
           }
           // For user-created, save all details
-          return { id: p.id, name: p.name, podcast_ids: p.podcast_ids, isFavorite: p.isFavorite };
+          return { id: p.id, name: p.name, podcast_ids: p.podcast_ids, isFavorite: p.isFavorite, created_at: p.created_at, cover: p.cover };
         }).filter(Boolean);
 
         localStorage.setItem(PLAYLIST_STORAGE_KEY, JSON.stringify(playlistsToSave));
@@ -173,8 +173,8 @@ export const PlaylistProvider = ({
          if (!user.uid) return;
          const result = await savePlaylistAction({
             name,
-            podcast_ids: podcastIds,
-            user_uid: user.uid
+            podcast_ids: podcastIds.join(','),
+            user_uid: user.uid,
          } as any);
 
         if (result.message && !result.errors) {
@@ -212,25 +212,48 @@ export const PlaylistProvider = ({
     [playlists, user],
   );
 
-  const addPodcastToGuestPlaylist = (playlistId: string, podcastId: string) => {
+  const addPodcastToPlaylist = useCallback(async (playlistId: string, podcastId: string) => {
       const playlist = playlists.find((p) => p.id === playlistId);
-      if (!playlist || playlist.isPredefined) return;
+      if (!playlist || playlist.isPredefined || playlist.podcast_ids.includes(podcastId)) return;
 
-      if (!playlist.podcast_ids.includes(podcastId)) {
-        const newPodcastIds = [...playlist.podcast_ids, podcastId];
+      const newPodcastIds = [...playlist.podcast_ids, podcastId];
+
+      if (user.isGuest) {
         const updatedPlaylists = playlists.map((p) =>
             p.id === playlistId ? { ...p, podcast_ids: newPodcastIds } : p
         );
         savePlaylistsForGuest(updatedPlaylists);
+      } else {
+        if (!user.uid) return;
+        
+        const { error } = await supabase
+          .from('user_playlists')
+          .update({ podcast_ids: newPodcastIds })
+          .eq('id', playlistId)
+          .eq('user_uid', user.uid);
+        
+        if (!error) {
+            setPlaylists(prev => prev.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p));
+        } else {
+            console.error("Error adding podcast to user playlist:", error.message);
+        }
       }
-  };
+  }, [playlists, user]);
 
-  const addPodcastToUserPlaylist = async (playlistId: string, podcastId: string) => {
+
+  const removePodcastFromPlaylist = useCallback(async (playlistId: string, podcastId: string) => {
       const playlist = playlists.find((p) => p.id === playlistId);
-      if (!playlist || playlist.isPredefined || !user.uid) return;
+      if (!playlist || playlist.isPredefined) return;
+      
+      const newPodcastIds = playlist.podcast_ids.filter((id) => id !== podcastId);
 
-      if (!playlist.podcast_ids.includes(podcastId)) {
-          const newPodcastIds = [...playlist.podcast_ids, podcastId];
+      if (user.isGuest) {
+          const updatedPlaylists = playlists.map((p) =>
+              p.id === playlistId ? { ...p, podcast_ids: newPodcastIds } : p
+          );
+          savePlaylistsForGuest(updatedPlaylists);
+      } else {
+          if (!user.uid) return;
           const { error } = await supabase
             .from('user_playlists')
             .update({ podcast_ids: newPodcastIds })
@@ -240,54 +263,8 @@ export const PlaylistProvider = ({
           if (!error) {
               setPlaylists(prev => prev.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p));
           } else {
-              console.error("Error adding podcast to user playlist:", error.message);
+              console.error("Error removing podcast from user playlist:", error.message);
           }
-      }
-  };
-
-  const addPodcastToPlaylist = useCallback((playlistId: string, podcastId: string) => {
-      if (user.isGuest) {
-          addPodcastToGuestPlaylist(playlistId, podcastId);
-      } else {
-          addPodcastToUserPlaylist(playlistId, podcastId);
-      }
-  }, [playlists, user]);
-
-
-  const removePodcastFromGuestPlaylist = (playlistId: string, podcastId: string) => {
-      const playlist = playlists.find((p) => p.id === playlistId);
-      if (!playlist || playlist.isPredefined) return;
-      
-      const newPodcastIds = playlist.podcast_ids.filter((id) => id !== podcastId);
-      const updatedPlaylists = playlists.map((p) =>
-          p.id === playlistId ? { ...p, podcast_ids: newPodcastIds } : p
-      );
-      savePlaylistsForGuest(updatedPlaylists);
-  };
-
-  const removePodcastFromUserPlaylist = async (playlistId: string, podcastId: string) => {
-      const playlist = playlists.find((p) => p.id === playlistId);
-      if (!playlist || playlist.isPredefined || !user.uid) return;
-      
-      const newPodcastIds = playlist.podcast_ids.filter((id) => id !== podcastId);
-      const { error } = await supabase
-        .from('user_playlists')
-        .update({ podcast_ids: newPodcastIds })
-        .eq('id', playlistId)
-        .eq('user_uid', user.uid);
-      
-      if (!error) {
-          setPlaylists(prev => prev.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p));
-      } else {
-          console.error("Error removing podcast from user playlist:", error.message);
-      }
-  };
-
-  const removePodcastFromPlaylist = useCallback((playlistId: string, podcastId: string) => {
-      if (user.isGuest) {
-          removePodcastFromGuestPlaylist(playlistId, podcastId);
-      } else {
-          removePodcastFromUserPlaylist(playlistId, podcastId);
       }
   }, [playlists, user]);
 
@@ -375,5 +352,3 @@ export const PlaylistProvider = ({
     <PlaylistContext.Provider value={value}>{children}</PlaylistContext.Provider>
   );
 };
-
-      
