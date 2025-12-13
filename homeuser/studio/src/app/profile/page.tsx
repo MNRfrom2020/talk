@@ -15,7 +15,7 @@ import AppSidebar from "@/components/layout/AppSidebar";
 import BottomNavBar from "@/components/layout/BottomNavBar";
 import Player from "@/components/layout/Player";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
@@ -40,6 +40,12 @@ import { usePodcast } from "@/context/PodcastContext";
 import CategorySection from "@/components/podcasts/CategorySection";
 import { LoginDialog } from "@/components/auth/LoginDialog";
 import { saveUser as updateUserInDb } from "@/lib/actions";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const guestFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -102,10 +108,10 @@ export default function ProfilePage() {
         },
   });
 
-  const favoritePodcasts = React.useMemo(() =>
-    getPodcastsForPlaylist(FAVORITES_PLAYLIST_ID, podcasts),
-    [getPodcastsForPlaylist, FAVORITES_PLAYLIST_ID, podcasts]
-  );
+  const favoritePodcasts = React.useMemo(() => {
+    if (!FAVORITES_PLAYLIST_ID) return [];
+    return getPodcastsForPlaylist(FAVORITES_PLAYLIST_ID, podcasts)
+  }, [getPodcastsForPlaylist, FAVORITES_PLAYLIST_ID, podcasts]);
 
   const stats = React.useMemo(() => {
     if (history.length === 0) {
@@ -207,7 +213,7 @@ export default function ProfilePage() {
     try {
       const userProfile = localStorage.getItem("user_profile");
       const podcastHistory = localStorage.getItem("podcast_history");
-      const podcastPlaylists = localStorage.getItem("podcast_playlists");
+      const podcastPlaylists = localStorage.getItem("podcast_playlists_guest");
       const listeningLog = localStorage.getItem("listening_log");
 
 
@@ -269,7 +275,7 @@ export default function ProfilePage() {
         }
         if (data.podcastPlaylists) {
           localStorage.setItem(
-            "podcast_playlists",
+            "podcast_playlists_guest",
             JSON.stringify(data.podcastPlaylists),
           );
         }
@@ -391,7 +397,7 @@ export default function ProfilePage() {
                <div className="mx-auto max-w-2xl">
                 <div className="space-y-8">
                   <h1 className="text-center font-headline text-3xl font-bold tracking-tight">
-                    Edit Profile
+                    Profile
                   </h1>
 
                   <div className="flex justify-center">
@@ -428,20 +434,34 @@ export default function ProfilePage() {
                     </div>
                   </div>
 
-                  <div>
-                    <Form {...form}>
-                      <form
-                        id="profile-form"
-                        onSubmit={form.handleSubmit(onSubmit)}
-                        className="w-full space-y-6"
+                  <Accordion type="single" collapsible className="w-full">
+                    <AccordionItem value="item-1">
+                      <AccordionTrigger
+                        className={cn(
+                          buttonVariants({ variant: "outline" }),
+                          "w-full justify-between",
+                        )}
                       >
-                        {user.isGuest ? renderGuestForm() : renderUserForm()}
-                        <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                           {form.formState.isSubmitting ? "Saving..." : "Save Changes"}
-                        </Button>
-                      </form>
-                    </Form>
-                  </div>
+                        Edit Profile
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-4">
+                        <div>
+                          <Form {...form}>
+                            <form
+                              id="profile-form"
+                              onSubmit={form.handleSubmit(onSubmit)}
+                              className="w-full space-y-6"
+                            >
+                              {user.isGuest ? renderGuestForm() : renderUserForm()}
+                              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                                 {form.formState.isSubmitting ? "Saving..." : "Save Changes"}
+                              </Button>
+                            </form>
+                          </Form>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
                   
                   <Separator />
                   
@@ -541,3 +561,5 @@ export default function ProfilePage() {
     </SidebarProvider>
   );
 }
+
+    
