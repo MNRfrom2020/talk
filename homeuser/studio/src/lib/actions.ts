@@ -129,21 +129,28 @@ export async function savePlaylist(
     };
   }
   
-  const { id, ...data } = validatedFields.data;
+  const { id, user_uid, ...data } = validatedFields.data;
 
   const playlistData: { [key: string]: any } = {
       name: data.name,
       podcast_ids: data.podcast_ids,
       cover: data.cover,
-      created_at: data.created_at ? new Date(data.created_at).toISOString() : new Date().toISOString(),
   };
 
-  if (data.user_uid) {
-    playlistData.user_uid = data.user_uid;
+  const isUserPlaylist = !!user_uid;
+  const table = isUserPlaylist ? 'user_playlists' : 'playlists';
+
+  if (isUserPlaylist) {
+    playlistData.user_uid = user_uid;
+  }
+  
+  if (data.created_at) {
+    playlistData.created_at = new Date(data.created_at).toISOString();
+  } else if (!id) {
+    playlistData.created_at = getBstDate().toISOString();
   }
 
   try {
-    const table = data.user_uid ? 'user_playlists' : 'playlists';
     if (id) {
        const { error } = await supabase
         .from(table)
@@ -161,20 +168,19 @@ export async function savePlaylist(
   }
 
   revalidatePath("/admin/dashboard/playlists");
+  revalidatePath("/library");
+  revalidatePath("/playlists/[playlistId]", "page");
   return { message: "Successfully saved playlist." };
 }
 
-export async function deletePlaylist(id: string) {
+export async function deletePlaylist(id: string, isUserPlaylist: boolean) {
+    const table = isUserPlaylist ? 'user_playlists' : 'playlists';
     try {
-        const { error: userPlaylistError } = await supabase.from("user_playlists").delete().eq("id", id);
-        // Also try deleting from predefined playlists in case it's one of those, though UI should prevent this.
-        const { error: playlistError } = await supabase.from("playlists").delete().eq("id", id);
-
-        if (userPlaylistError && playlistError) {
-            console.error("Error deleting from both playlist tables:", {userPlaylistError, playlistError});
-        }
+        const { error } = await supabase.from(table).delete().eq("id", id);
+        if (error) throw error;
         
         revalidatePath("/admin/dashboard/playlists");
+        revalidatePath("/library");
         return { message: "Deleted Playlist." };
     } catch (error: any) {
         return {

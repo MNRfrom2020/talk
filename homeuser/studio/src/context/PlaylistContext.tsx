@@ -173,16 +173,19 @@ export const PlaylistProvider = ({
         savePlaylistsForGuest(updatedPlaylists);
       } else {
          if (!user.uid) return;
-         const { data, error } = await supabase
-          .from("user_playlists")
-          .insert({ name, podcast_ids: podcastIds, user_uid: user.uid })
-          .select()
-          .single();
-        
-        if (data && !error) {
-            setPlaylists(prev => [...prev, data]);
+         const result = await savePlaylistAction({
+            name,
+            podcast_ids: podcastIds,
+            user_uid: user.uid,
+         });
+
+        if (result.message && !result.errors) {
+            const { data: newPlaylist, error } = await supabase.from('user_playlists').select().eq('name', name).eq('user_uid', user.uid).order('created_at', { ascending: false }).limit(1).single();
+            if (newPlaylist && !error) {
+                 setPlaylists(prev => [...prev, newPlaylist]);
+            }
         } else {
-             console.error("Error creating playlist:", error?.message);
+             console.error("Error creating playlist:", result.message);
         }
       }
     },
@@ -200,11 +203,11 @@ export const PlaylistProvider = ({
         );
         savePlaylistsForGuest(updatedPlaylists);
       } else {
-        const { error } = await supabase.from('user_playlists').delete().eq('id', playlistId);
-        if (!error) {
+        const result = await deletePlaylistAction(playlistId, !!playlistToDelete.user_uid);
+        if (result.message && !result.message.includes("Error")) {
             setPlaylists(prev => prev.filter(p => p.id !== playlistId));
         } else {
-            console.error("Error deleting playlist:", error.message);
+            console.error("Error deleting playlist:", result.message);
         }
       }
     },
@@ -213,15 +216,13 @@ export const PlaylistProvider = ({
 
   const addPodcastToGuestPlaylist = (playlistId: string, podcastId: string) => {
       const playlist = playlists.find((p) => p.id === playlistId);
-      if (!playlist || playlist.isPredefined) return;
+      if (!playlist || playlist.isPredefined || playlist.podcast_ids.includes(podcastId)) return;
 
-      if (!playlist.podcast_ids.includes(podcastId)) {
-        const newPodcastIds = [...playlist.podcast_ids, podcastId];
-        const updatedPlaylists = playlists.map((p) =>
-            p.id === playlistId ? { ...p, podcast_ids: newPodcastIds } : p
-        );
-        savePlaylistsForGuest(updatedPlaylists);
-      }
+      const newPodcastIds = [...playlist.podcast_ids, podcastId];
+      const updatedPlaylists = playlists.map((p) =>
+          p.id === playlistId ? { ...p, podcast_ids: newPodcastIds } : p
+      );
+      savePlaylistsForGuest(updatedPlaylists);
   };
 
   const addPodcastToUserPlaylist = async (playlistId: string, podcastId: string) => {
@@ -229,16 +230,19 @@ export const PlaylistProvider = ({
       if (!playlist || playlist.isPredefined || !user.uid || playlist.podcast_ids.includes(podcastId)) return;
       
       const newPodcastIds = [...playlist.podcast_ids, podcastId];
-      const { error } = await supabase
-        .from('user_playlists')
-        .update({ podcast_ids: newPodcastIds })
-        .eq('id', playlistId)
-        .eq('user_uid', user.uid);
       
-      if (!error) {
+      const result = await savePlaylistAction({
+        id: playlist.id,
+        name: playlist.name,
+        podcast_ids: newPodcastIds,
+        user_uid: user.uid,
+        cover: playlist.cover
+      });
+
+      if (result.message && !result.errors) {
           setPlaylists(prev => prev.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p));
       } else {
-          console.error("Error adding podcast to user playlist:", error.message);
+          console.error("Error adding podcast to user playlist:", result.message);
       }
   };
 
@@ -258,16 +262,18 @@ export const PlaylistProvider = ({
       if (!playlist || playlist.isPredefined || !user.uid) return;
       
       const newPodcastIds = playlist.podcast_ids.filter((id) => id !== podcastId);
-      const { error } = await supabase
-        .from('user_playlists')
-        .update({ podcast_ids: newPodcastIds })
-        .eq('id', playlistId)
-        .eq('user_uid', user.uid);
+      const result = await savePlaylistAction({
+        id: playlist.id,
+        name: playlist.name,
+        podcast_ids: newPodcastIds,
+        user_uid: user.uid,
+        cover: playlist.cover
+      });
       
-      if (!error) {
+      if (result.message && !result.errors) {
           setPlaylists(prev => prev.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p));
       } else {
-          console.error("Error removing podcast from user playlist:", error.message);
+          console.error("Error removing podcast from user playlist:", result.message);
       }
   };
 
