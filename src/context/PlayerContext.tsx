@@ -401,7 +401,13 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       }
     } else if (user.uid) {
         // The DB history is updated via saveProgress (last_played_at)
-        // so we don't need a separate action here, just update the UI state.
+        // This call ensures the initial record is there.
+        upsertListeningHistory({
+            user_uid: user.uid,
+            podcast_id: track.id,
+            progress: 0,
+            duration: 0,
+        });
     }
   }, [history, user]);
 
@@ -436,17 +442,14 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       let startTime = 0;
       const savedProgress = trackToPlay ? getPodcastProgress(trackToPlay.id) : undefined;
       
-      // If it's a new track
       if (trackToPlay && currentTrack?.id !== trackToPlay.id) {
         const remainingTime = duration - progress;
-        // If the old track was almost finished, start the new one from the beginning
         if (duration > 0 && remainingTime < 3) {
            startTime = 0;
         } else if (savedProgress) {
            startTime = savedProgress.progress;
         }
       } else if (savedProgress) {
-         // If it's the same track, resume from saved progress
          startTime = savedProgress.progress;
       }
 
@@ -456,13 +459,12 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
           setIsExpanded(true);
         }
         
-        // This logic should run only when a track is explicitly played, not on toggle
         if (currentTrack?.id !== trackToPlay.id) {
           const newQueue = playlistToUse.slice(startFromIndex + 1);
           setCurrentPlaylist(playlistToUse);
           setQueue(newQueue);
-          setOriginalQueue(newQueue); // Store original order
-          setIsShuffled(false); // Reset shuffle state
+          setOriginalQueue(newQueue);
+          setIsShuffled(false); 
         }
 
 
@@ -892,7 +894,3 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     </PlayerContext.Provider>
   );
 };
-
-    
-
-    
