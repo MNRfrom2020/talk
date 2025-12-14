@@ -11,7 +11,7 @@ import React, {
 } from "react";
 import { useUser } from "./UserContext";
 import { supabase } from "@/lib/supabase";
-import { savePlaylist as savePlaylistAction, deletePlaylist as deletePlaylistAction } from "@/lib/actions";
+import { saveUserPlaylist, deletePlaylist as deletePlaylistAction } from "@/lib/actions";
 
 
 const PLAYLIST_STORAGE_KEY = "podcast_playlists_guest";
@@ -22,8 +22,10 @@ interface PlaylistContextType {
   playlists: Playlist[];
   createPlaylist: (name: string, podcastIds?: string[]) => void;
   deletePlaylist: (playlistId: string) => void;
-  addPodcastToPlaylist: (playlistId: string, podcastId: string) => void;
-  removePodcastFromPlaylist: (playlistId: string, podcastId: string) => void;
+  addPodcastToGuestPlaylist: (playlistId: string, podcastId: string) => void;
+  removePodcastFromGuestPlaylist: (playlistId: string, podcastId: string) => void;
+  addPodcastToUserPlaylist: (playlistId: string, podcastId: string) => Promise<void>;
+  removePodcastFromUserPlaylist: (playlistId: string, podcastId: string) => Promise<void>;
   getPodcastsForPlaylist: (
     playlistId: string,
     allPodcasts: Podcast[],
@@ -171,14 +173,14 @@ export const PlaylistProvider = ({
         savePlaylistsForGuest(updatedPlaylists);
       } else {
          if (!user.uid) return;
-         const result = await savePlaylistAction({
+         const result = await saveUserPlaylist({
             name,
-            podcast_ids: podcastIds.join(','),
+            podcast_ids: podcastIds,
             user_uid: user.uid,
-         } as any);
+         });
 
         if (result.message && !result.errors) {
-            const { data: newPlaylist, error } = await supabase.from('user_playlists').select().eq('name', name).eq('user_uid', user.uid).single();
+            const { data: newPlaylist, error } = await supabase.from('user_playlists').select().eq('name', name).eq('user_uid', user.uid).order('created_at', { ascending: false }).limit(1).single();
             if (newPlaylist && !error) {
                  setPlaylists(prev => [...prev, newPlaylist]);
             }
@@ -201,7 +203,7 @@ export const PlaylistProvider = ({
         );
         savePlaylistsForGuest(updatedPlaylists);
       } else {
-        const result = await deletePlaylistAction(playlistId);
+        const result = await deletePlaylistAction(playlistId, !playlistToDelete.isPredefined);
         if (result.message && !result.message.includes("Error")) {
             setPlaylists(prev => prev.filter(p => p.id !== playlistId));
         } else {
@@ -212,61 +214,75 @@ export const PlaylistProvider = ({
     [playlists, user],
   );
 
-  const addPodcastToPlaylist = useCallback(async (playlistId: string, podcastId: string) => {
+  const addPodcastToGuestPlaylist = (playlistId: string, podcastId: string) => {
       const playlist = playlists.find((p) => p.id === playlistId);
       if (!playlist || playlist.isPredefined || playlist.podcast_ids.includes(podcastId)) return;
 
       const newPodcastIds = [...playlist.podcast_ids, podcastId];
+      const updatedPlaylists = playlists.map((p) =>
+          p.id === playlistId ? { ...p, podcast_ids: newPodcastIds } : p
+      );
+      savePlaylistsForGuest(updatedPlaylists);
+  };
 
-      if (user.isGuest) {
-        const updatedPlaylists = playlists.map((p) =>
-            p.id === playlistId ? { ...p, podcast_ids: newPodcastIds } : p
-        );
-        savePlaylistsForGuest(updatedPlaylists);
-      } else {
-        if (!user.uid) return;
-        
-        const { error } = await supabase
-          .from('user_playlists')
-          .update({ podcast_ids: newPodcastIds })
-          .eq('id', playlistId)
-          .eq('user_uid', user.uid);
-        
-        if (!error) {
-            setPlaylists(prev => prev.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p));
-        } else {
-            console.error("Error adding podcast to user playlist:", error.message);
-        }
+  const addPodcastToUserPlaylist = async (playlistId: string, podcastId: string) => {
+      const playlist = playlists.find((p) => p.id === playlistId);
+      if (!playlist || playlist.isPredefined || !user.uid || playlist.podcast_ids.includes(podcastId)) return;
+      
+      const newPodcastIds = [...playlist.podcast_ids, podcastId];
+      
+      const result = await saveUserPlaylist({
+        id: playlist.id,
+        name: playlist.name,
+        podcast_ids: newPodcastIds,
+        user_uid: user.uid,
+        cover: playlist.cover
+      });
+
+      if (result.errors) {
+          throw new Error(result.message || "Could not add podcast to playlist.");
       }
-  }, [playlists, user]);
+      
+      setPlaylists(prev => prev.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p));
+  };
 
-
-  const removePodcastFromPlaylist = useCallback(async (playlistId: string, podcastId: string) => {
+  const removePodcastFromGuestPlaylist = (playlistId: string, podcastId: string) => {
       const playlist = playlists.find((p) => p.id === playlistId);
       if (!playlist || playlist.isPredefined) return;
       
       const newPodcastIds = playlist.podcast_ids.filter((id) => id !== podcastId);
+      const updatedPlaylists = playlists.map((p) =>
+          p.id === playlistId ? { ...p, podcast_ids: newPodcastIds } : p
+      );
+      savePlaylistsForGuest(updatedPlaylists);
+  };
 
-      if (user.isGuest) {
-          const updatedPlaylists = playlists.map((p) =>
-              p.id === playlistId ? { ...p, podcast_ids: newPodcastIds } : p
-          );
-          savePlaylistsForGuest(updatedPlaylists);
-      } else {
-          if (!user.uid) return;
-          const { error } = await supabase
-            .from('user_playlists')
-            .update({ podcast_ids: newPodcastIds })
-            .eq('id', playlistId)
-            .eq('user_uid', user.uid);
-          
-          if (!error) {
-              setPlaylists(prev => prev.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p));
-          } else {
-              console.error("Error removing podcast from user playlist:", error.message);
-          }
-      }
-  }, [playlists, user]);
+  const removePodcastFromUserPlaylist = async (playlistId: string, podcastId: string) => {
+    const playlist = playlists.find((p) => p.id === playlistId);
+    if (!playlist || playlist.isPredefined || !user.uid) {
+        return Promise.reject(new Error("Playlist not found or user not authorized."));
+    }
+    
+    const newPodcastIds = playlist.podcast_ids.filter((id) => id !== podcastId);
+
+    try {
+        const result = await saveUserPlaylist({
+            id: playlist.id,
+            name: playlist.name,
+            podcast_ids: newPodcastIds,
+            user_uid: user.uid,
+            cover: playlist.cover
+        });
+        
+        if (result.errors) {
+            return Promise.reject(new Error(result.message || "Could not remove podcast from playlist."));
+        }
+        
+        setPlaylists(prev => prev.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p));
+    } catch (error) {
+        return Promise.reject(error);
+    }
+};
 
 
   const getPodcastsForPlaylist = useCallback(
@@ -321,16 +337,24 @@ export const PlaylistProvider = ({
     (podcastId: string) => {
       if (FAVORITES_PLAYLIST_ID) {
           const isAlreadyFavorite = isFavoritePodcast(podcastId);
-          if (isAlreadyFavorite) {
-              removePodcastFromPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
+          if (user.isGuest) {
+             if (isAlreadyFavorite) {
+              removePodcastFromGuestPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
+            } else {
+              addPodcastToGuestPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
+            }
           } else {
-              addPodcastToPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
+             if (isAlreadyFavorite) {
+              removePodcastFromUserPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
+            } else {
+              addPodcastToUserPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
+            }
           }
       } else {
         console.error("Favorites playlist ID not found");
       }
     },
-    [FAVORITES_PLAYLIST_ID, isFavoritePodcast, addPodcastToPlaylist, removePodcastFromPlaylist],
+    [FAVORITES_PLAYLIST_ID, isFavoritePodcast, user.isGuest, addPodcastToGuestPlaylist, removePodcastFromGuestPlaylist, addPodcastToUserPlaylist, removePodcastFromUserPlaylist],
   );
 
 
@@ -338,8 +362,10 @@ export const PlaylistProvider = ({
     playlists,
     createPlaylist,
     deletePlaylist,
-    addPodcastToPlaylist,
-    removePodcastFromPlaylist,
+    addPodcastToGuestPlaylist,
+    removePodcastFromGuestPlaylist,
+    addPodcastToUserPlaylist,
+    removePodcastFromUserPlaylist,
     getPodcastsForPlaylist,
     getPlaylistById,
     toggleFavorite,
@@ -352,3 +378,5 @@ export const PlaylistProvider = ({
     <PlaylistContext.Provider value={value}>{children}</PlaylistContext.Provider>
   );
 };
+
+    

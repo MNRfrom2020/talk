@@ -99,7 +99,7 @@ export async function deletePodcast(id: string) {
   }
 }
 
-// Playlist Actions
+// System Playlist Actions
 const PlaylistFormSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1, "Name is required"),
@@ -109,10 +109,7 @@ const PlaylistFormSchema = z.object({
 });
 
 
-type PlaylistFormValues = Omit<z.infer<typeof PlaylistFormSchema>, "podcast_ids"> & {
-    podcast_ids: string;
-};
-
+type PlaylistFormValues = z.infer<typeof PlaylistFormSchema>;
 
 export type PlaylistState = {
   errors?: z.ZodError<z.infer<typeof PlaylistFormSchema>>["formErrors"]["fieldErrors"];
@@ -122,14 +119,7 @@ export type PlaylistState = {
 export async function savePlaylist(
   values: PlaylistFormValues,
 ): Promise<PlaylistState> {
-
-   const transformedValues = {
-    ...values,
-    podcast_ids: values.podcast_ids ? values.podcast_ids.split(',').map(s => s.trim()).filter(Boolean) : [],
-  };
-
-  const validatedFields = PlaylistFormSchema.safeParse(transformedValues);
-
+  const validatedFields = PlaylistFormSchema.safeParse(values);
 
   if (!validatedFields.success) {
     return {
@@ -146,12 +136,11 @@ export async function savePlaylist(
       cover: data.cover,
   };
   
-  if(data.created_at) {
-    playlistData.created_at = new Date(data.created_at).toISOString()
+  if (data.created_at) {
+    playlistData.created_at = new Date(data.created_at).toISOString();
   } else if (!id) {
     playlistData.created_at = getBstDate().toISOString();
   }
-
 
   try {
     if (id) {
@@ -172,15 +161,74 @@ export async function savePlaylist(
 
   revalidatePath("/admin/dashboard/playlists");
   revalidatePath("/library");
+  revalidatePath("/playlists/[playlistId]", "page");
   return { message: "Successfully saved playlist." };
 }
 
-export async function deletePlaylist(id: string) {
+// User Playlist Actions
+const UserPlaylistFormSchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().min(1, "Name is required"),
+  podcast_ids: z.array(z.string()).optional(),
+  cover: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  user_uid: z.string().uuid(),
+});
+
+type UserPlaylistFormValues = z.infer<typeof UserPlaylistFormSchema>;
+
+export async function saveUserPlaylist(
+  values: UserPlaylistFormValues,
+): Promise<PlaylistState> {
+  const validatedFields = UserPlaylistFormSchema.safeParse(values);
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: "Missing Fields. Failed to Save User Playlist.",
+    };
+  }
+
+  const { id, ...data } = validatedFields.data;
+
+  try {
+    if (id) {
+      const { error } = await supabase
+        .from("user_playlists")
+        .update({
+          name: data.name,
+          podcast_ids: data.podcast_ids,
+          cover: data.cover,
+        })
+        .eq("id", id)
+        .eq("user_uid", data.user_uid);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from("user_playlists").insert({
+        ...data,
+        created_at: getBstDate().toISOString()
+      });
+      if (error) throw error;
+    }
+  } catch (error: any) {
+    return {
+      message: `Database Error: Failed to ${id ? "Update" : "Create"} User Playlist. ${error.message}`,
+    };
+  }
+
+  revalidatePath("/library");
+  revalidatePath("/playlists/[playlistId]", "page");
+  return { message: "Successfully saved user playlist." };
+}
+
+
+export async function deletePlaylist(id: string, isUserPlaylist: boolean) {
+    const table = isUserPlaylist ? 'user_playlists' : 'playlists';
     try {
-        const { error } = await supabase.from("playlists").delete().eq("id", id);
+        const { error } = await supabase.from(table).delete().eq("id", id);
         if (error) throw error;
+        
         revalidatePath("/admin/dashboard/playlists");
         revalidatePath("/library");
+        revalidatePath("/playlists/[playlistId]", "page");
         return { message: "Deleted Playlist." };
     } catch (error: any) {
         return {
@@ -246,7 +294,7 @@ export async function saveUser(values: UserFormValues): Promise<UserState> {
   try {
     if (uid) {
       // Update existing user
-      userData.updated_at = getBstDate().toISOString();
+      userData.updated_at = new Date().toISOString();
       const { error } = await supabase.from("users").update(userData).eq("uid", uid);
       if (error) throw error;
     } else {
