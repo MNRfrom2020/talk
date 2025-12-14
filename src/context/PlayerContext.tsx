@@ -177,6 +177,14 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
           console.error("Failed to load guest data from localStorage", error);
         }
       } else if (user.uid) {
+        // Clear guest data from local storage first for a clean state
+        localStorage.removeItem(HISTORY_STORAGE_KEY);
+        localStorage.removeItem(PROGRESS_STORAGE_KEY);
+        localStorage.removeItem(LISTENING_LOG_KEY);
+        setHistory([]);
+        setProgressMap({});
+        setListeningLog({});
+
         // Fetch from DB for logged-in user
         const { data: listeningHistory, error } = await supabase
           .from("listening_history")
@@ -190,7 +198,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         }
 
         if (!listeningHistory || listeningHistory.length === 0) {
-          return;
+          return; // No history for this user, state is already cleared.
         }
         
         const podcastIds = listeningHistory.map(item => item.podcast_id);
@@ -204,10 +212,11 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
           return;
         }
 
-        const podcastsMap = new Map(podcastsData.map(p => [p.id, p]));
+        const podcastsMap = new Map(podcastsData.map(p => [String(p.id), p]));
 
         const dbHistory: Podcast[] = listeningHistory.map(item => {
-          const podcastDetails = podcastsMap.get(item.podcast_id);
+          const podcastDetails = podcastsMap.get(String(item.podcast_id));
+          if (!podcastDetails) return null;
           return {
             id: String(podcastDetails.id),
             title: podcastDetails.title,
@@ -218,7 +227,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
             audioUrl: podcastDetails.audio_url,
             created_at: podcastDetails.created_at,
           };
-        }).filter(Boolean);
+        }).filter((p): p is Podcast => p !== null);
 
         setHistory(dbHistory);
 
@@ -883,5 +892,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     </PlayerContext.Provider>
   );
 };
+
+    
 
     
