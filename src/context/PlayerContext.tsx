@@ -178,9 +178,9 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         }
       } else if (user.uid) {
         // Fetch from DB for logged-in user
-        const { data, error } = await supabase
+        const { data: listeningHistory, error } = await supabase
           .from("listening_history")
-          .select("*, podcasts(*)")
+          .select("*")
           .eq("user_uid", user.uid)
           .order("last_played_at", { ascending: false });
 
@@ -189,20 +189,41 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
           return;
         }
 
-        const dbHistory: Podcast[] = data.map(item => ({
-            id: item.podcasts.id,
-            title: item.podcasts.title,
-            artist: item.podcasts.artist,
-            categories: item.podcasts.categories,
-            coverArt: item.podcasts.cover_art,
-            coverArtHint: item.podcasts.cover_art_hint,
-            audioUrl: item.podcasts.audio_url,
-            created_at: item.podcasts.created_at,
-        }));
+        if (!listeningHistory || listeningHistory.length === 0) {
+          return;
+        }
+        
+        const podcastIds = listeningHistory.map(item => item.podcast_id);
+        const { data: podcastsData, error: podcastsError } = await supabase
+          .from("podcasts")
+          .select("*")
+          .in('id', podcastIds);
+
+        if (podcastsError) {
+          console.error("Error fetching podcasts for history:", podcastsError);
+          return;
+        }
+
+        const podcastsMap = new Map(podcastsData.map(p => [p.id, p]));
+
+        const dbHistory: Podcast[] = listeningHistory.map(item => {
+          const podcastDetails = podcastsMap.get(item.podcast_id);
+          return {
+            id: String(podcastDetails.id),
+            title: podcastDetails.title,
+            artist: podcastDetails.artist,
+            categories: podcastDetails.categories,
+            coverArt: podcastDetails.cover_art,
+            coverArtHint: podcastDetails.cover_art_hint,
+            audioUrl: podcastDetails.audio_url,
+            created_at: podcastDetails.created_at,
+          };
+        }).filter(Boolean);
+
         setHistory(dbHistory);
 
         const dbProgressMap: Record<string, ProgressInfo> = {};
-        data.forEach(item => {
+        listeningHistory.forEach(item => {
           if (item.progress && item.duration) {
             dbProgressMap[item.podcast_id] = {
               progress: item.progress,
@@ -862,3 +883,5 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     </PlayerContext.Provider>
   );
 };
+
+    
