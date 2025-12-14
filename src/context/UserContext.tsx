@@ -10,7 +10,7 @@ import React, {
 } from "react";
 import type { User as DbUser } from "@/lib/types";
 import { supabase } from "@/lib/supabase";
-import { saveUser as saveUserAction } from "@/lib/actions";
+import { updateUserFavoritePlaylists } from "@/lib/actions";
 
 const USER_STORAGE_KEY = "user_profile";
 
@@ -20,6 +20,7 @@ export interface User extends Partial<DbUser> {
   avatar: string | null;
   isLoggedIn: boolean;
   isGuest: boolean;
+  playlists_ids?: string[];
 }
 
 interface UserContextType {
@@ -29,6 +30,7 @@ interface UserContextType {
   loginAsGuest: (name: string, avatar?: string | null) => void;
   updateUser: (data: { name?: string; avatar?: string | null }) => Promise<void>;
   logout: () => void;
+  toggleFavoritePlaylist: (playlistId: string) => Promise<void>;
 }
 
 const defaultUser: User = {
@@ -36,6 +38,7 @@ const defaultUser: User = {
   avatar: null,
   isLoggedIn: false,
   isGuest: true,
+  playlists_ids: [],
 };
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -69,17 +72,15 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         if (storedUserJson) {
           const storedUser = JSON.parse(storedUserJson) as User;
           
-          // If the user is not a guest, re-fetch their data from the database
           if (!storedUser.isGuest && storedUser.uid) {
             const { data, error } = await supabase
               .from("users")
-              .select("uid, full_name, image, username, email, created_at, updated_at")
+              .select("uid, full_name, image, username, email, created_at, updated_at, playlists_ids")
               .eq("uid", storedUser.uid)
               .single();
 
             if (error) {
               console.error("Revalidation error, logging out:", error.message);
-              // If user not found in DB, logout
               logout();
               return;
             }
@@ -92,14 +93,13 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
                 avatar: data.image,
                 isLoggedIn: true,
                 isGuest: false,
+                playlists_ids: data.playlists_ids || [],
               };
               saveUserToStorage(updatedUser);
             } else {
-              // User not found in DB, maybe deleted. Logout.
               logout();
             }
           } else {
-            // It's a guest, trust localStorage
             setUser(storedUser);
           }
         } else {
@@ -107,7 +107,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         }
       } catch (error) {
         console.error("Failed to load or revalidate user from storage", error);
-        logout(); // Clear corrupted data
+        logout();
       } finally {
         setLoading(false);
       }
@@ -125,6 +125,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         avatar: avatar === undefined ? user.avatar : avatar,
         isLoggedIn: true,
         isGuest: true,
+        playlists_ids: [],
       };
       saveUserToStorage(newUserData);
     },
@@ -161,6 +162,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       avatar: userData.image,
       isLoggedIn: true,
       isGuest: false,
+      playlists_ids: data.playlists_ids || [],
     };
     saveUserToStorage(loggedInUser);
   };
@@ -186,16 +188,39 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, []);
 
+  const toggleFavoritePlaylist = async (playlistId: string) => {
+    if (user.isGuest || !user.uid) return;
+
+    const currentFavorites = user.playlists_ids || [];
+    const isFavorite = currentFavorites.includes(playlistId);
+    const newFavorites = isFavorite
+      ? currentFavorites.filter(id => id !== playlistId)
+      : [...currentFavorites, playlistId];
+
+    // Optimistically update UI
+    setUser(prevUser => ({ ...prevUser, playlists_ids: newFavorites }));
+
+    try {
+      await updateUserFavoritePlaylists(user.uid, newFavorites);
+    } catch (error) {
+      // Revert UI on failure
+      setUser(prevUser => ({ ...prevUser, playlists_ids: currentFavorites }));
+      console.error("Failed to update favorite playlists:", error);
+      // Optionally show a toast notification for the error
+    }
+  };
+
   const value = {
     user: {
       ...user,
-      name: user.name || user.guest_name || "Guest",
+      name: user.isGuest ? (user.guest_name || "Guest") : (user.name || "User"),
     },
     loading,
     loginUser,
     loginAsGuest,
     updateUser,
     logout,
+    toggleFavoritePlaylist,
   };
 
   return (

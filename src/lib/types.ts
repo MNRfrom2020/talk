@@ -38,4 +38,5 @@ export type User = {
   pass: string;
   created_at: string;
   updated_at: string;
+  playlists_ids: string[];
 };

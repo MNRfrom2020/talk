@@ -358,4 +358,23 @@ export async function deleteUser(uid: string) {
   }
 }
 
-    
+export async function updateUserFavoritePlaylists(
+  uid: string,
+  playlistIds: string[],
+) {
+  try {
+    const { error } = await supabase
+      .from("users")
+      .update({ playlists_ids: playlistIds })
+      .eq("uid", uid);
+
+    if (error) throw error;
+
+    revalidatePath("/library");
+    return { message: "Favorite playlists updated successfully." };
+  } catch (error: any) {
+    return {
+      message: `Database Error: Failed to update favorite playlists. ${error.message}`,
+    };
+  }
+}

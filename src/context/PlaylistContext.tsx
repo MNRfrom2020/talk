@@ -55,12 +55,11 @@ export const PlaylistProvider = ({
   children: React.ReactNode;
 }) => {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const { user } = useUser();
+  const { user, toggleFavoritePlaylist: toggleFavoritePlaylistInUser } = useUser();
   const [FAVORITES_PLAYLIST_ID, setFavoritesPlaylistId] = useState<string | undefined>();
 
   useEffect(() => {
     const loadPlaylists = async () => {
-      // Fetch predefined playlists from the 'playlists' table
       const { data: predefinedPlaylistsDb, error: predefinedError } = await supabase
         .from('playlists')
         .select('*')
@@ -70,24 +69,27 @@ export const PlaylistProvider = ({
         console.error("Failed to fetch predefined playlists:", predefinedError);
       }
 
-      const predefinedPlaylists: Playlist[] = (predefinedPlaylistsDb || []).map(p => ({
+      let predefinedPlaylists: Playlist[] = (predefinedPlaylistsDb || []).map(p => ({
         ...p,
         isPredefined: true,
       }));
 
 
       if (user.isGuest) {
-        // --- GUEST USER ---
         try {
           const storedPlaylists = localStorage.getItem(PLAYLIST_STORAGE_KEY);
-          const userPlaylists = storedPlaylists ? JSON.parse(storedPlaylists) : [];
+          const guestPlaylists = storedPlaylists ? JSON.parse(storedPlaylists) : [];
           
-          const enrichedPredefined = predefinedPlaylists.map(p => {
-            const userVersion = userPlaylists.find((up: Playlist) => up.id === p.id);
-            return userVersion ? { ...p, isFavorite: userVersion.isFavorite } : p;
-          });
+          const guestFavoriteIds = guestPlaylists
+            .filter((p: { isFavorite?: boolean }) => p.isFavorite)
+            .map((p: { id: string }) => p.id);
+          
+          predefinedPlaylists = predefinedPlaylists.map(p => ({
+            ...p,
+            isFavorite: guestFavoriteIds.includes(p.id),
+          }));
 
-          let userOnlyPlaylists = userPlaylists.filter((p: Playlist) => !predefinedPlaylists.some(pre => pre.id === p.id));
+          let userOnlyPlaylists = guestPlaylists.filter((p: Playlist) => !predefinedPlaylists.some(pre => pre.id === p.id));
           
           let favoritesPlaylist = userOnlyPlaylists.find((p: Playlist) => p.name === FAVORITES_PLAYLIST_NAME);
           if (!favoritesPlaylist) {
@@ -96,7 +98,7 @@ export const PlaylistProvider = ({
           }
           setFavoritesPlaylistId(favoritesPlaylist.id);
 
-          setPlaylists([...enrichedPredefined, ...userOnlyPlaylists]);
+          setPlaylists([...predefinedPlaylists, ...userOnlyPlaylists]);
 
         } catch (error) {
           console.error("Failed to load guest playlists from localStorage", error);
@@ -104,6 +106,11 @@ export const PlaylistProvider = ({
         }
       } else {
         // --- LOGGED-IN USER ---
+        predefinedPlaylists = predefinedPlaylists.map(p => ({
+          ...p,
+          isFavorite: user.playlists_ids?.includes(p.id),
+        }));
+
         if (!user.uid) {
           setPlaylists(predefinedPlaylists);
           return;
@@ -116,7 +123,7 @@ export const PlaylistProvider = ({
         
         if (error) {
           console.error("Failed to fetch user playlists:", error);
-          setPlaylists(predefinedPlaylists); // Fallback to predefined
+          setPlaylists(predefinedPlaylists);
           return;
         }
         
@@ -131,20 +138,17 @@ export const PlaylistProvider = ({
       }
     };
 
-    loadPlaylists();
+    if (!user.loading) {
+       loadPlaylists();
+    }
   }, [user]);
 
   const savePlaylistsForGuest = (updatedPlaylists: Playlist[]) => {
       try {
         const playlistsToSave = updatedPlaylists.map(p => {
-          // For predefined, only save favorite status
           if (p.isPredefined) {
-            if (p.isFavorite) {
-              return { id: p.id, isFavorite: true };
-            }
-            return null;
+            return p.isFavorite ? { id: p.id, isFavorite: true } : null;
           }
-          // For user-created, save all details
           return { id: p.id, name: p.name, podcast_ids: p.podcast_ids, isFavorite: p.isFavorite, created_at: p.created_at, cover: p.cover };
         }).filter(Boolean);
 
@@ -300,18 +304,16 @@ export const PlaylistProvider = ({
        const playlist = playlists.find(p => p.id === playlistId);
        if (!playlist || !playlist.isPredefined) return;
        
-       const updatedPlaylist = { ...playlist, isFavorite: !playlist.isFavorite };
-
        if (user.isGuest) {
+          const updatedPlaylist = { ...playlist, isFavorite: !playlist.isFavorite };
           const updatedPlaylists = playlists.map(p => p.id === playlistId ? updatedPlaylist : p);
           savePlaylistsForGuest(updatedPlaylists);
        } else {
           if(!user.uid) return;
-          // This state is ephemeral for logged-in users and not saved in the DB for predefined playlists.
-          setPlaylists(playlists.map(p => p.id === playlistId ? updatedPlaylist : p));
+          toggleFavoritePlaylistInUser(playlistId);
        }
     },
-    [playlists, user]
+    [playlists, user, toggleFavoritePlaylistInUser]
   );
 
   const isFavoritePodcast = useCallback(
@@ -370,5 +372,3 @@ export const PlaylistProvider = ({
     <PlaylistContext.Provider value={value}>{children}</PlaylistContext.Provider>
   );
 };
-
-    
