@@ -33,12 +33,13 @@ import { CreatePlaylistDialog } from "../playlists/CreatePlaylistDialog";
 import { type MouseEvent, useEffect, useState } from "react";
 import { Progress } from "../ui/progress";
 import { usePodcast } from "@/context/PodcastContext";
+import { useUser } from "@/context/UserContext";
 
 interface PodcastCardProps {
   podcast: Podcast;
   playlist?: Podcast[];
   playlistId?: string; // To identify which playlist the card is in
-  onRemove?: (podcastId: string, playlistId: string) => void; // Callback to remove
+  onRemove?: () => void;
 }
 
 export default function PodcastCard({
@@ -47,6 +48,7 @@ export default function PodcastCard({
   playlistId,
   onRemove,
 }: PodcastCardProps) {
+  const { user } = useUser();
   const {
     play,
     currentTrack,
@@ -57,7 +59,8 @@ export default function PodcastCard({
   const { podcasts: allPodcasts } = usePodcast();
   const {
     playlists,
-    addPodcastToPlaylist,
+    addPodcastToGuestPlaylist,
+    addPodcastToUserPlaylist,
     toggleFavoritePodcast,
     isFavoritePodcast,
     FAVORITES_PLAYLIST_ID,
@@ -66,7 +69,6 @@ export default function PodcastCard({
   const { toast } = useToast();
   const isActive = currentTrack?.id === podcast.id;
   const isFavorite = isFavoritePodcast(podcast.id);
-  const currentPlaylist = playlistId ? getPlaylistById(playlistId) : null;
   
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -87,15 +89,6 @@ export default function PodcastCard({
     (p) => !p.isPredefined && p.id !== FAVORITES_PLAYLIST_ID,
   );
 
-  const handleAddToPlaylist = (playlistId: string) => {
-    addPodcastToPlaylist(playlistId, podcast.id);
-    const playlist = playlists.find((p) => p.id === playlistId);
-    toast({
-      title: "Added to playlist",
-      description: `"${podcast.title}" has been added to "${playlist?.name}".`,
-    });
-  };
-
   const handleToggleFavorite = (e: MouseEvent) => {
     e.stopPropagation();
     toggleFavoritePodcast(podcast.id);
@@ -109,12 +102,8 @@ export default function PodcastCard({
 
   const handleRemoveFromPlaylist = (e: MouseEvent) => {
     e.stopPropagation();
-    if (onRemove && playlistId) {
-      onRemove(podcast.id, playlistId);
-      toast({
-        title: "Podcast Removed",
-        description: `"${podcast.title}" has been removed from the playlist.`,
-      });
+    if (onRemove) {
+      onRemove();
     }
   };
 
@@ -193,7 +182,16 @@ export default function PodcastCard({
                 {userPlaylists.map((p) => (
                   <DropdownMenuItem
                     key={p.id}
-                    onClick={() => handleAddToPlaylist(p.id)}
+                    onClick={() => {
+                      const addFunction = user.isGuest
+                        ? addPodcastToGuestPlaylist
+                        : addPodcastToUserPlaylist;
+                      addFunction(p.id, podcast.id);
+                       toast({
+                        title: "Added to playlist",
+                        description: `"${podcast.title}" has been added to "${p.name}".`,
+                      });
+                    }}
                   >
                     {p.name}
                   </DropdownMenuItem>
@@ -216,7 +214,7 @@ export default function PodcastCard({
               Share
             </DropdownMenuItem>
 
-            {onRemove && currentPlaylist && !currentPlaylist.isPredefined && (
+            {onRemove && playlistId && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -286,5 +284,3 @@ export default function PodcastCard({
     </Card>
   );
 }
-
-    

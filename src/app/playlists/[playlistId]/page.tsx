@@ -1,6 +1,8 @@
 
 "use client";
 
+export const runtime = 'edge';
+
 import { AnimatePresence } from "framer-motion";
 import AppSidebar from "@/components/layout/AppSidebar";
 import BottomNavBar from "@/components/layout/BottomNavBar";
@@ -25,8 +27,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { usePlayer } from "@/context/PlayerContext";
-
-export const runtime = 'edge';
+import { useUser } from "@/context/UserContext";
 
 interface PlaylistPageProps {
   params: Promise<{
@@ -36,12 +37,14 @@ interface PlaylistPageProps {
 
 const PlaylistPage = ({ params }: PlaylistPageProps) => {
   const { playlistId } = React.use(params);
+  const { user } = useUser();
   const { play, isExpanded } = usePlayer();
   const {
     getPlaylistById,
     getPodcastsForPlaylist,
     toggleFavorite,
-    removePodcastFromPlaylist,
+    removePodcastFromGuestPlaylist,
+    removePodcastFromUserPlaylist,
   } = usePlaylist();
   const { podcasts: allPodcasts } = usePodcast();
   const { toast } = useToast();
@@ -225,7 +228,25 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
                         podcast={podcast}
                         playlist={podcastsInPlaylist}
                         playlistId={playlist.id}
-                        onRemove={removePodcastFromPlaylist}
+                        onRemove={async () => {
+                          try {
+                            if (user.isGuest) {
+                              removePodcastFromGuestPlaylist(playlist.id, podcast.id);
+                            } else {
+                              await removePodcastFromUserPlaylist(playlist.id, podcast.id);
+                            }
+                            toast({
+                              title: "Podcast Removed",
+                              description: `"${podcast.title}" has been removed from the playlist.`,
+                            });
+                          } catch (error) {
+                             toast({
+                              variant: "destructive",
+                              title: "Uh oh! Something went wrong.",
+                              description: "Could not remove podcast from playlist.",
+                            });
+                          }
+                        }}
                       />
                     ))}
                   </div>
