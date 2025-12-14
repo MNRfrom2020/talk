@@ -233,10 +233,8 @@ export const PlaylistProvider = ({
       
       const result = await saveUserPlaylist({
         id: playlist.id,
-        name: playlist.name,
-        podcast_ids: newPodcastIds,
         user_uid: user.uid,
-        cover: playlist.cover
+        podcast_ids: newPodcastIds,
       });
 
       if (result.errors) {
@@ -265,23 +263,17 @@ export const PlaylistProvider = ({
     
     const newPodcastIds = playlist.podcast_ids.filter((id) => id !== podcastId);
 
-    try {
-        const result = await saveUserPlaylist({
-            id: playlist.id,
-            name: playlist.name,
-            podcast_ids: newPodcastIds,
-            user_uid: user.uid,
-            cover: playlist.cover
-        });
-        
-        if (result.errors) {
-            return Promise.reject(new Error(result.message || "Could not remove podcast from playlist."));
-        }
-        
-        setPlaylists(prev => prev.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p));
-    } catch (error) {
-        return Promise.reject(error);
+    const result = await saveUserPlaylist({
+      id: playlist.id,
+      user_uid: user.uid,
+      podcast_ids: newPodcastIds,
+    });
+    
+    if (result.errors) {
+        throw new Error(result.message || "Could not remove podcast from playlist.");
     }
+    
+    setPlaylists(prev => prev.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p));
 };
 
 
