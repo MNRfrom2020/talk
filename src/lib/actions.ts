@@ -13,6 +13,30 @@ const getBstDate = () => {
   return new Date(utc + bstOffset);
 }
 
+export async function upsertListeningHistory(payload: {
+  user_uid: string;
+  podcast_id: string;
+  progress: number;
+  duration: number;
+}) {
+  try {
+    const { error } = await supabase.from("listening_history").upsert(
+      {
+        ...payload,
+        last_played_at: getBstDate().toISOString(),
+      },
+      { onConflict: "user_uid,podcast_id" },
+    );
+    if (error) throw error;
+    return { message: "Successfully updated listening history." };
+  } catch (error: any) {
+    return {
+      message: `Database Error: Failed to update listening history. ${error.message}`,
+    };
+  }
+}
+
+
 // Podcast Actions
 const PodcastFormSchema = z.object({
   id: z.string().optional(),
@@ -206,7 +230,7 @@ export async function saveUserPlaylist(
     } else {
       // For creation, name is required
       if (!data.name) {
-          return { message: "Database Error: Name is required to create a playlist." };
+          return { errors: {}, message: "Database Error: Name is required to create a playlist." };
       }
       playlistData.name = data.name;
       playlistData.created_at = getBstDate().toISOString();

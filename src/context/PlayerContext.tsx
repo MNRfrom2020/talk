@@ -11,6 +11,9 @@ import React, {
   useEffect,
 } from "react";
 import { usePodcast } from "./PodcastContext";
+import { useUser } from "./UserContext";
+import { supabase } from "@/lib/supabase";
+import { upsertListeningHistory } from "@/lib/actions";
 
 const HISTORY_STORAGE_KEY = "podcast_history";
 const PROGRESS_STORAGE_KEY = "podcast_progress";
@@ -121,6 +124,7 @@ export const usePlayer = () => {
 
 export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   const { podcasts } = usePodcast();
+  const { user } = useUser();
   const [currentTrack, setCurrentTrack] = useState<Podcast | null>(null);
   const [currentPlaylist, setCurrentPlaylist] = useState<Podcast[] | null>(
     null,
@@ -155,35 +159,78 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
 
-  // Load data from localStorage on initial mount
+  // Load data from localStorage or DB on initial mount
   useEffect(() => {
-    try {
-      const storedHistory = localStorage.getItem(HISTORY_STORAGE_KEY);
-      if (storedHistory) {
-        setHistory(JSON.parse(storedHistory));
+    const loadData = async () => {
+      if (user.isGuest) {
+        try {
+          const storedHistory = localStorage.getItem(HISTORY_STORAGE_KEY);
+          if (storedHistory) setHistory(JSON.parse(storedHistory));
+          
+          const storedProgress = localStorage.getItem(PROGRESS_STORAGE_KEY);
+          if (storedProgress) setProgressMap(JSON.parse(storedProgress));
+
+          const storedLog = localStorage.getItem(LISTENING_LOG_KEY);
+          if (storedLog) setListeningLog(JSON.parse(storedLog));
+
+        } catch (error) {
+          console.error("Failed to load guest data from localStorage", error);
+        }
+      } else if (user.uid) {
+        // Fetch from DB for logged-in user
+        const { data, error } = await supabase
+          .from("listening_history")
+          .select("*, podcasts(*)")
+          .eq("user_uid", user.uid)
+          .order("last_played_at", { ascending: false });
+
+        if (error) {
+          console.error("Error fetching listening history:", error);
+          return;
+        }
+
+        const dbHistory: Podcast[] = data.map(item => ({
+            id: item.podcasts.id,
+            title: item.podcasts.title,
+            artist: item.podcasts.artist,
+            categories: item.podcasts.categories,
+            coverArt: item.podcasts.cover_art,
+            coverArtHint: item.podcasts.cover_art_hint,
+            audioUrl: item.podcasts.audio_url,
+            created_at: item.podcasts.created_at,
+        }));
+        setHistory(dbHistory);
+
+        const dbProgressMap: Record<string, ProgressInfo> = {};
+        data.forEach(item => {
+          if (item.progress && item.duration) {
+            dbProgressMap[item.podcast_id] = {
+              progress: item.progress,
+              duration: item.duration,
+            };
+          }
+        });
+        setProgressMap(dbProgressMap);
       }
-      const storedProgress = localStorage.getItem(PROGRESS_STORAGE_KEY);
-      if (storedProgress) {
-        setProgressMap(JSON.parse(storedProgress));
-      }
-      const storedLog = localStorage.getItem(LISTENING_LOG_KEY);
-      if (storedLog) {
-        setListeningLog(JSON.parse(storedLog));
-      }
-      const storedVolume = localStorage.getItem(PLAYER_VOLUME_KEY);
-      if (storedVolume) {
-        const parsedVolume = parseFloat(storedVolume);
-        if (!isNaN(parsedVolume)) {
-          setVolumeState(parsedVolume);
-          if (audioRef.current) {
-            audioRef.current.volume = parsedVolume;
+      
+      // Load volume for all users
+      try {
+        const storedVolume = localStorage.getItem(PLAYER_VOLUME_KEY);
+        if (storedVolume) {
+          const parsedVolume = parseFloat(storedVolume);
+          if (!isNaN(parsedVolume)) {
+            setVolumeState(parsedVolume);
+            if (audioRef.current) audioRef.current.volume = parsedVolume;
           }
         }
+      } catch (error) {
+        console.error("Failed to load volume from localStorage", error);
       }
-    } catch (error) {
-      console.error("Failed to load data from localStorage", error);
+    };
+    if (!user.loading) {
+      loadData();
     }
-  }, []);
+  }, [user]);
 
   // Cleanup timers
   useEffect(() => {
@@ -195,37 +242,43 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const saveListeningLog = useThrottle((log: ListeningLog) => {
-    try {
-      localStorage.setItem(LISTENING_LOG_KEY, JSON.stringify(log));
-    } catch (error) {
-      console.error("Failed to save listening log", error);
+    if (user.isGuest) {
+      try {
+        localStorage.setItem(LISTENING_LOG_KEY, JSON.stringify(log));
+      } catch (error) {
+        console.error("Failed to save listening log", error);
+      }
     }
+    // For logged-in users, this is handled via progress updates
   }, 5000);
 
   const saveProgress = useThrottle(
     (trackId: string, progress: number, duration: number) => {
       if (!trackId || isNaN(progress) || isNaN(duration)) return;
-      const newProgressMap = {
-        ...progressMap,
-        [trackId]: { progress, duration },
-      };
 
-      // Reset progress if track is finished
-      if (duration > 0 && progress >= duration - 1) {
-        delete newProgressMap[trackId];
-      }
-
-      setProgressMap(newProgressMap);
-      try {
-        localStorage.setItem(
-          PROGRESS_STORAGE_KEY,
-          JSON.stringify(newProgressMap),
-        );
-      } catch (error) {
-        console.error("Failed to save progress to localStorage", error);
+      if (user.isGuest) {
+        const newProgressMap = { ...progressMap, [trackId]: { progress, duration } };
+        if (duration > 0 && progress >= duration - 1) delete newProgressMap[trackId];
+        setProgressMap(newProgressMap);
+        try {
+          localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(newProgressMap));
+        } catch (error) {
+          console.error("Failed to save progress to localStorage", error);
+        }
+      } else if (user.uid) {
+         upsertListeningHistory({
+            user_uid: user.uid,
+            podcast_id: trackId,
+            progress,
+            duration,
+        });
+        // Also update local state for immediate feedback
+        const newProgressMap = { ...progressMap, [trackId]: { progress, duration } };
+         if (duration > 0 && progress >= duration - 1) delete newProgressMap[trackId];
+        setProgressMap(newProgressMap);
       }
     },
-    5000,
+    2000, // Throttled to 2 seconds for DB operations
   );
 
   const getPodcastProgress = useCallback(
@@ -303,20 +356,24 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   );
 
   const addToHistory = useCallback((track: Podcast) => {
-    setHistory((prevHistory) => {
-      const newHistory = [
-        track,
-        ...prevHistory.filter((item) => item.id !== track.id),
-      ].slice(0, 50);
-
+    const newHistory = [
+      track,
+      ...history.filter((item) => item.id !== track.id),
+    ].slice(0, 50);
+    
+    setHistory(newHistory);
+    
+    if (user.isGuest) {
       try {
         localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(newHistory));
       } catch (error) {
         console.error("Failed to save history to localStorage", error);
       }
-      return newHistory;
-    });
-  }, []);
+    } else if (user.uid) {
+        // The DB history is updated via saveProgress (last_played_at)
+        // so we don't need a separate action here, just update the UI state.
+    }
+  }, [history, user]);
 
   const playInternal = useCallback(
     (
