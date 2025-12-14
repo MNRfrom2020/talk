@@ -99,14 +99,13 @@ export async function deletePodcast(id: string) {
   }
 }
 
-// Playlist Actions
+// System Playlist Actions
 const PlaylistFormSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1, "Name is required"),
   podcast_ids: z.array(z.string()).min(0, "Select at least one podcast").optional(),
   cover: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   created_at: z.string().optional(),
-  user_uid: z.string().uuid().optional(),
 });
 
 
@@ -129,20 +128,13 @@ export async function savePlaylist(
     };
   }
   
-  const { id, user_uid, ...data } = validatedFields.data;
+  const { id, ...data } = validatedFields.data;
 
   const playlistData: { [key: string]: any } = {
       name: data.name,
       podcast_ids: data.podcast_ids,
       cover: data.cover,
   };
-
-  const isUserPlaylist = !!user_uid;
-  const table = isUserPlaylist ? 'user_playlists' : 'playlists';
-
-  if (isUserPlaylist) {
-    playlistData.user_uid = user_uid;
-  }
   
   if (data.created_at) {
     playlistData.created_at = new Date(data.created_at).toISOString();
@@ -153,12 +145,12 @@ export async function savePlaylist(
   try {
     if (id) {
        const { error } = await supabase
-        .from(table)
+        .from("playlists")
         .update(playlistData)
         .eq("id", id);
       if (error) throw error;
     } else {
-      const { error } = await supabase.from(table).insert(playlistData);
+      const { error } = await supabase.from("playlists").insert(playlistData);
        if (error) throw error;
     }
   } catch (error: any) {
@@ -173,6 +165,61 @@ export async function savePlaylist(
   return { message: "Successfully saved playlist." };
 }
 
+// User Playlist Actions
+const UserPlaylistFormSchema = z.object({
+  id: z.string().uuid().optional(),
+  name: z.string().min(1, "Name is required"),
+  podcast_ids: z.array(z.string()).optional(),
+  cover: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  user_uid: z.string().uuid(),
+});
+
+type UserPlaylistFormValues = z.infer<typeof UserPlaylistFormSchema>;
+
+export async function saveUserPlaylist(
+  values: UserPlaylistFormValues,
+): Promise<PlaylistState> {
+  const validatedFields = UserPlaylistFormSchema.safeParse(values);
+  if (!validatedFields.success) {
+    return {
+      errors: validatedFields.error.flatten().fieldErrors,
+      message: "Missing Fields. Failed to Save User Playlist.",
+    };
+  }
+
+  const { id, ...data } = validatedFields.data;
+
+  try {
+    if (id) {
+      const { error } = await supabase
+        .from("user_playlists")
+        .update({
+          name: data.name,
+          podcast_ids: data.podcast_ids,
+          cover: data.cover,
+        })
+        .eq("id", id)
+        .eq("user_uid", data.user_uid);
+      if (error) throw error;
+    } else {
+      const { error } = await supabase.from("user_playlists").insert({
+        ...data,
+        created_at: getBstDate().toISOString()
+      });
+      if (error) throw error;
+    }
+  } catch (error: any) {
+    return {
+      message: `Database Error: Failed to ${id ? "Update" : "Create"} User Playlist. ${error.message}`,
+    };
+  }
+
+  revalidatePath("/library");
+  revalidatePath("/playlists/[playlistId]", "page");
+  return { message: "Successfully saved user playlist." };
+}
+
+
 export async function deletePlaylist(id: string, isUserPlaylist: boolean) {
     const table = isUserPlaylist ? 'user_playlists' : 'playlists';
     try {
@@ -181,6 +228,7 @@ export async function deletePlaylist(id: string, isUserPlaylist: boolean) {
         
         revalidatePath("/admin/dashboard/playlists");
         revalidatePath("/library");
+        revalidatePath("/playlists/[playlistId]", "page");
         return { message: "Deleted Playlist." };
     } catch (error: any) {
         return {
@@ -304,5 +352,3 @@ export async function deleteUser(uid: string) {
     };
   }
 }
-
-    

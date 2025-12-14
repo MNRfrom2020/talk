@@ -11,7 +11,7 @@ import React, {
 } from "react";
 import { useUser } from "./UserContext";
 import { supabase } from "@/lib/supabase";
-import { savePlaylist as savePlaylistAction, deletePlaylist as deletePlaylistAction } from "@/lib/actions";
+import { saveUserPlaylist, deletePlaylist as deletePlaylistAction } from "@/lib/actions";
 
 
 const PLAYLIST_STORAGE_KEY = "podcast_playlists_guest";
@@ -173,7 +173,7 @@ export const PlaylistProvider = ({
         savePlaylistsForGuest(updatedPlaylists);
       } else {
          if (!user.uid) return;
-         const result = await savePlaylistAction({
+         const result = await saveUserPlaylist({
             name,
             podcast_ids: podcastIds,
             user_uid: user.uid,
@@ -203,7 +203,7 @@ export const PlaylistProvider = ({
         );
         savePlaylistsForGuest(updatedPlaylists);
       } else {
-        const result = await deletePlaylistAction(playlistId, !!playlistToDelete.user_uid);
+        const result = await deletePlaylistAction(playlistId, !playlistToDelete.isPredefined);
         if (result.message && !result.message.includes("Error")) {
             setPlaylists(prev => prev.filter(p => p.id !== playlistId));
         } else {
@@ -231,7 +231,7 @@ export const PlaylistProvider = ({
       
       const newPodcastIds = [...playlist.podcast_ids, podcastId];
       
-      const result = await savePlaylistAction({
+      const result = await saveUserPlaylist({
         id: playlist.id,
         name: playlist.name,
         podcast_ids: newPodcastIds,
@@ -262,7 +262,7 @@ export const PlaylistProvider = ({
       if (!playlist || playlist.isPredefined || !user.uid) return;
       
       const newPodcastIds = playlist.podcast_ids.filter((id) => id !== podcastId);
-      const result = await savePlaylistAction({
+      const result = await saveUserPlaylist({
         id: playlist.id,
         name: playlist.name,
         podcast_ids: newPodcastIds,
@@ -370,5 +370,3 @@ export const PlaylistProvider = ({
     <PlaylistContext.Provider value={value}>{children}</PlaylistContext.Provider>
   );
 };
-
-    

@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { savePlaylist } from "@/lib/actions";
+import { savePlaylist, saveUserPlaylist } from "@/lib/actions";
 import type { Playlist, Podcast } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -77,20 +77,29 @@ export default function PlaylistForm({
     return allPodcasts.filter(
       (p) =>
         p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.artist.join(", ").toLowerCase().includes(searchTerm.toLowerCase()),
+        (Array.isArray(p.artist) && p.artist.join(", ").toLowerCase().includes(searchTerm.toLowerCase())),
     );
   }, [allPodcasts, searchTerm]);
 
   async function onSubmit(values: PlaylistFormValues) {
     setIsSubmitting(true);
-    const result = await savePlaylist(values);
+    
+    const isUserPlaylist = !!playlist?.user_uid;
+    const action = isUserPlaylist ? saveUserPlaylist : savePlaylist;
+    
+    const payload: any = { ...values };
+    if (isUserPlaylist) {
+        payload.user_uid = playlist.user_uid;
+    }
+
+    const result = await action(payload);
     setIsSubmitting(false);
 
     if (result.message) {
       if (result.errors) {
         toast({
           variant: "destructive",
-          title: "Error saving playlist",
+          title: `Error saving ${isUserPlaylist ? 'user' : 'system'} playlist`,
           description: result.message,
         });
       } else {
@@ -206,7 +215,7 @@ export default function PlaylistForm({
                                 {podcast.title}
                               </p>
                               <p className="truncate text-xs text-muted-foreground">
-                                {podcast.artist.join(", ")}
+                                {Array.isArray(podcast.artist) ? podcast.artist.join(", ") : podcast.artist}
                               </p>
                             </div>
                           </label>
@@ -234,5 +243,3 @@ export default function PlaylistForm({
     </Form>
   );
 }
-
-    
