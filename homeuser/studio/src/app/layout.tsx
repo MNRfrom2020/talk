@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { PodcastProvider } from "@/context/PodcastContext";
@@ -11,8 +10,6 @@ export const metadata: Metadata = {
   title: "MNR Talk",
   description: "Your personalized audio library.",
 };
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export default function RootLayout({
   children,
@@ -28,7 +25,7 @@ export default function RootLayout({
         />
         <link rel="preconnect" href="https://stream.mnr.world" />
       </head>
-      <body className={`${inter.variable} font-body antialiased`}>
+      <body className="font-body antialiased">
         <UserProvider>
           <PodcastProvider>
             <PlaylistProvider>
