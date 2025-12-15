@@ -20,7 +20,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <head>
         <link
-          href="https://banglawebfonts.pages.dev/css/solaiman-lipi.min.css"
+          href="https://banglawebfonts.pages.dev/css/solaiman-lipi.css"
           rel="stylesheet"
         />
         <link rel="preconnect" href="https://stream.mnr.world" />

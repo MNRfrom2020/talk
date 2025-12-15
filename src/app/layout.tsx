@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { PodcastProvider } from "@/context/PodcastContext";
@@ -12,8 +11,6 @@ export const metadata: Metadata = {
   description: "Your personalized audio library.",
 };
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -22,9 +19,13 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
+        <link
+          href="https://banglawebfonts.pages.dev/css/solaiman-lipi.min.css"
+          rel="stylesheet"
+        />
         <link rel="preconnect" href="https://stream.mnr.world" />
       </head>
-      <body className={`${inter.variable} font-body antialiased`}>
+      <body className="font-body antialiased">
         <UserProvider>
           <PodcastProvider>
             <PlaylistProvider>
