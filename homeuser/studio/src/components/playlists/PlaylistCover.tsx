@@ -23,6 +23,7 @@ export default function PlaylistCover({ playlist, podcasts }: PlaylistCoverProps
 
   if (playlist.isPredefined) {
      return (
+      <div className="h-full w-full">
         <Image
           src={coverArt}
           alt={playlist.name}
@@ -31,6 +32,7 @@ export default function PlaylistCover({ playlist, podcasts }: PlaylistCoverProps
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
           data-ai-hint={coverArtHint}
         />
+      </div>
      )
   }
 
@@ -44,16 +46,16 @@ export default function PlaylistCover({ playlist, podcasts }: PlaylistCoverProps
 
   if (podcasts.length < 4) {
     return (
-      <div className="h-full w-full">
-        <Image
-          src={podcasts[0].coverArt}
-          alt={playlist.name}
-          fill
-          className="rounded-md object-cover"
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          data-ai-hint={podcasts[0].coverArtHint}
-        />
-      </div>
+        <div className="h-full w-full">
+            <Image
+              src={podcasts[0].coverArt}
+              alt={playlist.name}
+              fill
+              className="rounded-md object-cover"
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              data-ai-hint={podcasts[0].coverArtHint}
+            />
+        </div>
     )
   }
 
