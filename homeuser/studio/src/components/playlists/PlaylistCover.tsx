@@ -12,29 +12,6 @@ interface PlaylistCoverProps {
 }
 
 export default function PlaylistCover({ playlist, podcasts }: PlaylistCoverProps) {
-  const coverArt =
-    podcasts.length > 0
-      ? podcasts[0].coverArt
-      : `https://picsum.photos/seed/${playlist.id}/500/500`;
-  const coverArtHint =
-    podcasts.length > 0
-      ? podcasts[0].coverArtHint
-      : "abstract art";
-
-  if (playlist.isPredefined) {
-     return (
-      <div className="h-full w-full">
-        <Image
-          src={coverArt}
-          alt={playlist.name}
-          fill
-          className="rounded-md object-cover"
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          data-ai-hint={coverArtHint}
-        />
-      </div>
-     )
-  }
 
   if (podcasts.length === 0) {
     return (
@@ -45,18 +22,20 @@ export default function PlaylistCover({ playlist, podcasts }: PlaylistCoverProps
   }
 
   if (podcasts.length < 4) {
+    const coverArt = podcasts[0].coverArt;
+    const coverArtHint = podcasts[0].coverArtHint;
     return (
-        <div className="h-full w-full">
-            <Image
-              src={podcasts[0].coverArt}
-              alt={playlist.name}
-              fill
-              className="rounded-md object-cover"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              data-ai-hint={podcasts[0].coverArtHint}
-            />
-        </div>
-    )
+      <div className="h-full w-full">
+        <Image
+          src={coverArt}
+          alt={playlist.name}
+          fill
+          className="rounded-md object-cover"
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          data-ai-hint={coverArtHint}
+        />
+      </div>
+    );
   }
 
   return (
