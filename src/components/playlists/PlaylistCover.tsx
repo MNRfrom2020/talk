@@ -12,6 +12,7 @@ interface PlaylistCoverProps {
 }
 
 export default function PlaylistCover({ playlist, podcasts }: PlaylistCoverProps) {
+
   if (podcasts.length === 0) {
     return (
       <div className="flex h-full w-full items-center justify-center rounded-md bg-secondary">
@@ -41,13 +42,13 @@ export default function PlaylistCover({ playlist, podcasts }: PlaylistCoverProps
     <div className="grid h-full w-full grid-cols-2 grid-rows-2 gap-0 overflow-hidden rounded-md">
       {podcasts.slice(0, 4).map((p, index) => (
         <div key={`${p.id}-${index}`} className="relative h-full w-full">
-          <Image
-            src={p.coverArt}
-            alt={p.title}
-            fill
-            className="object-cover"
-            sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 17vw"
-          />
+            <Image
+                src={p.coverArt}
+                alt={p.title}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 17vw"
+            />
         </div>
       ))}
     </div>
