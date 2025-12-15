@@ -30,8 +30,7 @@ import { usePlaylist } from "@/context/PlaylistContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "../ui/button";
 import { CreatePlaylistDialog } from "../playlists/CreatePlaylistDialog";
-import { type MouseEvent, useEffect, useState } from "react";
-import { Progress } from "../ui/progress";
+import { type MouseEvent } from "react";
 import { usePodcast } from "@/context/PodcastContext";
 import { useUser } from "@/context/UserContext";
 
@@ -39,7 +38,7 @@ interface PodcastCardProps {
   podcast: Podcast;
   playlist?: Podcast[];
   playlistId?: string; // To identify which playlist the card is in
-  onRemove?: (playlistId: string, podcastId: string) => void;
+  onRemove?: () => void;
 }
 
 export default function PodcastCard({
@@ -54,7 +53,6 @@ export default function PodcastCard({
     currentTrack,
     isPlaying,
     addToQueue,
-    getPodcastProgress,
   } = usePlayer();
   const { podcasts: allPodcasts } = usePodcast();
   const {
@@ -64,26 +62,10 @@ export default function PodcastCard({
     toggleFavoritePodcast,
     isFavoritePodcast,
     FAVORITES_PLAYLIST_ID,
-    getPlaylistById,
   } = usePlaylist();
   const { toast } = useToast();
   const isActive = currentTrack?.id === podcast.id;
   const isFavorite = isFavoritePodcast(podcast.id);
-  const currentPlaylist = playlistId ? getPlaylistById(playlistId) : null;
-  
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
-
-  useEffect(() => {
-    const savedProgress = getPodcastProgress(podcast.id);
-    if (savedProgress) {
-      setProgress(savedProgress.progress);
-      setDuration(savedProgress.duration);
-    } else {
-      setProgress(0);
-      setDuration(0);
-    }
-  }, [podcast.id, getPodcastProgress, currentTrack]);
 
 
   const userPlaylists = playlists.filter(
@@ -103,12 +85,8 @@ export default function PodcastCard({
 
   const handleRemoveFromPlaylist = (e: MouseEvent) => {
     e.stopPropagation();
-    if (onRemove && playlistId) {
-      onRemove(playlistId, podcast.id);
-      toast({
-        title: "Podcast Removed",
-        description: `"${podcast.title}" has been removed from the playlist.`,
-      });
+    if (onRemove) {
+      onRemove();
     }
   };
 
@@ -130,9 +108,6 @@ export default function PodcastCard({
       description: "A shareable link has been copied to your clipboard.",
     });
   };
-
-  const progressPercentage = duration > 0 ? (progress / duration) * 100 : 0;
-  const showProgressBar = progress > 1 && progress < duration - 1;
 
   const artistText = Array.isArray(podcast.artist)
     ? podcast.artist.join(", ")
@@ -219,7 +194,7 @@ export default function PodcastCard({
               Share
             </DropdownMenuItem>
 
-            {onRemove && currentPlaylist && !currentPlaylist.isPredefined && (
+            {onRemove && playlistId && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -251,12 +226,6 @@ export default function PodcastCard({
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               data-ai-hint={podcast.coverArtHint}
             />
-            {showProgressBar && (
-              <Progress
-                value={progressPercentage}
-                className="absolute bottom-0 h-1 w-full rounded-none rounded-b-md"
-              />
-            )}
           </div>
           <h3 className="h-12 font-semibold text-foreground line-clamp-2">
             {podcast.title}
@@ -289,5 +258,3 @@ export default function PodcastCard({
     </Card>
   );
 }
-
-    

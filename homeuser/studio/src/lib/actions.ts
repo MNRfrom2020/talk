@@ -13,6 +13,28 @@ const getBstDate = () => {
   return new Date(utc + bstOffset);
 }
 
+export async function upsertListeningHistory(payload: {
+  user_uid: string;
+  podcast_id: string;
+}) {
+  try {
+    const { error } = await supabase.from("listening_history").upsert(
+      {
+        ...payload,
+        last_played_at: getBstDate().toISOString(),
+      },
+      { onConflict: "user_uid,podcast_id" },
+    );
+    if (error) throw error;
+    return { message: "Successfully updated listening history." };
+  } catch (error: any) {
+    return {
+      message: `Database Error: Failed to update listening history. ${error.message}`,
+    };
+  }
+}
+
+
 // Podcast Actions
 const PodcastFormSchema = z.object({
   id: z.string().optional(),
@@ -112,7 +134,7 @@ const PlaylistFormSchema = z.object({
 type PlaylistFormValues = z.infer<typeof PlaylistFormSchema>;
 
 export type PlaylistState = {
-  errors?: z.ZodError<z.infer<typeof PlaylistFormSchema>>["formErrors"]["fieldErrors"];
+  errors?: z.ZodError<z.infer<typeof UserPlaylistFormSchema>>["formErrors"]["fieldErrors"];
   message?: string | null;
 };
 
@@ -168,7 +190,7 @@ export async function savePlaylist(
 // User Playlist Actions
 const UserPlaylistFormSchema = z.object({
   id: z.string().uuid().optional(),
-  name: z.string().min(1, "Name is required"),
+  name: z.string().min(1, "Name is required").optional(),
   podcast_ids: z.array(z.string()).optional(),
   cover: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   user_uid: z.string().uuid(),
@@ -188,24 +210,29 @@ export async function saveUserPlaylist(
   }
 
   const { id, ...data } = validatedFields.data;
+  
+  const playlistData: { [key: string]: any } = { user_uid: data.user_uid };
+  if (data.name) playlistData.name = data.name;
+  if (data.podcast_ids) playlistData.podcast_ids = data.podcast_ids;
+  if (data.cover) playlistData.cover = data.cover;
+
 
   try {
     if (id) {
       const { error } = await supabase
         .from("user_playlists")
-        .update({
-          name: data.name,
-          podcast_ids: data.podcast_ids,
-          cover: data.cover,
-        })
+        .update(playlistData)
         .eq("id", id)
         .eq("user_uid", data.user_uid);
       if (error) throw error;
     } else {
-      const { error } = await supabase.from("user_playlists").insert({
-        ...data,
-        created_at: getBstDate().toISOString()
-      });
+      // For creation, name is required
+      if (!data.name) {
+          return { errors: {}, message: "Database Error: Name is required to create a playlist." };
+      }
+      playlistData.name = data.name;
+      playlistData.created_at = getBstDate().toISOString();
+      const { error } = await supabase.from("user_playlists").insert(playlistData);
       if (error) throw error;
     }
   } catch (error: any) {
@@ -349,6 +376,27 @@ export async function deleteUser(uid: string) {
   } catch (error: any) {
     return {
       message: `Database Error: Failed to Delete User. ${error.message}`,
+    };
+  }
+}
+
+export async function updateUserFavoritePlaylists(
+  uid: string,
+  playlistIds: string[],
+) {
+  try {
+    const { error } = await supabase
+      .from("users")
+      .update({ playlists_ids: playlistIds })
+      .eq("uid", uid);
+
+    if (error) throw error;
+
+    revalidatePath("/library");
+    return { message: "Favorite playlists updated successfully." };
+  } catch (error: any) {
+    return {
+      message: `Database Error: Failed to update favorite playlists. ${error.message}`,
     };
   }
 }
