@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Noto_Sans_Bengali } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { PodcastProvider } from "@/context/PodcastContext";
@@ -8,15 +8,11 @@ import { PlaylistProvider } from "@/context/PlaylistContext";
 import { UserProvider } from "@/context/UserContext";
 
 export const metadata: Metadata = {
-  title: "MNR Talks",
+  title: "MNR Talk",
   description: "Your personalized audio library.",
 };
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const notoSansBengali = Noto_Sans_Bengali({
-  subsets: ["bengali"],
-  variable: "--font-noto-sans-bengali",
-});
 
 export default function RootLayout({
   children,
@@ -25,9 +21,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body
-        className={`${inter.variable} ${notoSansBengali.variable} font-body antialiased`}
-      >
+      <head>
+        <link
+          href="https://banglawebfonts.pages.dev/css/solaiman-lipi.min.css"
+          rel="stylesheet"
+        />
+        <link rel="preconnect" href="https://stream.mnr.world" />
+      </head>
+      <body className={`${inter.variable} font-body antialiased`}>
         <UserProvider>
           <PodcastProvider>
             <PlaylistProvider>
