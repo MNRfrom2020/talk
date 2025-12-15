@@ -16,7 +16,6 @@ import { supabase } from "@/lib/supabase";
 import { upsertListeningHistory } from "@/lib/actions";
 
 const HISTORY_STORAGE_KEY = "podcast_history";
-const PROGRESS_STORAGE_KEY = "podcast_progress";
 const LISTENING_LOG_KEY = "listening_log";
 const PLAYER_VOLUME_KEY = "player_volume";
 
@@ -48,11 +47,6 @@ function useThrottle<T extends (...args: any[]) => any>(
   );
 }
 // --- End useThrottle Hook ---
-
-interface ProgressInfo {
-  progress: number;
-  duration: number;
-}
 
 interface SleepTimerInfo {
   timeLeft: number | null;
@@ -103,7 +97,6 @@ interface PlayerContextType {
   moveTrackInQueue: (trackId: string, direction: "up" | "down") => void;
   playbackRate: number;
   setPlaybackRate: (rate: number) => void;
-  getPodcastProgress: (trackId: string) => ProgressInfo | undefined;
   sleepTimer: SleepTimerInfo;
   setSleepTimer: (minutes: number | null) => void;
   listeningLog: ListeningLog;
@@ -135,9 +128,6 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   const [duration, setDuration] = useState(0);
   const [volume, setVolumeState] = useState(1);
   const [history, setHistory] = useState<Podcast[]>([]);
-  const [progressMap, setProgressMap] = useState<Record<string, ProgressInfo>>(
-    {},
-  );
   const [queue, setQueue] = useState<Podcast[]>([]);
   const [originalQueue, setOriginalQueue] = useState<Podcast[]>([]);
   const [isShuffled, setIsShuffled] = useState(false);
@@ -167,9 +157,6 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
           const storedHistory = localStorage.getItem(HISTORY_STORAGE_KEY);
           if (storedHistory) setHistory(JSON.parse(storedHistory));
           
-          const storedProgress = localStorage.getItem(PROGRESS_STORAGE_KEY);
-          if (storedProgress) setProgressMap(JSON.parse(storedProgress));
-
           const storedLog = localStorage.getItem(LISTENING_LOG_KEY);
           if (storedLog) setListeningLog(JSON.parse(storedLog));
 
@@ -179,16 +166,14 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       } else if (user.uid) {
         // Clear guest data from local storage first for a clean state
         localStorage.removeItem(HISTORY_STORAGE_KEY);
-        localStorage.removeItem(PROGRESS_STORAGE_KEY);
         localStorage.removeItem(LISTENING_LOG_KEY);
         setHistory([]);
-        setProgressMap({});
         setListeningLog({});
 
         // Fetch from DB for logged-in user
         const { data: listeningHistory, error } = await supabase
           .from("listening_history")
-          .select("*")
+          .select("*, podcasts(*)")
           .eq("user_uid", user.uid)
           .order("last_played_at", { ascending: false });
 
@@ -201,21 +186,8 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
           return; // No history for this user, state is already cleared.
         }
         
-        const podcastIds = listeningHistory.map(item => item.podcast_id);
-        const { data: podcastsData, error: podcastsError } = await supabase
-          .from("podcasts")
-          .select("*")
-          .in('id', podcastIds);
-
-        if (podcastsError) {
-          console.error("Error fetching podcasts for history:", podcastsError);
-          return;
-        }
-
-        const podcastsMap = new Map(podcastsData.map(p => [String(p.id), p]));
-
         const dbHistory: Podcast[] = listeningHistory.map(item => {
-          const podcastDetails = podcastsMap.get(String(item.podcast_id));
+          const podcastDetails = item.podcasts as any;
           if (!podcastDetails) return null;
           return {
             id: String(podcastDetails.id),
@@ -230,17 +202,6 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         }).filter((p): p is Podcast => p !== null);
 
         setHistory(dbHistory);
-
-        const dbProgressMap: Record<string, ProgressInfo> = {};
-        listeningHistory.forEach(item => {
-          if (item.progress && item.duration) {
-            dbProgressMap[item.podcast_id] = {
-              progress: item.progress,
-              duration: item.duration,
-            };
-          }
-        });
-        setProgressMap(dbProgressMap);
       }
       
       // Load volume for all users
@@ -279,43 +240,23 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         console.error("Failed to save listening log", error);
       }
     }
-    // For logged-in users, this is handled via progress updates
   }, 5000);
 
-  const saveProgress = useThrottle(
-    (trackId: string, progress: number, duration: number) => {
-      if (!trackId || isNaN(progress) || isNaN(duration)) return;
+  const saveDuration = useThrottle(
+    (trackId: string, duration: number) => {
+      if (!trackId || isNaN(duration) || duration <= 0) return;
 
       if (user.isGuest) {
-        const newProgressMap = { ...progressMap, [trackId]: { progress, duration } };
-        if (duration > 0 && progress >= duration - 1) delete newProgressMap[trackId];
-        setProgressMap(newProgressMap);
-        try {
-          localStorage.setItem(PROGRESS_STORAGE_KEY, JSON.stringify(newProgressMap));
-        } catch (error) {
-          console.error("Failed to save progress to localStorage", error);
-        }
+        // No duration saving for guests as it's not essential without progress
       } else if (user.uid) {
          upsertListeningHistory({
             user_uid: user.uid,
             podcast_id: trackId,
-            progress,
-            duration,
+            duration: Math.round(duration),
         });
-        // Also update local state for immediate feedback
-        const newProgressMap = { ...progressMap, [trackId]: { progress, duration } };
-         if (duration > 0 && progress >= duration - 1) delete newProgressMap[trackId];
-        setProgressMap(newProgressMap);
       }
     },
-    2000, // Throttled to 2 seconds for DB operations
-  );
-
-  const getPodcastProgress = useCallback(
-    (trackId: string) => {
-      return progressMap[trackId];
-    },
-    [progressMap],
+    5000, // Throttled to 5 seconds
   );
 
   const pause = useCallback(() => {
@@ -399,17 +340,14 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (error) {
         console.error("Failed to save history to localStorage", error);
       }
-    } else if (user.uid) {
-        // The DB history is updated via saveProgress (last_played_at)
-        // This call ensures the initial record is there.
+    } else if (user.uid && track.id) {
         upsertListeningHistory({
             user_uid: user.uid,
             podcast_id: track.id,
-            progress: 0,
-            duration: 0,
+            duration: audioRef.current?.duration
         });
     }
-  }, [history, user]);
+  }, [history, user, audioRef]);
 
   const playInternal = useCallback(
     (
@@ -439,20 +377,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         }
       }
       
-      let startTime = 0;
-      const savedProgress = trackToPlay ? getPodcastProgress(trackToPlay.id) : undefined;
-      
-      if (trackToPlay && currentTrack?.id !== trackToPlay.id) {
-        const remainingTime = duration - progress;
-        if (duration > 0 && remainingTime < 3) {
-           startTime = 0;
-        } else if (savedProgress) {
-           startTime = savedProgress.progress;
-        }
-      } else if (savedProgress) {
-         startTime = savedProgress.progress;
-      }
-
+      const startTime = 0;
 
       if (trackToPlay) {
         if (options.expand) {
@@ -467,38 +392,15 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
           setIsShuffled(false); 
         }
 
-
         if (currentTrack?.id !== trackToPlay.id) {
           setCurrentTrack(trackToPlay);
           addToHistory(trackToPlay);
-          setAudioSource(trackToPlay, shouldAutoPlay, options, startTime);
-        } else if (shouldAutoPlay) {
-           if (playPromiseController.current) {
-            playPromiseController.current.abort();
-          }
-          playPromiseController.current = new AbortController();
-          const { signal } = playPromiseController.current;
-
-          audioRef.current
-            ?.play()
-            .then(() => {
-               if (signal.aborted) return;
-              setIsPlaying(true);
-              lastTimeUpdate.current = Date.now();
-            })
-            .catch((e) => {
-              if (e.name !== "AbortError") {
-                 console.error("Playback failed", e)
-              }
-            }).finally(() => {
-               if (!signal.aborted) {
-                playPromiseController.current = null;
-              }
-            });
         }
+
+        setAudioSource(trackToPlay, shouldAutoPlay, options, startTime);
       }
     },
-    [podcasts, currentTrack, addToHistory, setAudioSource, getPodcastProgress, progress, duration],
+    [podcasts, currentTrack, addToHistory, setAudioSource],
   );
 
   const play = useCallback(
@@ -546,11 +448,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         const trackToPlay = queue[trackIndex];
         const newQueue = queue.slice(trackIndex + 1);
         
-        let startTime = 0;
-        const savedProgress = getPodcastProgress(trackToPlay.id);
-        if (savedProgress) {
-          startTime = savedProgress.progress;
-        }
+        const startTime = 0;
 
         setCurrentTrack(trackToPlay);
         addToHistory(trackToPlay);
@@ -573,7 +471,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         setAudioSource(trackToPlay, true, options, startTime);
       }
     },
-    [queue, addToHistory, setAudioSource, isShuffled, currentPlaylist, getPodcastProgress]
+    [queue, addToHistory, setAudioSource, isShuffled, currentPlaylist]
   );
 
   const nextTrack = useCallback(() => {
@@ -755,17 +653,17 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       const currentTime = audioRef.current.currentTime;
-      const currentDuration = audioRef.current.duration;
       setProgress(currentTime);
-      if (currentTrack) {
-        saveProgress(currentTrack.id, currentTime, currentDuration);
-      }
     }
   };
 
   const onLoadedMetadata = () => {
     if (audioRef.current) {
-      setDuration(audioRef.current.duration);
+      const currentDuration = audioRef.current.duration;
+      setDuration(currentDuration);
+      if (currentTrack) {
+        saveDuration(currentTrack.id, currentDuration);
+      }
     }
   };
   
@@ -843,7 +741,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         audio.removeEventListener("ended", handleTrackEnd);
       };
     }
-  }, [handleTrackEnd, volume]);
+  }, [handleTrackEnd, volume, currentTrack, saveDuration]);
 
   const value = {
     currentTrack,
@@ -878,7 +776,6 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     moveTrackInQueue,
     playbackRate,
     setPlaybackRate,
-    getPodcastProgress,
     sleepTimer,
     setSleepTimer,
     listeningLog,
