@@ -325,5 +325,3 @@ export function PlaylistsDataTable<TData extends Playlist, TValue>({
     </div>
   );
 }
-
-    
