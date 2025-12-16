@@ -112,7 +112,7 @@ export default function PodcastLibrary({
       });
     });
     const categorySections: Section[] = Array.from(categoryMap.entries())
-        .filter(([key]) => key !== "Quran") // Exclude Quran category
+        .filter(([key]) => key !== "Quran" && key !== "Nasheed") // Exclude Quran and Nasheed categories
         .map(([name, podcasts]) => ({ type: "category", name, podcasts }));
     
      // Prepare artists
