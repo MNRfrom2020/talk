@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from "next/image";
@@ -70,3 +71,5 @@ export default function PlaylistCover({ playlist, podcasts }: PlaylistCoverProps
     </div>
   );
 }
+
+    

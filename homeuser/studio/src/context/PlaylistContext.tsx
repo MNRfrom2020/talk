@@ -147,10 +147,12 @@ export const PlaylistProvider = ({
       try {
         const playlistsToSave = updatedPlaylists.map(p => {
           if (p.isPredefined) {
+            // For predefined, only save their favorite status if true
             return p.isFavorite ? { id: p.id, isFavorite: true } : null;
           }
+          // For guest-created playlists, save all details
           return { id: p.id, name: p.name, podcast_ids: p.podcast_ids, isFavorite: p.isFavorite, created_at: p.created_at, cover: p.cover };
-        }).filter(Boolean);
+        }).filter(Boolean); // Filter out nulls
 
         localStorage.setItem(PLAYLIST_STORAGE_KEY, JSON.stringify(playlistsToSave));
       } catch (error) {
@@ -373,3 +375,5 @@ export const PlaylistProvider = ({
     <PlaylistContext.Provider value={value}>{children}</PlaylistContext.Provider>
   );
 };
+
+    
