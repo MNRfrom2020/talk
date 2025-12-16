@@ -72,7 +72,6 @@ export const PlaylistProvider = ({
       let predefinedPlaylists: Playlist[] = (predefinedPlaylistsDb || []).map(p => ({
         ...p,
         isPredefined: true,
-        isFavorite: user.isGuest ? false : user.playlists_ids?.includes(p.id) || false
       }));
 
 
@@ -107,6 +106,11 @@ export const PlaylistProvider = ({
         }
       } else {
         // --- LOGGED-IN USER ---
+        predefinedPlaylists = predefinedPlaylists.map(p => ({
+          ...p,
+          isFavorite: user.playlists_ids?.includes(p.id),
+        }));
+
         if (!user.uid) {
           setPlaylists(predefinedPlaylists);
           return;
