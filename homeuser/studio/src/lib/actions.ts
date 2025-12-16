@@ -16,13 +16,21 @@ const getBstDate = () => {
 export async function upsertListeningHistory(payload: {
   user_uid: string;
   podcast_id: string;
+  duration?: number;
 }) {
   try {
+    const dataToUpsert: { [key: string]: any } = {
+      user_uid: payload.user_uid,
+      podcast_id: payload.podcast_id,
+      last_played_at: getBstDate().toISOString(),
+    };
+
+    if (payload.duration !== undefined && !isNaN(payload.duration)) {
+      dataToUpsert.duration = Math.round(payload.duration);
+    }
+
     const { error } = await supabase.from("listening_history").upsert(
-      {
-        ...payload,
-        last_played_at: getBstDate().toISOString(),
-      },
+      dataToUpsert,
       { onConflict: "user_uid,podcast_id" },
     );
     if (error) throw error;
