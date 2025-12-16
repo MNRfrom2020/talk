@@ -32,6 +32,7 @@ const formSchema = z.object({
   name: z
     .string()
     .min(2, { message: "Playlist name must be at least 2 characters." }),
+  cover: z.string().url("Must be a valid URL.").optional().or(z.literal("")),
 });
 
 export function CreatePlaylistDialog({ children }: { children: ReactNode }) {
@@ -43,11 +44,12 @@ export function CreatePlaylistDialog({ children }: { children: ReactNode }) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
+      cover: "",
     },
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    createPlaylist(values.name);
+    createPlaylist(values.name, [], values.cover || null);
     form.reset();
     setOpen(false);
     toast({
@@ -63,7 +65,7 @@ export function CreatePlaylistDialog({ children }: { children: ReactNode }) {
         <DialogHeader>
           <DialogTitle>Create new playlist</DialogTitle>
           <DialogDescription>
-            Give your new playlist a name.
+            Give your new playlist a name and optionally a cover image.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -76,6 +78,22 @@ export function CreatePlaylistDialog({ children }: { children: ReactNode }) {
                   <FormLabel>Playlist Name</FormLabel>
                   <FormControl>
                     <Input placeholder="My Awesome Playlist" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="cover"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cover URL (Optional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="https://example.com/image.png"
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
