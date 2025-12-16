@@ -71,5 +71,3 @@ export default function PlaylistCover({ playlist, podcasts }: PlaylistCoverProps
     </div>
   );
 }
-
-    
