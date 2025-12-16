@@ -4,10 +4,11 @@
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence } from "framer-motion";
-import { Camera, Clapperboard, Mic, User, TrendingUp } from "lucide-react";
+import { Camera, Clapperboard, Mic, User, TrendingUp, Home } from "lucide-react";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import Link from "next/link";
 
 import AppSidebar from "@/components/layout/AppSidebar";
 import BottomNavBar from "@/components/layout/BottomNavBar";
@@ -457,6 +458,18 @@ export default function ProfileClientPage({ initialUser, initialStats, allPodcas
                         </LoginDialog>
                     )}
                   </div>
+                  
+                  <Separator />
+                  
+                  <div className="w-full">
+                     <Link href="/" passHref>
+                        <Button variant="link" className="w-full">
+                           <Home className="mr-2 h-4 w-4"/>
+                           Go to Homepage
+                        </Button>
+                     </Link>
+                  </div>
+
                 </div>
                 </div>
               </main>
