@@ -410,5 +410,3 @@ export async function updateUserFavoritePlaylists(
     };
   }
 }
-
-    
