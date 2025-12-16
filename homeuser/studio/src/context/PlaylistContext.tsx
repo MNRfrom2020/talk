@@ -20,7 +20,7 @@ const FAVORITES_PLAYLIST_NAME = "Favorites";
 
 interface PlaylistContextType {
   playlists: Playlist[];
-  createPlaylist: (name: string, podcastIds?: string[]) => void;
+  createPlaylist: (name: string, podcastIds?: string[], cover?: string | null) => void;
   deletePlaylist: (playlistId: string) => void;
   addPodcastToGuestPlaylist: (playlistId: string, podcastId: string) => void;
   removePodcastFromGuestPlaylist: (playlistId: string, podcastId: string) => void;
@@ -72,6 +72,7 @@ export const PlaylistProvider = ({
       let predefinedPlaylists: Playlist[] = (predefinedPlaylistsDb || []).map(p => ({
         ...p,
         isPredefined: true,
+        isFavorite: user.isGuest ? false : user.playlists_ids?.includes(p.id) || false
       }));
 
 
@@ -106,11 +107,6 @@ export const PlaylistProvider = ({
         }
       } else {
         // --- LOGGED-IN USER ---
-        predefinedPlaylists = predefinedPlaylists.map(p => ({
-          ...p,
-          isFavorite: user.playlists_ids?.includes(p.id),
-        }));
-
         if (!user.uid) {
           setPlaylists(predefinedPlaylists);
           return;
@@ -160,7 +156,7 @@ export const PlaylistProvider = ({
   };
 
   const createPlaylist = useCallback(
-    async (name: string, podcastIds: string[] = []) => {
+    async (name: string, podcastIds: string[] = [], cover: string | null = null) => {
       if (name === FAVORITES_PLAYLIST_NAME) return;
 
       if (user.isGuest) {
@@ -171,7 +167,7 @@ export const PlaylistProvider = ({
           isPredefined: false,
           isFavorite: false,
           created_at: new Date().toISOString(),
-          cover: null,
+          cover: cover,
         };
         const updatedPlaylists = [...playlists, newPlaylist];
         savePlaylistsForGuest(updatedPlaylists);
@@ -181,6 +177,7 @@ export const PlaylistProvider = ({
             name,
             podcast_ids: podcastIds,
             user_uid: user.uid,
+            cover: cover,
          });
 
         if (result.message && !result.errors) {
