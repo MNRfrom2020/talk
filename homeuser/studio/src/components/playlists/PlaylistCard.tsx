@@ -3,14 +3,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Heart, ListMusic, Lock, MoreVertical, Share2, Trash2 } from "lucide-react";
+import { Heart, ListMusic, Lock, MoreVertical, Share2, Trash2, Edit } from "lucide-react";
 import { useState } from "react";
 
 import { usePodcast } from "@/context/PodcastContext";
 import { usePlaylist } from "@/context/PlaylistContext";
 import type { Playlist } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +31,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 import PlaylistCover from "./PlaylistCover";
+import { EditPlaylistDialog } from "./EditPlaylistDialog";
 
 interface PlaylistCardProps {
   playlist: Playlist;
@@ -134,6 +134,12 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
                 {!playlist.isPredefined && playlist.id !== FAVORITES_PLAYLIST_ID && (
                   <>
                     <DropdownMenuSeparator />
+                    <EditPlaylistDialog playlist={playlist}>
+                      <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                        <Edit className="mr-2 h-4 w-4" />
+                        <span>Edit</span>
+                      </DropdownMenuItem>
+                    </EditPlaylistDialog>
                     <DropdownMenuItem onClick={handleDelete} className="text-destructive">
                       <Trash2 className="mr-2 h-4 w-4" />
                       <span>Delete</span>
@@ -149,13 +155,12 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
             <div className="relative mb-4 aspect-square">
               <PlaylistCover playlist={playlist} podcasts={playlistPodcasts} />
               {playlist.isPredefined && (
-                 <Badge
-                  variant="secondary"
-                  className="absolute bottom-2 right-2 flex h-6 w-6 items-center justify-center p-0"
+                 <div
+                  className="absolute bottom-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-secondary/80 p-0 backdrop-blur-sm"
                 >
                   <Lock className="h-3 w-3" />
                   <span className="sr-only">Curated</span>
-                </Badge>
+                </div>
               )}
             </div>
             <h3 className="h-12 font-semibold text-foreground line-clamp-2">
@@ -197,5 +202,3 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
     </>
   );
 }
-
-    
