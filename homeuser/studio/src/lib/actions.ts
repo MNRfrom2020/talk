@@ -198,7 +198,7 @@ export async function savePlaylist(
 // User Playlist Actions
 const UserPlaylistFormSchema = z.object({
   id: z.string().uuid().optional(),
-  name: z.string().min(1, "Name is required").optional(),
+  name: z.string().min(1, "Name is required"),
   podcast_ids: z.array(z.string()).optional(),
   cover: z.string().url("Must be a valid URL").nullable().optional().or(z.literal("")),
   user_uid: z.string().uuid(),
