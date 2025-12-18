@@ -22,7 +22,7 @@ const GUEST_FAVORITES_PLAYLIST_ID = "favorites-guest";
 interface PlaylistContextType {
   playlists: Playlist[];
   createPlaylist: (name: string, podcastIds?: string[], cover?: string | null) => void;
-  updatePlaylist: (playlistId: string, data: { name?: string; cover?: string | null }) => Promise<void>;
+  updatePlaylist: (playlistId: string, data: { name?: string, cover?: string | null }) => Promise<void>;
   deletePlaylist: (playlistId: string) => void;
   addPodcastToGuestPlaylist: (playlistId: string, podcastId: string) => void;
   removePodcastFromGuestPlaylist: (playlistId: string, podcastId: string) => void;
@@ -222,17 +222,21 @@ export const PlaylistProvider = ({
 
         if (user.isGuest) {
             const updatedPlaylists = playlists.map(p => 
-                p.id === playlistId ? { ...p, ...data, cover: data.cover === undefined ? p.cover : data.cover } : p
+                p.id === playlistId ? { ...p, name: data.name ?? p.name, cover: data.cover === undefined ? p.cover : data.cover } : p
             );
             savePlaylistsForGuest(updatedPlaylists);
         } else {
             if (!user.uid) throw new Error("User not logged in.");
+            
             const payload: any = {
                 id: playlistId,
                 user_uid: user.uid,
             };
             if (data.name) payload.name = data.name;
-            if (data.cover !== undefined) payload.cover = data.cover;
+            // Handle cover explicitly to allow setting it to null
+            if (data.cover !== undefined) {
+              payload.cover = data.cover;
+            }
             
             const result = await saveUserPlaylist(payload);
 
@@ -240,7 +244,7 @@ export const PlaylistProvider = ({
                 throw new Error(result.message || "Could not update playlist.");
             }
             
-            setPlaylists(prev => prev.map(p => p.id === playlistId ? { ...p, ...data, cover: data.cover === undefined ? p.cover : data.cover } : p));
+            setPlaylists(prev => prev.map(p => p.id === playlistId ? { ...p, ...data } : p));
         }
     }, [playlists, user]);
 
@@ -424,3 +428,5 @@ export const PlaylistProvider = ({
     <PlaylistContext.Provider value={value}>{children}</PlaylistContext.Provider>
   );
 };
+
+    

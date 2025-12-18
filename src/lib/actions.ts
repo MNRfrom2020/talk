@@ -204,12 +204,23 @@ const UserPlaylistFormSchema = z.object({
   user_uid: z.string().uuid(),
 });
 
+const PartialUserPlaylistFormSchema = UserPlaylistFormSchema.partial().extend({
+  id: z.string().uuid(),
+  user_uid: z.string().uuid(),
+});
+
+
 type UserPlaylistFormValues = z.infer<typeof UserPlaylistFormSchema>;
 
 export async function saveUserPlaylist(
-  values: UserPlaylistFormValues,
+  values: Partial<UserPlaylistFormValues>,
 ): Promise<PlaylistState> {
-  const validatedFields = UserPlaylistFormSchema.safeParse(values);
+
+   const isUpdate = !!values.id;
+   const schema = isUpdate ? PartialUserPlaylistFormSchema : UserPlaylistFormSchema;
+
+   const validatedFields = schema.safeParse(values);
+  
   if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
@@ -222,7 +233,7 @@ export async function saveUserPlaylist(
   const playlistData: { [key: string]: any } = { user_uid: data.user_uid };
   if (data.name) playlistData.name = data.name;
   if (data.podcast_ids) playlistData.podcast_ids = data.podcast_ids;
-  if (data.cover) playlistData.cover = data.cover;
+  if (data.cover !== undefined) playlistData.cover = data.cover;
 
 
   try {
@@ -234,11 +245,6 @@ export async function saveUserPlaylist(
         .eq("user_uid", data.user_uid);
       if (error) throw error;
     } else {
-      // For creation, name is required
-      if (!data.name) {
-          return { errors: {}, message: "Database Error: Name is required to create a playlist." };
-      }
-      playlistData.name = data.name;
       playlistData.created_at = getBstDate().toISOString();
       const { error } = await supabase.from("user_playlists").insert(playlistData);
       if (error) throw error;
@@ -409,5 +415,4 @@ export async function updateUserFavoritePlaylists(
     };
   }
 }
-
     
