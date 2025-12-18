@@ -16,6 +16,7 @@ import { saveUserPlaylist, deletePlaylist as deletePlaylistAction } from "@/lib/
 
 const PLAYLIST_STORAGE_KEY = "podcast_playlists_guest";
 const FAVORITES_PLAYLIST_NAME = "Favorites";
+const GUEST_FAVORITES_PLAYLIST_ID = "favorites-guest";
 
 
 interface PlaylistContextType {
@@ -93,7 +94,7 @@ export const PlaylistProvider = ({
           
           let favoritesPlaylist = userOnlyPlaylists.find((p: Playlist) => p.name === FAVORITES_PLAYLIST_NAME);
           if (!favoritesPlaylist) {
-            favoritesPlaylist = { id: 'favorites-guest', name: FAVORITES_PLAYLIST_NAME, podcast_ids: [], isPredefined: false, isFavorite: false, created_at: new Date().toISOString(), cover: null };
+            favoritesPlaylist = { id: GUEST_FAVORITES_PLAYLIST_ID, name: FAVORITES_PLAYLIST_NAME, podcast_ids: [], isPredefined: false, isFavorite: false, created_at: new Date().toISOString(), cover: null };
             userOnlyPlaylists.unshift(favoritesPlaylist);
           }
           setFavoritesPlaylistId(favoritesPlaylist.id);
@@ -129,9 +130,23 @@ export const PlaylistProvider = ({
         
         const userPlaylists = userPlaylistsDb || [];
         
-        const favPlaylist = userPlaylists.find(p => p.name === FAVORITES_PLAYLIST_NAME);
+        let favPlaylist = userPlaylists.find(p => p.name === FAVORITES_PLAYLIST_NAME);
         if (favPlaylist) {
             setFavoritesPlaylistId(favPlaylist.id);
+        } else {
+          // If for some reason a logged in user doesn't have a favorites playlist, create one virtually for the session.
+           const { data: newPlaylist, error: createError } = await supabase
+            .from('user_playlists')
+            .insert({ user_uid: user.uid, name: FAVORITES_PLAYLIST_NAME, podcast_ids: [] })
+            .select()
+            .single();
+
+            if (createError) {
+              console.error("Could not create favorites playlist for user:", createError);
+            } else if (newPlaylist) {
+              userPlaylists.push(newPlaylist);
+              setFavoritesPlaylistId(newPlaylist.id);
+            }
         }
         
         setPlaylists([...predefinedPlaylists, ...userPlaylists]);
@@ -146,13 +161,13 @@ export const PlaylistProvider = ({
   const savePlaylistsForGuest = (updatedPlaylists: Playlist[]) => {
       try {
         const guestPlaylists = updatedPlaylists.filter(p => !p.isPredefined);
-        localStorage.setItem(PLAYLIST_STORAGE_KEY, JSON.stringify(guestPlaylists));
-
         const predefinedFavorites = updatedPlaylists
           .filter(p => p.isPredefined && p.isFavorite)
           .map(p => ({ id: p.id, isFavorite: true }));
-        // This part seems complex, for now, let's simplify saving for guests.
-        // A better approach might be to have a separate storage key for favorite predefined playlists.
+        
+        const dataToSave = [...guestPlaylists, ...predefinedFavorites];
+        
+        localStorage.setItem(PLAYLIST_STORAGE_KEY, JSON.stringify(dataToSave));
       } catch (error) {
         console.error("Failed to save guest playlists to localStorage", error);
       }
@@ -208,7 +223,7 @@ export const PlaylistProvider = ({
         );
         savePlaylistsForGuest(updatedPlaylists);
       } else {
-        const result = await deletePlaylistAction(playlistId, !playlistToDelete.isPredefined);
+        const result = await deletePlaylistAction(playlistId, true); // Always a user playlist
         if (result.message && !result.message.includes("Error")) {
             setPlaylists(prev => prev.filter(p => p.id !== playlistId));
         } else {
@@ -232,7 +247,7 @@ export const PlaylistProvider = ({
 
   const addPodcastToUserPlaylist = async (playlistId: string, podcastId: string) => {
       const playlist = playlists.find((p) => p.id === playlistId);
-      if (!playlist || playlist.isPredefined || !user.uid || playlist.podcast_ids.includes(podcastId)) return;
+      if (!playlist || !user.uid || playlist.podcast_ids.includes(podcastId)) return;
       
       const newPodcastIds = [...playlist.podcast_ids, podcastId];
       
@@ -251,7 +266,7 @@ export const PlaylistProvider = ({
 
   const removePodcastFromGuestPlaylist = (playlistId: string, podcastId: string) => {
       const playlist = playlists.find((p) => p.id === playlistId);
-      if (!playlist || playlist.isPredefined) return;
+      if (!playlist) return;
       
       const newPodcastIds = playlist.podcast_ids.filter((id) => id !== podcastId);
       const updatedPlaylists = playlists.map((p) =>
@@ -262,7 +277,7 @@ export const PlaylistProvider = ({
 
   const removePodcastFromUserPlaylist = async (playlistId: string, podcastId: string) => {
     const playlist = playlists.find((p) => p.id === playlistId);
-    if (!playlist || playlist.isPredefined || !user.uid) {
+    if (!playlist || !user.uid) {
         return Promise.reject(new Error("Playlist not found or user not authorized."));
     }
     
@@ -319,6 +334,7 @@ export const PlaylistProvider = ({
 
   const isFavoritePodcast = useCallback(
     (podcastId: string) => {
+      if (!FAVORITES_PLAYLIST_ID) return false;
       const favoritesPlaylist = playlists.find(
         (p) => p.id === FAVORITES_PLAYLIST_ID
       );
