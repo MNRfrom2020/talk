@@ -1,3 +1,4 @@
+
 "use server";
 
 import { revalidatePath } from "next/cache";
@@ -132,7 +133,7 @@ export async function deletePodcast(id: string) {
 const PlaylistFormSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1, "Name is required"),
-  podcast_ids: z.array(z.string()).min(0, "Select at least one podcast").optional(),
+  podcast_ids: z.array(z.string()).optional(),
   cover: z.string().url("Must be a valid URL").optional().or(z.literal("")),
   created_at: z.string().optional(),
 });
@@ -197,9 +198,9 @@ export async function savePlaylist(
 // User Playlist Actions
 const UserPlaylistFormSchema = z.object({
   id: z.string().uuid().optional(),
-  name: z.string().min(1, "Name is required").optional(),
+  name: z.string().min(1, "Name is required"),
   podcast_ids: z.array(z.string()).optional(),
-  cover: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  cover: z.string().url("Must be a valid URL").nullable().optional(),
   user_uid: z.string().uuid(),
 });
 
@@ -400,6 +401,7 @@ export async function updateUserFavoritePlaylists(
     if (error) throw error;
 
     revalidatePath("/library");
+    revalidatePath("/profile");
     return { message: "Favorite playlists updated successfully." };
   } catch (error: any) {
     return {
@@ -407,3 +409,5 @@ export async function updateUserFavoritePlaylists(
     };
   }
 }
+
+    
