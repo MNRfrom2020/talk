@@ -200,7 +200,7 @@ const UserPlaylistFormSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1, "Name is required").optional(),
   podcast_ids: z.array(z.string()).optional(),
-  cover: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  cover: z.string().url("Must be a valid URL").nullable().optional().or(z.literal("")),
   user_uid: z.string().uuid(),
 });
 

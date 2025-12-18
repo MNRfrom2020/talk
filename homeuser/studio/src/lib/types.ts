@@ -35,7 +35,8 @@ export type User = {
   image: string | null;
   username: string;
   email: string;
-  pass: string;
+  pass?: string;
   created_at: string;
   updated_at: string;
+  playlists_ids?: string[];
 };
