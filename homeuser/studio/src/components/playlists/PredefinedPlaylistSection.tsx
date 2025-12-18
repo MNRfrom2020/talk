@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 
 const getRowLimit = () => {
   if (typeof window === "undefined") {
-    return null;
+    return 6; // Default for server-side rendering
   }
   if (window.innerWidth >= 1536) return 6; // 2xl
   if (window.innerWidth >= 1280) return 5; // xl
@@ -21,7 +21,7 @@ const getRowLimit = () => {
 export default function PredefinedPlaylistSection() {
   const { playlists } = usePlaylist();
   const [isExpanded, setIsExpanded] = React.useState(false);
-  const [rowLimit, setRowLimit] = React.useState<number | null>(null);
+  const [rowLimit, setRowLimit] = React.useState(getRowLimit());
 
   const favoritePlaylists = playlists.filter((p) => p.isFavorite);
 
@@ -41,10 +41,10 @@ export default function PredefinedPlaylistSection() {
   }
 
   const displayedPlaylists =
-    isExpanded || rowLimit === null
+    isExpanded 
       ? favoritePlaylists
       : favoritePlaylists.slice(0, rowLimit);
-  const hasMore = rowLimit !== null && favoritePlaylists.length > rowLimit;
+  const hasMore = favoritePlaylists.length > rowLimit;
 
   return (
     <section>
