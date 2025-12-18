@@ -195,8 +195,8 @@ export const PlaylistProvider = ({
          const result = await saveUserPlaylist({
             name,
             podcast_ids: podcastIds,
-            user_uid: user.uid,
             cover: cover,
+            user_uid: user.uid,
          });
 
         if (result.message && !result.errors) {
@@ -253,7 +253,6 @@ export const PlaylistProvider = ({
       
       const result = await saveUserPlaylist({
         id: playlist.id,
-        name: playlist.name,
         user_uid: user.uid,
         podcast_ids: newPodcastIds,
       });
@@ -286,7 +285,6 @@ export const PlaylistProvider = ({
 
     const result = await saveUserPlaylist({
       id: playlist.id,
-      name: playlist.name,
       user_uid: user.uid,
       podcast_ids: newPodcastIds,
     });
@@ -391,3 +389,5 @@ export const PlaylistProvider = ({
     <PlaylistContext.Provider value={value}>{children}</PlaylistContext.Provider>
   );
 };
+
+    
