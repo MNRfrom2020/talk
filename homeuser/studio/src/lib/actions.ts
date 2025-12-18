@@ -162,7 +162,7 @@ export async function savePlaylist(
 
   const playlistData: { [key: string]: any } = {
       name: data.name,
-      podcast_ids: data.podcast_ids || [],
+      podcast_ids: data.podcast_ids,
       cover: data.cover,
   };
   
@@ -198,9 +198,9 @@ export async function savePlaylist(
 // User Playlist Actions
 const UserPlaylistFormSchema = z.object({
   id: z.string().uuid().optional(),
-  name: z.string().min(1, "Name is required"),
+  name: z.string().min(1, "Name is required").optional(),
   podcast_ids: z.array(z.string()).optional(),
-  cover: z.string().url("Must be a valid URL").nullable().optional().or(z.literal("")),
+  cover: z.string().url("Must be a valid URL").nullable().optional(),
   user_uid: z.string().uuid(),
 });
 
@@ -251,7 +251,6 @@ export async function saveUserPlaylist(
 
   revalidatePath("/library");
   revalidatePath("/playlists/[playlistId]", "page");
-  revalidatePath("/admin/dashboard/playlists");
   return { message: "Successfully saved user playlist." };
 }
 
@@ -410,3 +409,5 @@ export async function updateUserFavoritePlaylists(
     };
   }
 }
+
+    
