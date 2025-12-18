@@ -196,7 +196,7 @@ export const PlaylistProvider = ({
             name,
             podcast_ids: podcastIds,
             user_uid: user.uid,
-            cover: cover,
+            cover: cover || null,
          });
 
         if (result.message && !result.errors) {
