@@ -73,6 +73,7 @@ export const PlaylistProvider = ({
 
       let predefinedPlaylists: Playlist[] = (predefinedPlaylistsDb || []).map(p => ({
         ...p,
+        id: String(p.id),
         isPredefined: true,
       }));
 
@@ -129,13 +130,13 @@ export const PlaylistProvider = ({
           return;
         }
         
-        const userPlaylists = userPlaylistsDb || [];
+        const userPlaylists = (userPlaylistsDb || []).map(p => ({...p, id: String(p.id)}));
         
         let favPlaylist = userPlaylists.find(p => p.name === FAVORITES_PLAYLIST_NAME);
         if (favPlaylist) {
             setFavoritesPlaylistId(favPlaylist.id);
         } else {
-          // If for some reason a logged in user doesn't have a favorites playlist, create one virtually for the session.
+          // If for some reason a logged in user doesn't have a favorites playlist, create one.
            const { data: newPlaylist, error: createError } = await supabase
             .from('user_playlists')
             .insert({ user_uid: user.uid, name: FAVORITES_PLAYLIST_NAME, podcast_ids: [] })
@@ -145,8 +146,9 @@ export const PlaylistProvider = ({
             if (createError) {
               console.error("Could not create favorites playlist for user:", createError);
             } else if (newPlaylist) {
-              userPlaylists.push(newPlaylist);
-              setFavoritesPlaylistId(newPlaylist.id);
+              const createdPlaylist = {...newPlaylist, id: String(newPlaylist.id)};
+              userPlaylists.push(createdPlaylist);
+              setFavoritesPlaylistId(createdPlaylist.id);
             }
         }
         
@@ -196,14 +198,15 @@ export const PlaylistProvider = ({
          const result = await saveUserPlaylist({
             name,
             podcast_ids: podcastIds,
-            cover: cover || null,
             user_uid: user.uid,
+            cover: cover,
          });
 
         if (result.message && !result.errors) {
             const { data: newPlaylist, error } = await supabase.from('user_playlists').select().eq('name', name).eq('user_uid', user.uid).order('created_at', { ascending: false }).limit(1).single();
             if (newPlaylist && !error) {
-                 setPlaylists(prev => [...prev, newPlaylist]);
+                 const createdPlaylist = {...newPlaylist, id: String(newPlaylist.id)};
+                 setPlaylists(prev => [...prev, createdPlaylist]);
             }
         } else {
              console.error("Error creating playlist:", result.message);
@@ -213,34 +216,42 @@ export const PlaylistProvider = ({
     [playlists, user],
   );
 
-  const updatePlaylist = useCallback(
-    async (playlistId: string, data: { name?: string, cover?: string | null }) => {
-        const playlistToUpdate = playlists.find(p => p.id === playlistId);
-        if (!playlistToUpdate || playlistToUpdate.isPredefined) {
-            throw new Error("Cannot update this playlist.");
-        }
+ const updatePlaylist = useCallback(
+    async (playlistId: string, data: { name?: string; cover?: string | null }) => {
+      const playlistToUpdate = playlists.find((p) => p.id === playlistId);
+      if (!playlistToUpdate || playlistToUpdate.isPredefined) {
+        throw new Error("Cannot update this playlist.");
+      }
 
-        if (user.isGuest) {
-            const updatedPlaylists = playlists.map(p => 
-                p.id === playlistId ? { ...p, ...data, cover: data.cover || null } : p
-            );
-            savePlaylistsForGuest(updatedPlaylists);
-        } else {
-            if (!user.uid) throw new Error("User not logged in.");
-            const result = await saveUserPlaylist({
-                id: playlistId,
-                user_uid: user.uid,
-                name: data.name,
-                cover: data.cover,
-            });
+      const updatedData = { ...playlistToUpdate, ...data };
 
-            if (result.errors) {
-                throw new Error(result.message || "Could not update playlist.");
-            }
-            
-            setPlaylists(prev => prev.map(p => p.id === playlistId ? { ...p, ...data, cover: data.cover || null } : p));
+      if (user.isGuest) {
+        const updatedPlaylists = playlists.map((p) =>
+          p.id === playlistId ? updatedData : p
+        );
+        savePlaylistsForGuest(updatedPlaylists);
+      } else {
+        if (!user.uid) throw new Error("User not logged in.");
+
+        const result = await saveUserPlaylist({
+          id: playlistId,
+          user_uid: user.uid,
+          name: data.name,
+          cover: data.cover,
+        });
+
+        if (result.errors) {
+          throw new Error(result.message || "Could not update playlist.");
         }
-    }, [playlists, user]);
+        
+        // Optimistically update the state
+        setPlaylists((prev) =>
+          prev.map((p) => (p.id === playlistId ? updatedData : p))
+        );
+      }
+    },
+    [playlists, user]
+  );
 
   const deletePlaylist = useCallback(
     async (playlistId: string) => {
@@ -422,3 +433,5 @@ export const PlaylistProvider = ({
     <PlaylistContext.Provider value={value}>{children}</PlaylistContext.Provider>
   );
 };
+
+    

@@ -204,18 +204,24 @@ const UserPlaylistFormSchema = z.object({
   user_uid: z.string().uuid(),
 });
 
+const PartialUserPlaylistFormSchema = UserPlaylistFormSchema.partial().extend({
+  id: z.string().uuid(),
+  user_uid: z.string().uuid(),
+});
+
+
 type UserPlaylistFormValues = z.infer<typeof UserPlaylistFormSchema>;
 
 export async function saveUserPlaylist(
   values: Partial<UserPlaylistFormValues>,
 ): Promise<PlaylistState> {
+  const isUpdate = !!values.id;
+  const schema = isUpdate ? PartialUserPlaylistFormSchema : UserPlaylistFormSchema;
 
-   const creationSchema = UserPlaylistFormSchema;
-   const updateSchema = UserPlaylistFormSchema.partial().extend({ id: z.string().uuid(), user_uid: z.string().uuid() });
+  const validatedFields = schema.safeParse(values);
 
-  const validatedFields = values.id ? updateSchema.safeParse(values) : creationSchema.safeParse(values);
-  
   if (!validatedFields.success) {
+    console.error("Validation Errors:", validatedFields.error.flatten().fieldErrors);
     return {
       errors: validatedFields.error.flatten().fieldErrors,
       message: "Missing Fields. Failed to Save User Playlist.",
@@ -223,8 +229,10 @@ export async function saveUserPlaylist(
   }
 
   const { id, ...data } = validatedFields.data;
-  
-  const playlistData: { [key: string]: any } = { user_uid: data.user_uid };
+
+  // Build the payload with only defined fields to avoid overwriting with undefined
+  const playlistData: { [key: string]: any } = {};
+  if (data.user_uid) playlistData.user_uid = data.user_uid;
   if (data.name) playlistData.name = data.name;
   if (data.podcast_ids) playlistData.podcast_ids = data.podcast_ids;
   if (data.cover !== undefined) playlistData.cover = data.cover;
@@ -240,6 +248,7 @@ export async function saveUserPlaylist(
       if (error) throw error;
     } else {
       playlistData.created_at = getBstDate().toISOString();
+      if(!playlistData.user_uid) throw new Error("user_uid is required for new playlists");
       const { error } = await supabase.from("user_playlists").insert(playlistData);
       if (error) throw error;
     }
@@ -409,3 +418,5 @@ export async function updateUserFavoritePlaylists(
     };
   }
 }
+
+    
