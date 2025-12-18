@@ -7,7 +7,7 @@ import { Heart, ListMusic, Lock, MoreVertical, Share2, Trash2 } from "lucide-rea
 import { useState } from "react";
 
 import { usePodcast } from "@/context/PodcastContext";
-import { usePlaylist, FAVORITES_PLAYLIST_ID } from "@/context/PlaylistContext";
+import { usePlaylist } from "@/context/PlaylistContext";
 import type { Playlist } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -39,7 +39,7 @@ interface PlaylistCardProps {
 
 export default function PlaylistCard({ playlist }: PlaylistCardProps) {
   const { podcasts } = usePodcast();
-  const { getPodcastsForPlaylist, deletePlaylist, toggleFavorite } = usePlaylist();
+  const { getPodcastsForPlaylist, deletePlaylist, toggleFavorite, FAVORITES_PLAYLIST_ID } = usePlaylist();
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const { toast } = useToast();
 
@@ -162,7 +162,7 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
               {playlist.name}
             </h3>
             <p className="h-5 text-sm text-muted-foreground line-clamp-1">
-               {playlistPodcasts.length} {playlistPodcasts.length === 1 ? "audio" : "audios"}
+              {playlistPodcasts.length} {playlistPodcasts.length === 1 ? "audio" : "audios"}
             </p>
           </CardContent>
         </Link>

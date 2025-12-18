@@ -16,7 +16,7 @@ import { saveUserPlaylist, deletePlaylist as deletePlaylistAction } from "@/lib/
 
 const PLAYLIST_STORAGE_KEY = "podcast_playlists_guest";
 const FAVORITES_PLAYLIST_NAME = "Favorites";
-export const GUEST_FAVORITES_PLAYLIST_ID = "favorites-guest";
+const GUEST_FAVORITES_PLAYLIST_ID = "favorites-guest";
 
 
 interface PlaylistContextType {
@@ -389,3 +389,5 @@ export const PlaylistProvider = ({
     <PlaylistContext.Provider value={value}>{children}</PlaylistContext.Provider>
   );
 };
+
+    
