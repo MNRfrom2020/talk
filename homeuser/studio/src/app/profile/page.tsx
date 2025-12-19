@@ -553,6 +553,8 @@ export default function ProfilePage() {
                     )}
                   </div>
 
+                  <Separator />
+
                 </div>
                 </div>
               </main>

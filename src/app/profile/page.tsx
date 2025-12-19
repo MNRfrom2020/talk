@@ -6,10 +6,13 @@ export const runtime = 'edge';
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence } from "framer-motion";
-import { Camera, Clapperboard, Mic, User, TrendingUp } from "lucide-react";
+import { Camera, Clapperboard, Mic, User, TrendingUp, Home } from "lucide-react";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
 
 import AppSidebar from "@/components/layout/AppSidebar";
 import BottomNavBar from "@/components/layout/BottomNavBar";
@@ -30,7 +33,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { usePlayer } from "@/context/PlayerContext";
-import { useUser } from "@/context/UserContext";
+import { useUser, type User as UserType } from "@/context/UserContext";
 import { useToast } from "@/hooks/use-toast";
 import MobileHeader from "@/components/layout/MobileHeader";
 import { cn } from "@/lib/utils";
@@ -46,6 +49,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import type { Podcast } from "@/lib/types";
 
 const guestFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -70,7 +74,7 @@ const StatCard = ({
   icon,
 }: {
   title: string;
-  value: string;
+  value: string | number;
   icon: React.ReactNode;
 }) => (
   <Card>
@@ -85,16 +89,18 @@ const StatCard = ({
 );
 
 export default function ProfilePage() {
-  const { user, updateUser, logout } = useUser();
-  const { history, listeningLog, isExpanded } = usePlayer();
+  const { user, updateUser, logout, loading: userLoading } = useUser();
+  const { isExpanded, history } = usePlayer();
   const { podcasts } = usePodcast();
   const { getPodcastsForPlaylist, FAVORITES_PLAYLIST_ID } = usePlaylist();
   const [avatarPreview, setAvatarPreview] = React.useState<string | null>(
     user.avatar,
   );
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const importFileInputRef = React.useRef<HTMLInputElement>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const router = useRouter();
+
 
   const form = useForm({
     resolver: zodResolver(user.isGuest ? guestFormSchema : userFormSchema),
@@ -112,10 +118,10 @@ export default function ProfilePage() {
     if (!FAVORITES_PLAYLIST_ID) return [];
     return getPodcastsForPlaylist(FAVORITES_PLAYLIST_ID, podcasts)
   }, [getPodcastsForPlaylist, FAVORITES_PLAYLIST_ID, podcasts]);
-
+  
   const stats = React.useMemo(() => {
     if (history.length === 0) {
-      return null;
+      return { totalPlayed: 0, favoriteArtist: "N/A", favoriteCategory: "N/A" };
     }
 
     const artistCounts = new Map<string, number>();
@@ -124,11 +130,11 @@ export default function ProfilePage() {
     history.forEach((podcast) => {
       const artists = Array.isArray(podcast.artist) ? podcast.artist : [podcast.artist];
       artists.forEach(artist => {
-        artistCounts.set(artist, (artistCounts.get(artist) || 0) + 1);
+        if(artist) artistCounts.set(artist, (artistCounts.get(artist) || 0) + 1);
       });
 
       podcast.categories.forEach((category) => {
-        categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1);
+        if(category) categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1);
       });
     });
 
@@ -136,7 +142,7 @@ export default function ProfilePage() {
     const favoriteCategory = [...categoryCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "N/A";
 
     return {
-      totalPlayed: history.length,
+      totalPlayed: new Set(history.map(p => p.id)).size,
       favoriteArtist,
       favoriteCategory,
     };
@@ -155,8 +161,14 @@ export default function ProfilePage() {
     }
     setAvatarPreview(user.avatar);
   }, [user, form]);
-
-  const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  
+   React.useEffect(() => {
+    if (!userLoading && !user.isLoggedIn) {
+      router.push("/");
+    }
+  }, [user, userLoading, router]);
+  
+   const handleAvatarChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -173,10 +185,11 @@ export default function ProfilePage() {
     }
   };
 
+
   async function onSubmit(values: any) {
     try {
       if (user.isGuest) {
-        await updateUser({ name: values.name, avatar: values.avatar });
+        await updateUser({ name: values.name, avatar: avatarPreview });
       } else {
          if (!user.uid || !user.username) {
             throw new Error("User information is incomplete.");
@@ -207,24 +220,20 @@ export default function ProfilePage() {
       title: "Logged Out",
       description: "You have been logged out.",
     });
+    router.push('/');
   }
 
   const handleExport = () => {
     try {
-      const userProfile = localStorage.getItem("user_profile");
-      const podcastHistory = localStorage.getItem("podcast_history");
-      const podcastPlaylists = localStorage.getItem("podcast_playlists_guest");
-      const listeningLog = localStorage.getItem("listening_log");
-
-
-      const dataToExport = {
-        userProfile: userProfile ? JSON.parse(userProfile) : null,
-        podcastHistory: podcastHistory ? JSON.parse(podcastHistory) : null,
-        podcastPlaylists: podcastPlaylists
-          ? JSON.parse(podcastPlaylists)
-          : null,
-        listeningLog: listeningLog ? JSON.parse(listeningLog) : null,
-      };
+      const dataToExport: any = {};
+      const keysToExport = ["user_profile", "podcast_history", "podcast_playlists_guest", "listening_log"];
+      
+      keysToExport.forEach(key => {
+        const item = localStorage.getItem(key);
+        if(item) {
+           dataToExport[key] = JSON.parse(item);
+        }
+      });
 
       const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
         JSON.stringify(dataToExport, null, 2),
@@ -261,37 +270,15 @@ export default function ProfilePage() {
         }
         const data = JSON.parse(text);
 
-        if (data.userProfile) {
-          localStorage.setItem(
-            "user_profile",
-            JSON.stringify(data.userProfile),
-          );
-        }
-        if (data.podcastHistory) {
-          localStorage.setItem(
-            "podcast_history",
-            JSON.stringify(data.podcastHistory),
-          );
-        }
-        if (data.podcastPlaylists) {
-          localStorage.setItem(
-            "podcast_playlists_guest",
-            JSON.stringify(data.podcastPlaylists),
-          );
-        }
-        if (data.listeningLog) {
-           localStorage.setItem(
-            "listening_log",
-            JSON.stringify(data.listeningLog),
-          );
-        }
+        Object.keys(data).forEach(key => {
+          localStorage.setItem(key, JSON.stringify(data[key]));
+        });
 
         toast({
           title: "Import Successful",
           description: "Your data has been imported. The app will now reload.",
         });
 
-        // Reload to apply changes from localStorage
         setTimeout(() => {
           window.location.reload();
         }, 1500);
@@ -306,7 +293,7 @@ export default function ProfilePage() {
     };
     reader.readAsText(file);
   };
-
+  
   const renderGuestForm = () => (
      <FormField
         control={form.control}
@@ -322,6 +309,7 @@ export default function ProfilePage() {
         )}
       />
   );
+
 
   const renderUserForm = () => (
     <>
@@ -358,7 +346,15 @@ export default function ProfilePage() {
           <FormItem>
             <FormLabel>Avatar URL</FormLabel>
             <FormControl>
-              <Input placeholder="https://example.com/avatar.png" {...field} />
+              <Input 
+                placeholder="https://example.com/avatar.png" 
+                {...field} 
+                value={field.value ?? ""}
+                onChange={(e) => {
+                  field.onChange(e);
+                  setAvatarPreview(e.target.value);
+                }}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -379,6 +375,14 @@ export default function ProfilePage() {
       />
     </>
   );
+  
+  if (userLoading || !user.isLoggedIn) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <p>Loading profile...</p>
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider>
@@ -391,7 +395,7 @@ export default function ProfilePage() {
               <main
                 className={cn(
                   "p-4 sm:p-6 lg:p-8",
-                  "pb-24 md:pb-8",
+                  "pb-20 md:pb-8",
                 )}
               >
                <div className="mx-auto max-w-2xl">
@@ -405,13 +409,13 @@ export default function ProfilePage() {
                       <Avatar className="h-32 w-32">
                         <AvatarImage
                           src={avatarPreview ?? undefined}
-                          alt="User Avatar"
+                          alt={user.name}
                         />
                         <AvatarFallback>
                           <User className="h-16 w-16" />
                         </AvatarFallback>
                       </Avatar>
-                      {(user.isGuest) && (
+                       {(user.isGuest) && (
                         <>
                           <Button
                             variant="outline"
@@ -452,7 +456,7 @@ export default function ProfilePage() {
                               onSubmit={form.handleSubmit(onSubmit)}
                               className="w-full space-y-6"
                             >
-                              {user.isGuest ? renderGuestForm() : renderUserForm()}
+                               {user.isGuest ? renderGuestForm() : renderUserForm()}
                               <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
                                  {form.formState.isSubmitting ? "Saving..." : "Save Changes"}
                               </Button>
@@ -466,8 +470,8 @@ export default function ProfilePage() {
                   <Separator />
                   
                   <div className="space-y-4">
-                    <h2 className="text-center text-lg font-medium">Your Stats</h2>
-                    {stats ? (
+                    <h2 className="text-center text-lg font-medium">Your Stats (Last 30 Days)</h2>
+                    {stats.totalPlayed > 0 ? (
                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                         <StatCard
                           title="Audio Played"
@@ -504,7 +508,7 @@ export default function ProfilePage() {
 
                   <Separator />
 
-                  <div className="w-full space-y-4">
+                  <div className="w-full space-y-4 mb-20 md:mb-0">
                      <h2 className="text-center text-lg font-medium">Data Management</h2>
                       <Button
                         variant="secondary"
@@ -539,6 +543,7 @@ export default function ProfilePage() {
                     >
                       Logout
                     </Button>
+                    <br />
                     {!user.isLoggedIn && (
                         <LoginDialog>
                         <Button variant="outline" className="w-full">
@@ -547,6 +552,18 @@ export default function ProfilePage() {
                         </LoginDialog>
                     )}
                   </div>
+
+                  <Separator />
+
+                  <div className="w-full">
+                     <Link href="/" passHref>
+                        <Button variant="link" className="w-full">
+                           <Home className="mr-2 h-4 w-4"/>
+                           Back to Home
+                        </Button>
+                     </Link>
+                  </div>
+
                 </div>
                 </div>
               </main>
