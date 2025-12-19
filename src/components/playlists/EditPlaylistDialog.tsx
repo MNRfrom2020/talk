@@ -86,51 +86,53 @@ export function EditPlaylistDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild onClick={(e) => e.stopPropagation()}>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Edit playlist</DialogTitle>
-          <DialogDescription>
-            Update the name and cover image for your playlist.
-          </DialogDescription>
-        </DialogHeader>
         <Form {...form}>
-          <form id={`edit-playlist-form-${playlist.id}`} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Playlist Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="My Awesome Playlist" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="cover"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cover URL (Optional)</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="https://example.com/image.png"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <DialogHeader>
+              <DialogTitle>Edit playlist</DialogTitle>
+              <DialogDescription>
+                Update the name and cover image for your playlist.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Playlist Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="My Awesome Playlist" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="cover"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cover URL (Optional)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="https://example.com/image.png"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
           </form>
         </Form>
-        <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit" form={`edit-playlist-form-${playlist.id}`} disabled={form.formState.isSubmitting}>
-              {form.formState.isSubmitting ? 'Saving...' : 'Save Changes'}
-            </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
