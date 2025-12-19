@@ -1,4 +1,3 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -54,7 +53,7 @@ export function EditPlaylistDialog({
       cover: playlist.cover || "",
     },
   });
-  
+
   useEffect(() => {
     if (open) {
       form.reset({
@@ -64,75 +63,83 @@ export function EditPlaylistDialog({
     }
   }, [open, playlist, form]);
 
-
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-        await updatePlaylist(playlist.id, values);
-        setOpen(false);
-        toast({
-            title: "Playlist Updated",
-            description: `"${values.name}" has been updated.`,
-        });
-    } catch(e: any) {
-        toast({
-            variant: "destructive",
-            title: "Update Failed",
-            description: e.message || "Could not update playlist.",
-        });
+      await updatePlaylist(playlist.id, values);
+      setOpen(false);
+      toast({
+        title: "Playlist Updated",
+        description: `"${values.name}" has been updated.`,
+      });
+    } catch (e: any) {
+      toast({
+        variant: "destructive",
+        title: "Update Failed",
+        description: e.message || "Could not update playlist.",
+      });
     }
   }
+  
+  // Create a unique ID for the form
+  const formId = `edit-playlist-form-${playlist.id}`;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild onClick={(e) => e.stopPropagation()}>{children}</DialogTrigger>
+      <DialogTrigger asChild onClick={(e) => e.stopPropagation()}>
+        {children}
+      </DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Edit playlist</DialogTitle>
+          <DialogDescription>
+            Update the name and cover image for your playlist.
+          </DialogDescription>
+        </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <DialogHeader>
-              <DialogTitle>Edit playlist</DialogTitle>
-              <DialogDescription>
-                Update the name and cover image for your playlist.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Playlist Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="My Awesome Playlist" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="cover"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cover URL (Optional)</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="https://example.com/image.png"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? 'Saving...' : 'Save Changes'}
-              </Button>
-            </DialogFooter>
+          <form id={formId} onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Playlist Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="My Awesome Playlist" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="cover"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cover URL (Optional)</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="https://example.com/image.png"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </form>
         </Form>
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setOpen(false)}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" form={formId} disabled={form.formState.isSubmitting}>
+            {form.formState.isSubmitting ? "Saving..." : "Save Changes"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
