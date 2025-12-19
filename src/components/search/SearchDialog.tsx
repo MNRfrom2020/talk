@@ -25,6 +25,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogTrigger,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -42,6 +43,7 @@ import {
 import { CreatePlaylistDialog } from "@/components/playlists/CreatePlaylistDialog";
 import { usePlaylist } from "@/context/PlaylistContext";
 import { cn } from "@/lib/utils";
+import { useUser } from "@/context/UserContext";
 
 const SearchResultItem = ({
   podcast,
@@ -50,10 +52,12 @@ const SearchResultItem = ({
   podcast: Podcast;
   onPlay: (trackId: string) => void;
 }) => {
+  const { user } = useUser();
   const { addToQueue } = usePlayer();
   const {
     playlists,
-    addPodcastToPlaylist,
+    addPodcastToGuestPlaylist,
+    addPodcastToUserPlaylist,
     toggleFavoritePodcast,
     isFavoritePodcast,
     FAVORITES_PLAYLIST_ID,
@@ -82,15 +86,6 @@ const SearchResultItem = ({
       description: `"${podcast.title}" has been ${
         isFavorite ? "removed from" : "added to"
       } your Favorites.`,
-    });
-  };
-
-  const handleAddToPlaylist = (playlistId: string) => {
-    addPodcastToPlaylist(playlistId, podcast.id);
-    const playlist = playlists.find((p) => p.id === playlistId);
-    toast({
-      title: "Added to playlist",
-      description: `"${podcast.title}" has been added to "${playlist?.name}".`,
     });
   };
 
@@ -162,7 +157,16 @@ const SearchResultItem = ({
                 {userPlaylists.map((p) => (
                   <DropdownMenuItem
                     key={p.id}
-                    onClick={() => handleAddToPlaylist(p.id)}
+                    onClick={() => {
+                       const addFunction = user.isGuest
+                        ? addPodcastToGuestPlaylist
+                        : addPodcastToUserPlaylist;
+                      addFunction(p.id, podcast.id);
+                       toast({
+                        title: "Added to playlist",
+                        description: `"${podcast.title}" has been added to "${p.name}".`,
+                      });
+                    }}
                   >
                     {p.name}
                   </DropdownMenuItem>
@@ -305,6 +309,11 @@ export function SearchDialog({ children }: { children: ReactNode }) {
             )}
           </div>
         </ScrollArea>
+         <DialogFooter className="p-4 pt-0">
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Close
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
