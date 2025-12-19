@@ -31,7 +31,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 import PlaylistCover from "./PlaylistCover";
-import { EditPlaylistDialog } from "./EditPlaylistDialog";
 
 interface PlaylistCardProps {
   playlist: Playlist;
@@ -134,12 +133,6 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
                 {!playlist.isPredefined && playlist.id !== FAVORITES_PLAYLIST_ID && (
                   <>
                     <DropdownMenuSeparator />
-                    <EditPlaylistDialog playlist={playlist}>
-                       <div className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50">
-                        <Edit className="mr-2 h-4 w-4" />
-                        <span>Edit</span>
-                      </div>
-                    </EditPlaylistDialog>
                     <DropdownMenuItem onClick={handleDelete} className="text-destructive">
                       <Trash2 className="mr-2 h-4 w-4" />
                       <span>Delete</span>
