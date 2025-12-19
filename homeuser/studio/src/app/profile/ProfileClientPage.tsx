@@ -289,7 +289,11 @@ export default function ProfileClientPage({ initialUser, initialStats, allPodcas
           <FormItem>
             <FormLabel>Avatar URL</FormLabel>
             <FormControl>
-              <Input placeholder="https://example.com/avatar.png" {...field} />
+              <Input 
+                placeholder="https://example.com/avatar.png" 
+                {...field} 
+                value={field.value ?? ""}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -450,6 +454,7 @@ export default function ProfileClientPage({ initialUser, initialStats, allPodcas
                     >
                       Logout
                     </Button>
+                    <br />
                     {!user.isLoggedIn && (
                         <LoginDialog>
                         <Button variant="outline" className="w-full">
@@ -457,17 +462,6 @@ export default function ProfileClientPage({ initialUser, initialStats, allPodcas
                         </Button>
                         </LoginDialog>
                     )}
-                  </div>
-                  
-                  <Separator />
-                  
-                  <div className="w-full">
-                     <Link href="/" passHref>
-                        <Button variant="link" className="w-full">
-                           <Home className="mr-2 h-4 w-4"/>
-                           Go to Homepage
-                        </Button>
-                     </Link>
                   </div>
 
                 </div>
