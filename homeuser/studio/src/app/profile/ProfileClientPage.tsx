@@ -322,7 +322,7 @@ export default function ProfileClientPage({ initialUser, initialStats, allPodcas
               <main
                 className={cn(
                   "p-4 sm:p-6 lg:p-8",
-                  "pb-24 md:pb-8",
+                  "pb-20 md:pb-8",
                 )}
               >
                <div className="mx-auto max-w-2xl">
@@ -415,7 +415,7 @@ export default function ProfileClientPage({ initialUser, initialStats, allPodcas
 
                   <Separator />
 
-                  <div className="w-full space-y-4">
+                  <div className="w-full space-y-4 mb-20 md:mb-0">
                      <h2 className="text-center text-lg font-medium">Data Management</h2>
                       <Button
                         variant="secondary"
