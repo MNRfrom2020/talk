@@ -30,7 +30,7 @@ import { usePlaylist } from "@/context/PlaylistContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "../ui/button";
 import { CreatePlaylistDialog } from "../playlists/CreatePlaylistDialog";
-import { type MouseEvent, useEffect, useState } from "react";
+import { type MouseEvent } from "react";
 import { usePodcast } from "@/context/PodcastContext";
 import { useUser } from "@/context/UserContext";
 
@@ -162,15 +162,24 @@ export default function PodcastCard({
                 {userPlaylists.map((p) => (
                   <DropdownMenuItem
                     key={p.id}
-                    onClick={() => {
-                      const addFunction = user.isGuest
-                        ? addPodcastToGuestPlaylist
-                        : addPodcastToUserPlaylist;
-                      addFunction(p.id, podcast.id);
-                       toast({
-                        title: "Added to playlist",
-                        description: `"${podcast.title}" has been added to "${p.name}".`,
-                      });
+                    onClick={async () => {
+                      try {
+                        if (user.isGuest) {
+                          addPodcastToGuestPlaylist(p.id, podcast.id);
+                        } else {
+                          await addPodcastToUserPlaylist(p.id, podcast.id);
+                        }
+                        toast({
+                          title: "Added to playlist",
+                          description: `"${podcast.title}" has been added to "${p.name}".`,
+                        });
+                      } catch (error) {
+                        toast({
+                          variant: "destructive",
+                          title: "Error",
+                          description: "Could not add to playlist.",
+                        });
+                      }
                     }}
                   >
                     {p.name}

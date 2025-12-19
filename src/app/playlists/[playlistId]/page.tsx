@@ -143,6 +143,26 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
     );
   }
 
+  const onRemove = async (podcastId: string) => {
+    try {
+      if (user.isGuest) {
+        removePodcastFromGuestPlaylist(playlist.id, podcastId);
+      } else {
+        await removePodcastFromUserPlaylist(playlist.id, podcastId);
+      }
+      toast({
+        title: "Podcast Removed",
+        description: "The podcast has been removed from the playlist.",
+      });
+    } catch (error) {
+       toast({
+        variant: "destructive",
+        title: "Uh oh! Something went wrong.",
+        description: "Could not remove podcast from playlist.",
+      });
+    }
+  }
+
   return (
     <SidebarProvider>
       <div className="flex h-screen flex-col bg-background">
@@ -171,24 +191,26 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
                         </Button>
                       )}
                       <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={handleToggleFavorite}
-                          aria-label={
-                            playlist.isFavorite
-                              ? "Remove from favorites"
-                              : "Add to favorites"
-                          }
-                        >
-                          <Heart
-                            className={cn(
-                              "h-6 w-6",
-                              playlist.isFavorite &&
-                                "fill-primary text-primary",
-                            )}
-                          />
-                        </Button>
+                        {playlist.isPredefined && (
+                           <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleToggleFavorite}
+                            aria-label={
+                              playlist.isFavorite
+                                ? "Remove from favorites"
+                                : "Add to favorites"
+                            }
+                          >
+                            <Heart
+                              className={cn(
+                                "h-6 w-6",
+                                playlist.isFavorite &&
+                                  "fill-primary text-primary",
+                              )}
+                            />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -228,25 +250,7 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
                         podcast={podcast}
                         playlist={podcastsInPlaylist}
                         playlistId={playlist.id}
-                        onRemove={async () => {
-                          try {
-                            if (user.isGuest) {
-                              removePodcastFromGuestPlaylist(playlist.id, podcast.id);
-                            } else {
-                              await removePodcastFromUserPlaylist(playlist.id, podcast.id);
-                            }
-                            toast({
-                              title: "Podcast Removed",
-                              description: `"${podcast.title}" has been removed from the playlist.`,
-                            });
-                          } catch (error) {
-                             toast({
-                              variant: "destructive",
-                              title: "Uh oh! Something went wrong.",
-                              description: "Could not remove podcast from playlist.",
-                            });
-                          }
-                        }}
+                        onRemove={!playlist.isPredefined ? () => onRemove(podcast.id) : undefined}
                       />
                     ))}
                   </div>
