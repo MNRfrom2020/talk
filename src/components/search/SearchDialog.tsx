@@ -257,7 +257,7 @@ export function SearchDialog({ children }: { children: ReactNode }) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="top-4 max-w-lg translate-y-0 overflow-hidden p-0 sm:max-w-2xl">
+      <DialogContent hideCloseButton={true} className="top-4 max-w-lg translate-y-0 overflow-hidden p-0 sm:max-w-2xl">
         <DialogHeader className="sr-only">
           <DialogTitle>Search Audios</DialogTitle>
           <DialogDescription>
