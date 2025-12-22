@@ -77,24 +77,23 @@ export default function PlaylistForm({
     return allPodcasts.filter(
       (p) =>
         p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.artist.join(", ").toLowerCase().includes(searchTerm.toLowerCase()),
+        (Array.isArray(p.artist) && p.artist.join(", ").toLowerCase().includes(searchTerm.toLowerCase())),
     );
   }, [allPodcasts, searchTerm]);
 
   async function onSubmit(values: PlaylistFormValues) {
     setIsSubmitting(true);
-    const payload = {
-        ...values,
-        podcast_ids: values.podcast_ids?.join(',') ?? ''
-    }
-    const result = await savePlaylist(payload as any);
+    
+    // Always use savePlaylist for system playlists from the admin panel.
+    const result = await savePlaylist(values);
+
     setIsSubmitting(false);
 
     if (result.message) {
       if (result.errors) {
         toast({
           variant: "destructive",
-          title: "Error saving playlist",
+          title: "Error saving system playlist",
           description: result.message,
         });
       } else {
@@ -210,7 +209,7 @@ export default function PlaylistForm({
                                 {podcast.title}
                               </p>
                               <p className="truncate text-xs text-muted-foreground">
-                                {podcast.artist.join(", ")}
+                                {Array.isArray(podcast.artist) ? podcast.artist.join(", ") : podcast.artist}
                               </p>
                             </div>
                           </label>
