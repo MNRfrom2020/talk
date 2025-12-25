@@ -42,7 +42,7 @@ export const CellActions = ({
   const { toast } = useToast();
 
   const handleDelete = async () => {
-    const result = await deletePlaylist(playlist.id);
+    const result = await deletePlaylist(playlist.id, !!playlist.user_uid);
     if (result.message?.includes("Error")) {
       toast({
         variant: "destructive",
@@ -61,12 +61,16 @@ export const CellActions = ({
     <AlertDialog>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-8 w-8 p-0">
+          <Button
+            variant="ghost"
+            className="h-8 w-8 p-0"
+            onClick={(e) => e.stopPropagation()}
+          >
             <span className="sr-only">Open menu</span>
             <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
           <DropdownMenuItem onClick={() => onEdit(playlist)}>
             Edit
@@ -134,6 +138,14 @@ export const columns: ColumnDef<Playlist>[] = [
     cell: ({ row }) => {
       const podcastIds = row.getValue("podcast_ids") as string[];
       return <Badge variant="secondary">{podcastIds.length} audios</Badge>;
+    },
+  },
+   {
+    accessorKey: "user_uid",
+    header: "Type",
+    cell: ({ row }) => {
+      const isUserPlaylist = !!row.original.user_uid;
+      return <Badge variant={isUserPlaylist ? "outline" : "secondary"}>{isUserPlaylist ? "User" : "System"}</Badge>;
     },
   },
   {
