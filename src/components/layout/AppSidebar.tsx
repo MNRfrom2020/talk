@@ -2,7 +2,16 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { Grid, Home, Library, Search, Shuffle, User, Info } from "lucide-react";
+import {
+  Grid,
+  Home,
+  Library,
+  Search,
+  Shuffle,
+  User,
+  Info,
+  MicVocal,
+} from "lucide-react";
 import Link from "next/link";
 import {
   Sidebar,
@@ -42,14 +51,19 @@ export default function AppSidebar() {
   const isProfilePage = pathname === "/profile";
 
   const loggedInProfileButton = (
-     <div className={cn("flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground", isProfilePage && "bg-sidebar-accent text-sidebar-accent-foreground")}>
+    <div
+      className={cn(
+        "flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+        isProfilePage && "bg-sidebar-accent text-sidebar-accent-foreground",
+      )}
+    >
       <UserAvatar />
       <span className="truncate">{user.name}</span>
     </div>
   );
 
   const loggedOutProfileButton = (
-     <div className="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
+    <div className="flex w-full items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm font-medium transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground">
       <Avatar className="h-6 w-6">
         <AvatarFallback>
           <User className="h-4 w-4" />
@@ -57,7 +71,7 @@ export default function AppSidebar() {
       </Avatar>
       <span className="truncate">Login</span>
     </div>
-  )
+  );
 
   return (
     <Sidebar>
@@ -98,7 +112,7 @@ export default function AppSidebar() {
                 </button>
               </SearchDialog>
             </SidebarMenuItem>
-             <SidebarMenuItem>
+            <SidebarMenuItem>
               <SidebarMenuButton onClick={() => playRandom(podcasts)}>
                 <Shuffle />
                 Surprise Me
@@ -107,7 +121,7 @@ export default function AppSidebar() {
             <SidebarMenuItem>
               <SidebarMenuButton
                 href="/categories"
-                isActive={pathname.startsWith("/categories") || pathname.startsWith("/artists")}
+                isActive={pathname.startsWith("/categories")}
               >
                 <Grid />
                 Categories
@@ -115,8 +129,19 @@ export default function AppSidebar() {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
+                href="/artists"
+                isActive={pathname.startsWith("/artists")}
+              >
+                <MicVocal />
+                Artists
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
                 href="/library"
-                isActive={pathname === "/library" || pathname.startsWith("/playlists")}
+                isActive={
+                  pathname === "/library" || pathname.startsWith("/playlists")
+                }
               >
                 <Library />
                 Your Library
@@ -128,15 +153,15 @@ export default function AppSidebar() {
       <SidebarFooter>
         <SidebarGroup>
           <DisclaimerDialog>
-             <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start text-sm"
-              >
-                <Info className="mr-2 h-4 w-4" />
-                Disclaimer
-              </Button>
-            </DisclaimerDialog>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start text-sm"
+            >
+              <Info className="mr-2 h-4 w-4" />
+              Disclaimer
+            </Button>
+          </DisclaimerDialog>
           {user.isLoggedIn ? (
             <Link href="/profile" passHref>
               {loggedInProfileButton}
