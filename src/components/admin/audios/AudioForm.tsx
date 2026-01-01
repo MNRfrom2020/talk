@@ -4,7 +4,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { format, parseISO } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -187,7 +187,7 @@ export default function AudioForm({ podcast, onClose }: AudioFormProps) {
                 <Input type="datetime-local" {...field} />
               </FormControl>
               <FormDescription>
-                Leave blank to use the current time.
+                This field is for display and sorting. It does not change automatically on edit.
               </FormDescription>
               <FormMessage />
             </FormItem>
@@ -198,7 +198,7 @@ export default function AudioForm({ podcast, onClose }: AudioFormProps) {
             Cancel
           </Button>
           <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Saving..." : "Save"}
+            {isSubmitting ? "Saving..." : (podcast ? "Update" : "Save")}
           </Button>
         </div>
       </form>

@@ -84,12 +84,17 @@ export async function savePodcast(
     cover_art_hint: data.cover_art_hint,
     audio_url: data.audio_url,
   };
+  
+  if (data.created_at) {
+    podcastData.created_at = new Date(data.created_at).toISOString();
+  }
 
   try {
     if (id) {
       // Update existing podcast
-       if (data.created_at) {
-        podcastData.created_at = new Date(data.created_at).toISOString();
+      // Only update created_at if it's provided, otherwise keep the existing one.
+      if (!data.created_at) {
+        delete podcastData.created_at;
       }
       const { error } = await supabase
         .from("podcasts")
@@ -415,6 +420,3 @@ export async function updateUserFavoritePlaylists(
     };
   }
 }
-    
-
-    
