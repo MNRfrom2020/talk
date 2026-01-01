@@ -543,14 +543,6 @@ export default function ProfilePage() {
                     >
                       Logout
                     </Button>
-                    <br />
-                    {!user.isLoggedIn && (
-                        <LoginDialog>
-                        <Button variant="outline" className="w-full">
-                            Login
-                        </Button>
-                        </LoginDialog>
-                    )}
                   </div>
 
                   <Separator />
@@ -578,5 +570,3 @@ export default function ProfilePage() {
     </SidebarProvider>
   );
 }
-
-    
