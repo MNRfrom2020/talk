@@ -36,12 +36,16 @@ export function LoginOptionsDialog({ children }: { children: React.ReactNode }) 
         </DialogHeader>
         <div className="flex flex-col gap-4 py-4">
           <ProfileDialog>
-            <Button variant="outline" className="w-full justify-start">
+            <Button className="w-full justify-start">
               <User className="mr-2 h-4 w-4" />
               Log in as Guest
             </Button>
           </ProfileDialog>
-          <Button onClick={handleProperLogin} className="w-full justify-start">
+          <Button
+            onClick={handleProperLogin}
+            variant="outline"
+            className="w-full justify-start"
+          >
             <LogIn className="mr-2 h-4 w-4" />
             Proper Login
           </Button>
