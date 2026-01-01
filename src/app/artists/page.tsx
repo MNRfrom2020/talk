@@ -19,7 +19,6 @@ const ArtistsPage = () => {
   const { podcasts } = usePodcast();
 
   const artistsToExclude = [
-    "Dr Muhammad Ibrahim",
     "Mahmud Huzaifa",
     "Mazharul Islam",
     "Moeen Uddin",
