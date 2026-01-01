@@ -76,7 +76,7 @@ export default function LoginPage() {
           </div>
           <CardTitle className="text-2xl">MNR Talk</CardTitle>
           <CardDescription>
-            লগইন করতে আপনার ইউজারনেম বা ইমেইল ও পাসওয়ার্ড দিন
+            দু:খিত, নতুন একাউন্ট তৈরির কোনো অপশন নেই। অনুগ্রহ করে আপনার গেস্ট একাউন্টই ব্যবহার চালিয়ে যান। জাযাকাল্লাহু খাইরান।
           </CardDescription>
         </CardHeader>
         <CardContent>
