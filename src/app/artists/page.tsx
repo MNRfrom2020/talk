@@ -14,13 +14,24 @@ import MobileHeader from "@/components/layout/MobileHeader";
 import { cn } from "@/lib/utils";
 import { usePlayer } from "@/context/PlayerContext";
 
-const Page = () => {
+const ArtistsPage = () => {
   const { isExpanded } = usePlayer();
   const { podcasts } = usePodcast();
 
-  const allCategories = Array.from(
-    new Set(podcasts.flatMap((p) => p.categories)),
-  ).sort();
+  const artistsToExclude = [
+    "Dr Muhammad Ibrahim",
+    "Mahmud Huzaifa",
+    "Mazharul Islam",
+    "Moeen Uddin",
+    "Usaid Zahid Siddique",
+    "MercifulServant",
+  ];
+
+  const allArtists = Array.from(
+    new Set(podcasts.flatMap((p) => p.artist)),
+  )
+    .filter((artist) => !artistsToExclude.includes(artist))
+    .sort();
 
   return (
     <SidebarProvider>
@@ -38,17 +49,17 @@ const Page = () => {
               >
                 <div>
                   <h1 className="font-headline mb-6 text-3xl font-bold tracking-tight">
-                    Categories
+                    Artists
                   </h1>
                   <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                    {allCategories.map((category) => (
+                    {allArtists.map((artist) => (
                       <Link
-                        href={`/categories/${encodeURIComponent(category)}`}
-                        key={category}
+                        href={`/artists/${encodeURIComponent(artist)}`}
+                        key={artist}
                         passHref
                       >
                         <Card className="grid h-full min-h-24 place-items-center bg-secondary p-4 text-center font-semibold text-secondary-foreground transition-colors hover:bg-primary hover:text-primary-foreground">
-                          {category}
+                          {artist}
                         </Card>
                       </Link>
                     ))}
@@ -67,4 +78,4 @@ const Page = () => {
   );
 };
 
-export default Page;
+export default ArtistsPage;
