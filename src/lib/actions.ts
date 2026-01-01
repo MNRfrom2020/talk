@@ -55,6 +55,8 @@ const PodcastFormSchema = z.object({
   created_at: z.string().optional(),
 });
 
+const PartialPodcastFormSchema = PodcastFormSchema.partial();
+
 type PodcastFormValues = z.infer<typeof PodcastFormSchema>;
 
 export type PodcastState = {
@@ -62,7 +64,7 @@ export type PodcastState = {
   message?: string | null;
 };
 
-export async function savePodcast(
+export async function createPodcast(
   values: PodcastFormValues,
 ): Promise<PodcastState> {
   const validatedFields = PodcastFormSchema.safeParse(values);
@@ -70,10 +72,10 @@ export async function savePodcast(
   if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
-      message: "Missing Fields. Failed to Save Podcast.",
+      message: "Missing Fields. Failed to Create Podcast.",
     };
   }
-
+  
   const { id, ...data } = validatedFields.data;
 
   const podcastData: { [key: string]: any } = {
@@ -83,40 +85,66 @@ export async function savePodcast(
     cover_art: data.cover_art,
     cover_art_hint: data.cover_art_hint,
     audio_url: data.audio_url,
+    created_at: data.created_at ? new Date(data.created_at).toISOString() : getBstDate().toISOString(),
   };
-  
-  if (data.created_at) {
-    podcastData.created_at = new Date(data.created_at).toISOString();
-  }
 
   try {
-    if (id) {
-      // Update existing podcast
-      // Only update created_at if it's provided, otherwise keep the existing one.
-      if (!data.created_at) {
-        delete podcastData.created_at;
-      }
-      const { error } = await supabase
-        .from("podcasts")
-        .update(podcastData)
-        .eq("id", id);
-      if (error) throw error;
-    } else {
-      // Create new podcast
-       podcastData.created_at = data.created_at ? new Date(data.created_at).toISOString() : getBstDate().toISOString();
-      const { error } = await supabase.from("podcasts").insert(podcastData);
-      if (error) throw error;
-    }
+    const { error } = await supabase.from("podcasts").insert(podcastData);
+    if (error) throw error;
   } catch (error: any) {
     return {
-      message: `Database Error: Failed to ${id ? "Update" : "Create"} Podcast. ${error.message}`,
+      message: `Database Error: Failed to Create Podcast. ${error.message}`,
     };
   }
 
   revalidatePath("/admin/dashboard/audios");
   revalidatePath("/");
-  return { message: "Successfully saved podcast." };
+  return { message: "Successfully created podcast." };
 }
+
+export async function updatePodcast(
+  id: string,
+  values: Partial<PodcastFormValues>,
+): Promise<PodcastState> {
+    const validatedFields = PartialPodcastFormSchema.safeParse(values);
+
+    if (!validatedFields.success) {
+        return {
+            errors: validatedFields.error.flatten().fieldErrors,
+            message: "Invalid Fields. Failed to Update Podcast.",
+        };
+    }
+    
+    const data = validatedFields.data;
+
+    const podcastData: { [key: string]: any } = {};
+
+    // Only add fields that are present in the partial `data` object
+    if (data.title) podcastData.title = data.title;
+    if (data.artist) podcastData.artist = data.artist.split(",").map((s) => s.trim());
+    if (data.categories) podcastData.categories = data.categories.split(",").map((s) => s.trim());
+    if (data.cover_art) podcastData.cover_art = data.cover_art;
+    if (data.cover_art_hint) podcastData.cover_art_hint = data.cover_art_hint;
+    if (data.audio_url) podcastData.audio_url = data.audio_url;
+    if (data.created_at) podcastData.created_at = new Date(data.created_at).toISOString();
+
+    try {
+        const { error } = await supabase
+            .from("podcasts")
+            .update(podcastData)
+            .eq("id", id);
+        if (error) throw error;
+    } catch (error: any) {
+        return {
+            message: `Database Error: Failed to Update Podcast. ${error.message}`,
+        };
+    }
+
+    revalidatePath("/admin/dashboard/audios");
+    revalidatePath("/");
+    return { message: "Successfully updated podcast." };
+}
+
 
 export async function deletePodcast(id: string) {
   try {

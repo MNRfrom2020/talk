@@ -4,7 +4,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, parseISO } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { savePodcast } from "@/lib/actions";
+import { createPodcast, updatePodcast } from "@/lib/actions";
 import type { Podcast } from "@/lib/types";
 
 const PodcastFormSchema = z.object({
@@ -54,9 +54,7 @@ export default function AudioForm({ podcast, onClose }: AudioFormProps) {
     }
   };
 
-  const form = useForm<PodcastFormValues>({
-    resolver: zodResolver(PodcastFormSchema),
-    defaultValues: {
+  const defaultValues = {
       id: podcast?.id || undefined,
       title: podcast?.title || "",
       artist: Array.isArray(podcast?.artist) ? podcast.artist.join(", ") : "",
@@ -65,12 +63,44 @@ export default function AudioForm({ podcast, onClose }: AudioFormProps) {
       cover_art_hint: podcast?.coverArtHint || "",
       audio_url: podcast?.audioUrl || "",
       created_at: getFormattedDate(podcast?.created_at),
-    },
+    };
+
+  const form = useForm<PodcastFormValues>({
+    resolver: zodResolver(PodcastFormSchema),
+    defaultValues,
   });
+  
+  const { formState: { dirtyFields } } = form;
+
+  useEffect(() => {
+    form.reset(defaultValues);
+  }, [podcast, form]);
+
 
   async function onSubmit(values: PodcastFormValues) {
     setIsSubmitting(true);
-    const result = await savePodcast(values);
+    
+    let result;
+    if (podcast?.id) {
+       const changedValues: Partial<PodcastFormValues> = Object.keys(dirtyFields).reduce((acc, key) => {
+        const fieldKey = key as keyof PodcastFormValues;
+        if (dirtyFields[fieldKey]) {
+            (acc as any)[fieldKey] = values[fieldKey];
+        }
+        return acc;
+      }, {});
+      
+      if (Object.keys(changedValues).length === 0) {
+        toast({ title: "No Changes", description: "You haven't changed any fields." });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      result = await updatePodcast(podcast.id, changedValues);
+    } else {
+      result = await createPodcast(values);
+    }
+
     setIsSubmitting(false);
 
     if (result.message) {
