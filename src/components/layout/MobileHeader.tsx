@@ -5,13 +5,12 @@ import Link from "next/link";
 import { User, Shuffle, Info } from "lucide-react";
 import { Button } from "../ui/button";
 import { useUser } from "@/context/UserContext";
-import { ProfileDialog } from "../auth/ProfileDialog";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { cn } from "@/lib/utils";
 import { usePlayer } from "@/context/PlayerContext";
 import { DisclaimerDialog } from "./DisclaimerDialog";
 import { usePodcast } from "@/context/PodcastContext";
-
+import { LoginOptionsDialog } from "../auth/LoginOptionsDialog";
 
 function UserAvatar({ className }: { className?: string }) {
   const { user } = useUser();
@@ -93,9 +92,9 @@ export default function MobileHeader() {
                 {profileButtonContent}
               </Link>
             ) : (
-              <ProfileDialog>
+              <LoginOptionsDialog>
                 {loginButtonContent}
-              </ProfileDialog>
+              </LoginOptionsDialog>
             )}
         </div>
       </header>
