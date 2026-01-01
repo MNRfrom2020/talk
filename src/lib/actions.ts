@@ -85,15 +85,12 @@ export async function savePodcast(
     audio_url: data.audio_url,
   };
 
-  if (data.created_at) {
-    podcastData.created_at = new Date(data.created_at).toISOString();
-  } else if (!id) {
-    podcastData.created_at = getBstDate().toISOString();
-  }
-
   try {
     if (id) {
       // Update existing podcast
+       if (data.created_at) {
+        podcastData.created_at = new Date(data.created_at).toISOString();
+      }
       const { error } = await supabase
         .from("podcasts")
         .update(podcastData)
@@ -101,6 +98,7 @@ export async function savePodcast(
       if (error) throw error;
     } else {
       // Create new podcast
+       podcastData.created_at = data.created_at ? new Date(data.created_at).toISOString() : getBstDate().toISOString();
       const { error } = await supabase.from("podcasts").insert(podcastData);
       if (error) throw error;
     }
@@ -334,8 +332,10 @@ export async function saveUser(values: UserFormValues): Promise<UserState> {
 
   try {
     if (uid) {
-      // Update existing user
-      userData.updated_at = new Date().toISOString();
+      // Update existing user, but do not change updated_at unless password is changed
+      if (data.pass) {
+        userData.updated_at = new Date().toISOString();
+      }
       const { error } = await supabase.from("users").update(userData).eq("uid", uid);
       if (error) throw error;
     } else {
@@ -415,4 +415,6 @@ export async function updateUserFavoritePlaylists(
     };
   }
 }
+    
+
     
