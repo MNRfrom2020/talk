@@ -34,19 +34,25 @@ export const PodcastProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const fetchPodcasts = async () => {
-      const { data, error } = await supabase.from("podcasts").select("*").order('created_at', { ascending: false });
+      const { data, error } = await supabase
+        .from("podcasts")
+        .select("*")
+        .lte("created_at", new Date().toISOString())
+        .order("created_at", { ascending: false });
 
       if (error) {
         console.error("Error fetching podcasts:", error);
       } else {
         // Supabase returns data that might not match the type exactly, especially artist as string[]
-        const typedData = data.map(item => ({
+        const typedData = data.map((item) => ({
           ...item,
           id: String(item.id),
           coverArt: item.cover_art,
           coverArtHint: item.cover_art_hint,
           audioUrl: item.audio_url,
-          artist: Array.isArray(item.artist) ? item.artist : [item.artist]
+          artist: Array.isArray(item.artist)
+            ? item.artist
+            : [item.artist],
         })) as Podcast[];
         setPodcasts(typedData);
       }
@@ -55,7 +61,9 @@ export const PodcastProvider = ({ children }: { children: ReactNode }) => {
     fetchPodcasts();
   }, []);
 
-  const addPodcast = async (podcast: Omit<Podcast, "id" | "created_at">) => {
+  const addPodcast = async (
+    podcast: Omit<Podcast, "id" | "created_at">,
+  ) => {
     const { data, error } = await supabase
       .from("podcasts")
       .insert([podcast])
@@ -64,15 +72,17 @@ export const PodcastProvider = ({ children }: { children: ReactNode }) => {
     if (error) {
       console.error("Error adding podcast:", error);
     } else if (data) {
-       const newPodcast = data[0] as any;
-       // Ensure artist is an array
-       newPodcast.artist = Array.isArray(newPodcast.artist) ? newPodcast.artist : [newPodcast.artist];
-        newPodcast.id = String(newPodcast.id);
-        newPodcast.coverArt = newPodcast.cover_art;
-        newPodcast.coverArtHint = newPodcast.cover_art_hint;
-        newPodcast.audioUrl = newPodcast.audio_url;
+      const newPodcast = data[0] as any;
+      // Ensure artist is an array
+      newPodcast.artist = Array.isArray(newPodcast.artist)
+        ? newPodcast.artist
+        : [newPodcast.artist];
+      newPodcast.id = String(newPodcast.id);
+      newPodcast.coverArt = newPodcast.cover_art;
+      newPodcast.coverArtHint = newPodcast.cover_art_hint;
+      newPodcast.audioUrl = newPodcast.audio_url;
 
-       setPodcasts((prev) => [newPodcast, ...prev]);
+      setPodcasts((prev) => [newPodcast, ...prev]);
     }
   };
 
