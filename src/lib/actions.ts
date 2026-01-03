@@ -4,15 +4,17 @@
 import { revalidatePath } from "next/cache";
 import { supabase } from "./supabase";
 import { z } from "zod";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 // Function to get current time in Bangladesh Standard Time (UTC+6)
 const getBstDate = () => {
-  const now = new Date();
-  // Convert to UTC, then add 6 hours for BST.
-  const utcDate = new Date(now.toUTCString());
-  utcDate.setHours(utcDate.getHours() + 6);
-  return utcDate;
-}
+  return dayjs().tz("Asia/Dhaka").toDate();
+};
 
 export async function upsertListeningHistory(payload: {
   user_uid: string;
@@ -20,7 +22,7 @@ export async function upsertListeningHistory(payload: {
   duration?: number;
 }) {
   try {
-    const dataToUpsert: { [key: string]: any } = {
+    const dataToUpsert: { [key: string]: any; } = {
       user_uid: payload.user_uid,
       podcast_id: payload.podcast_id,
       last_played_at: getBstDate().toISOString(),
@@ -79,7 +81,7 @@ export async function createPodcast(
   
   const { id, ...data } = validatedFields.data;
 
-  const podcastData: { [key: string]: any } = {
+  const podcastData: { [key: string]: any; } = {
     title: data.title,
     artist: data.artist.split(",").map((s) => s.trim()),
     categories: data.categories.split(",").map((s) => s.trim()),
@@ -118,7 +120,7 @@ export async function updatePodcast(
     
     const data = validatedFields.data;
 
-    const podcastData: { [key: string]: any } = {};
+    const podcastData: { [key: string]: any; } = {};
 
     // Only add fields that are present in the partial `data` object
     if (data.title) podcastData.title = data.title;
@@ -192,7 +194,7 @@ export async function savePlaylist(
   
   const { id, ...data } = validatedFields.data;
 
-  const playlistData: { [key: string]: any } = {
+  const playlistData: { [key: string]: any; } = {
       name: data.name,
       podcast_ids: data.podcast_ids,
       cover: data.cover,
@@ -262,7 +264,7 @@ export async function saveUserPlaylist(
 
   const { id, ...data } = validatedFields.data;
   
-  const playlistData: { [key: string]: any } = { user_uid: data.user_uid };
+  const playlistData: { [key: string]: any; } = { user_uid: data.user_uid };
   if (data.name) playlistData.name = data.name;
   if (data.podcast_ids) playlistData.podcast_ids = data.podcast_ids;
   if (data.cover !== undefined) playlistData.cover = data.cover;
@@ -353,7 +355,7 @@ export async function saveUser(values: UserFormValues): Promise<UserState> {
 
   const { uid, ...data } = validatedFields.data;
 
-  const userData: { [key: string]: any } = {
+  const userData: { [key: string]: any; } = {
     full_name: data.full_name,
     username: data.username,
     email: data.email,
