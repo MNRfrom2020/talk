@@ -1,6 +1,9 @@
 
+"use server";
+
 import { supabase } from "./supabase";
 import type { Podcast, Playlist, User } from "./types";
+import { startOfDay, subDays, formatISO } from "date-fns";
 
 export async function getPodcastCount() {
     const { count, error } = await supabase
@@ -90,4 +93,78 @@ export async function getUsers(): Promise<User[]> {
     }
 
     return data;
+}
+
+export async function getListeningActivity(userId: string) {
+    const sevenDaysAgo = formatISO(startOfDay(subDays(new Date(), 6)));
+
+    const { data, error } = await supabase
+        .from('listening_history')
+        .select('duration, last_played_at')
+        .eq('user_uid', userId)
+        .gte('last_played_at', sevenDaysAgo);
+
+    if (error) {
+        console.error("Error fetching listening activity:", error);
+        return {};
+    }
+
+    const activityByDate: Record<string, number> = {};
+
+    data.forEach(item => {
+        const date = item.last_played_at.split('T')[0];
+        if (!activityByDate[date]) {
+            activityByDate[date] = 0;
+        }
+        activityByDate[date] += item.duration;
+    });
+    
+    return activityByDate;
+}
+
+export async function getRecentListeningStats(userId: string) {
+  const thirtyDaysAgo = formatISO(subDays(new Date(), 30));
+
+  const { data, error } = await supabase
+    .from("listening_history")
+    .select("podcasts ( artist, categories )")
+    .eq("user_uid", userId)
+    .gte("last_played_at", thirtyDaysAgo);
+
+  if (error || !data) {
+    console.error("Error fetching listening stats:", error);
+    return { totalPlayed: 0, favoriteArtist: "N/A", favoriteCategory: "N/A" };
+  }
+
+  const playedPodcastIds = new Set<string>();
+  const artistCounts = new Map<string, number>();
+  const categoryCounts = new Map<string, number>();
+
+  data.forEach((item: any) => {
+    if (item.podcasts) {
+      playedPodcastIds.add(item.podcasts.id);
+
+      const artists = Array.isArray(item.podcasts.artist)
+        ? item.podcasts.artist
+        : [item.podcasts.artist];
+      artists.forEach((artist) => {
+        if(artist) artistCounts.set(artist, (artistCounts.get(artist) || 0) + 1);
+      });
+
+      item.podcasts.categories.forEach((category: string) => {
+        if(category) categoryCounts.set(category, (categoryCounts.get(category) || 0) + 1);
+      });
+    }
+  });
+  
+  const totalPlayed = playedPodcastIds.size;
+
+  const favoriteArtist = [...artistCounts.entries()].sort(
+    (a, b) => b[1] - a[1],
+  )[0]?.[0] || "N/A";
+  const favoriteCategory = [...categoryCounts.entries()].sort(
+    (a, b) => b[1] - a[1],
+  )[0]?.[0] || "N/A";
+
+  return { totalPlayed, favoriteArtist, favoriteCategory };
 }
