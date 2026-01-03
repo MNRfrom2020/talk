@@ -8,11 +8,10 @@ import { z } from "zod";
 // Function to get current time in Bangladesh Standard Time (UTC+6)
 const getBstDate = () => {
   const now = new Date();
-  // Get UTC time in milliseconds
-  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-  // BST is UTC+6
-  const bstOffset = 6 * 60 * 60 * 1000;
-  return new Date(utc + bstOffset);
+  // Convert to UTC, then add 6 hours for BST.
+  const utcDate = new Date(now.toUTCString());
+  utcDate.setHours(utcDate.getHours() + 6);
+  return utcDate;
 }
 
 export async function upsertListeningHistory(payload: {
