@@ -244,6 +244,7 @@ export default function PodcastLibrary({
   if (!isClient) {
     return (
       <main className={cn("p-4 sm:p-6 lg:p-8", "pb-24 md:pb-8")}>
+        <hr className="h-20 border-transparent" />
         <Loader />
       </main>
     );
@@ -253,12 +254,13 @@ export default function PodcastLibrary({
     <main
       className={cn("p-4 sm:p-6 lg:p-8", "pb-24 md:pb-8")}
     >
-      {showTitle && (
-        <h1 className="font-headline mb-6 text-3xl font-bold tracking-tight">
-          Browse All
-        </h1>
-      )}
+      <hr className="h-20 border-transparent" />
       <div className="space-y-8">
+        {showTitle && (
+          <h1 className="font-headline mb-6 text-3xl font-bold tracking-tight">
+            Browse All
+          </h1>
+        )}
         <CategorySection title="Recently Added" podcasts={podcasts} />
 
         {predefinedPlaylists.length > 0 && (
@@ -304,6 +306,7 @@ export default function PodcastLibrary({
         </div>
 
       </div>
+      <hr className="h-20 border-transparent" />
     </main>
   );
 }
