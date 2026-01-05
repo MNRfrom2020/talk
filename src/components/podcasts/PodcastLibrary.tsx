@@ -1,4 +1,3 @@
-
 "use client";
 
 import { usePodcast } from "@/context/PodcastContext";
@@ -306,7 +305,6 @@ export default function PodcastLibrary({
         </div>
 
       </div>
-      <hr className="h-20 border-transparent" />
     </main>
   );
 }
