@@ -42,7 +42,7 @@ export default function MobileHeader() {
   );
 
   return (
-    <div className="sticky top-0 z-40 p-2 md:hidden">
+    <div className="fixed left-0 right-0 top-0 z-40 p-2 md:hidden">
       <header className="flex items-center justify-between rounded-full bg-secondary px-2 py-1">
         <Link
           href="/"
