@@ -305,6 +305,7 @@ export default function PodcastLibrary({
         </div>
 
       </div>
+<hr className="h-10 border-transparent md:hidden" />
     </main>
   );
 }
