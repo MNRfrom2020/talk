@@ -87,6 +87,7 @@ const CategoryPage = ({ params }: CategoryPageProps) => {
           <SidebarInset className="flex flex-1 flex-col">
             <ScrollArea className="h-full">
               <main className={cn("p-4 sm:p-6 lg:p-8", "pb-24 md:pb-8")}>
+              <hr className="h-20 border-transparent md:hidden" />
                 <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div className="flex items-center gap-4">
                      <h1 className="font-headline text-3xl font-bold tracking-tight">
@@ -125,6 +126,7 @@ const CategoryPage = ({ params }: CategoryPageProps) => {
                     <PodcastCard key={podcast.id} podcast={podcast} playlist={podcastsInCategory}/>
                   ))}
                 </div>
+                <hr className="h-20 border-transparent md:hidden" />
               </main>
             </ScrollArea>
           </SidebarInset>

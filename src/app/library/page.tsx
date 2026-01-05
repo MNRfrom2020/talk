@@ -36,6 +36,7 @@ export default function LibraryPage() {
                   "pb-24 md:pb-8",
                 )}
               >
+                <hr className="h-20 border-transparent md:hidden" />
                 <div className="space-y-8">
                   <div className="flex items-center justify-between">
                     <h1 className="font-headline text-3xl font-bold tracking-tight">
@@ -54,6 +55,7 @@ export default function LibraryPage() {
 
                   <PlaylistList />
                 </div>
+                <hr className="h-20 border-transparent md:hidden" />
               </main>
             </ScrollArea>
           </SidebarInset>

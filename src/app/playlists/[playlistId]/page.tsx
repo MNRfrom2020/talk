@@ -172,6 +172,7 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
           <SidebarInset className="flex flex-1 flex-col">
             <ScrollArea className="h-full">
               <main className="p-4 sm:p-6 lg:p-8">
+              <hr className="h-20 border-transparent md:hidden" />
                 <div className="mb-6 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
                   <div className="flex-1">
                     <h1 className="font-headline text-3xl font-bold tracking-tight">
@@ -261,6 +262,7 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
                     </p>
                   </div>
                 )}
+                <hr className="h-20 border-transparent md:hidden" />
               </main>
             </ScrollArea>
           </SidebarInset>

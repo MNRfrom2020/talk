@@ -46,6 +46,7 @@ const ArtistsPage = () => {
                   "pb-24 md:pb-8",
                 )}
               >
+                <hr className="h-10 border-transparent md:hidden" />
                 <div>
                   <h1 className="font-headline mb-6 text-3xl font-bold tracking-tight">
                     Artists
@@ -64,6 +65,7 @@ const ArtistsPage = () => {
                     ))}
                   </div>
                 </div>
+                <hr className="h-10 border-transparent md:hidden" />
               </main>
             </ScrollArea>
           </SidebarInset>
