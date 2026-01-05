@@ -243,7 +243,7 @@ export default function PodcastLibrary({
   if (!isClient) {
     return (
       <main className={cn("p-4 sm:p-6 lg:p-8", "pb-24 md:pb-8")}>
-        <hr className="h-20 border-transparent" />
+        <hr className="h-20 border-transparent md:hidden" />
         <Loader />
       </main>
     );
@@ -253,7 +253,7 @@ export default function PodcastLibrary({
     <main
       className={cn("p-4 sm:p-6 lg:p-8", "pb-24 md:pb-8")}
     >
-      <hr className="h-20 border-transparent" />
+      <hr className="h-20 border-transparent md:hidden" />
       <div className="space-y-8">
         {showTitle && (
           <h1 className="font-headline mb-6 text-3xl font-bold tracking-tight">
