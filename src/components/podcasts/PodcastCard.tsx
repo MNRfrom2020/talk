@@ -33,6 +33,7 @@ import { CreatePlaylistDialog } from "../playlists/CreatePlaylistDialog";
 import { type MouseEvent } from "react";
 import { usePodcast } from "@/context/PodcastContext";
 import { useUser } from "@/context/UserContext";
+import { Progress } from "../ui/progress";
 
 interface PodcastCardProps {
   podcast: Podcast;
@@ -53,6 +54,8 @@ export default function PodcastCard({
     currentTrack,
     isPlaying,
     addToQueue,
+    playbackProgress,
+    podcastDurations,
   } = usePlayer();
   const { podcasts: allPodcasts } = usePodcast();
   const {
@@ -112,6 +115,10 @@ export default function PodcastCard({
   const artistText = Array.isArray(podcast.artist)
     ? podcast.artist.join(", ")
     : podcast.artist || "Unknown Artist";
+    
+  const progress = playbackProgress[podcast.id] || 0;
+  const duration = podcastDurations[podcast.id] || 0;
+  const progressPercentage = duration > 0 ? (progress / duration) * 100 : 0;
 
   return (
     <Card className="group relative w-full overflow-hidden border-none bg-card shadow-lg transition-colors duration-300 hover:bg-secondary/80">
@@ -162,24 +169,15 @@ export default function PodcastCard({
                 {userPlaylists.map((p) => (
                   <DropdownMenuItem
                     key={p.id}
-                    onClick={async () => {
-                      try {
-                        if (user.isGuest) {
-                          addPodcastToGuestPlaylist(p.id, podcast.id);
-                        } else {
-                          await addPodcastToUserPlaylist(p.id, podcast.id);
-                        }
-                        toast({
-                          title: "Added to playlist",
-                          description: `"${podcast.title}" has been added to "${p.name}".`,
-                        });
-                      } catch (error) {
-                        toast({
-                          variant: "destructive",
-                          title: "Error",
-                          description: "Could not add to playlist.",
-                        });
-                      }
+                    onClick={() => {
+                      const addFunction = user.isGuest
+                        ? addPodcastToGuestPlaylist
+                        : addPodcastToUserPlaylist;
+                      addFunction(p.id, podcast.id);
+                       toast({
+                        title: "Added to playlist",
+                        description: `"${podcast.title}" has been added to "${p.name}".`,
+                      });
                     }}
                   >
                     {p.name}
@@ -235,6 +233,11 @@ export default function PodcastCard({
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               data-ai-hint={podcast.coverArtHint}
             />
+            {progressPercentage > 0 && (
+              <div className="absolute bottom-1 left-1 right-1">
+                 <Progress value={progressPercentage} className="h-1.5" />
+              </div>
+            )}
           </div>
           <h3 className="h-12 font-semibold text-foreground line-clamp-2">
             {podcast.title}

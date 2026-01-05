@@ -20,6 +20,7 @@ const HISTORY_STORAGE_KEY = "podcast_history";
 const LISTENING_LOG_KEY = "listening_log";
 const PLAYER_VOLUME_KEY = "player_volume";
 const PLAYBACK_PROGRESS_KEY = "playback_progress";
+const PODCAST_DURATIONS_KEY = "podcast_durations";
 
 // --- useThrottle Hook ---
 function useThrottle<T extends (...args: any[]) => any>(
@@ -57,6 +58,7 @@ interface SleepTimerInfo {
 
 type ListeningLog = Record<string, number>; // { 'YYYY-MM-DD': seconds }
 type PlaybackProgress = Record<string, number>; // { 'podcastId': seconds }
+type PodcastDurations = Record<string, number>; // { 'podcastId': seconds }
 type RepeatMode = "off" | "one" | "all";
 
 interface PlayOptions {
@@ -106,6 +108,8 @@ interface PlayerContextType {
   repeatMode: RepeatMode;
   setRepeatMode: React.Dispatch<React.SetStateAction<RepeatMode>>;
   toggleRepeatMode: () => void;
+  playbackProgress: PlaybackProgress;
+  podcastDurations: PodcastDurations;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -142,6 +146,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   });
   const [listeningLog, setListeningLog] = useState<ListeningLog>({});
   const [playbackProgress, setPlaybackProgress] = useState<PlaybackProgress>({});
+  const [podcastDurations, setPodcastDurations] = useState<PodcastDurations>({});
   const audioRef = useRef<HTMLAudioElement>(null);
   const playPromiseController = useRef<AbortController | null>(null);
   const lastTimeUpdate = useRef(0);
@@ -239,6 +244,10 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         if (storedProgress) {
             setPlaybackProgress(JSON.parse(storedProgress));
         }
+        const storedDurations = localStorage.getItem(PODCAST_DURATIONS_KEY);
+        if (storedDurations) {
+            setPodcastDurations(JSON.parse(storedDurations));
+        }
       } catch (error) {
         console.error("Failed to load player settings from localStorage", error);
       }
@@ -268,14 +277,10 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   }, 5000);
 
   const savePlaybackProgress = useThrottle((trackId: string, currentTime: number, duration: number) => {
-    // Prevent saving if trackId is invalid
-    if (!trackId) return;
-  
     setPlaybackProgress(currentProgress => {
       const newProgress = { ...currentProgress };
-      // If track is finished or close to finishing, reset progress to 0
       if (duration - currentTime < 10) {
-        delete newProgress[trackId];
+        newProgress[trackId] = 0; // Reset progress
       } else {
         newProgress[trackId] = currentTime;
       }
@@ -288,24 +293,6 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       return newProgress;
     });
   }, 5000);
-
-
-  const saveDuration = useThrottle(
-    (trackId: string, duration: number) => {
-      if (!trackId || isNaN(duration) || duration <= 0) return;
-
-      if (user.isGuest) {
-        // No duration saving for guests as it's not essential
-      } else if (user.uid) {
-         upsertListeningHistory({
-            user_uid: user.uid,
-            podcast_id: trackId,
-            duration: Math.round(duration),
-        });
-      }
-    },
-    5000,
-  );
 
   const pause = useCallback(() => {
     if (playPromiseController.current) {
@@ -333,15 +320,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         
         const savedProgress = playbackProgress[track.id];
         if (savedProgress && savedProgress > 0) {
-            // Delay setting currentTime until metadata is loaded
-            const handleLoadedMetadata = () => {
-              if (audioRef.current) {
-                audioRef.current.currentTime = savedProgress;
-                setProgress(savedProgress);
-                audioRef.current.removeEventListener('loadedmetadata', handleLoadedMetadata);
-              }
-            };
-            audioRef.current.addEventListener('loadedmetadata', handleLoadedMetadata);
+            audioRef.current.currentTime = savedProgress;
         } else {
             setProgress(0);
         }
@@ -403,10 +382,9 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         upsertListeningHistory({
             user_uid: user.uid,
             podcast_id: track.id,
-            duration: audioRef.current?.duration ? Math.round(audioRef.current.duration) : 0,
         });
     }
-  }, [history, user, audioRef]);
+  }, [history, user]);
 
   const playInternal = useCallback(
     (
@@ -453,6 +431,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
           setOriginalQueue(newQueue);
           setIsShuffled(false); 
           setCurrentTrack(trackToPlay);
+          setProgress(0);
           addToHistory(trackToPlay);
         }
 
@@ -725,12 +704,18 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const onLoadedMetadata = () => {
-    if (audioRef.current) {
-      const currentDuration = audioRef.current.duration;
-      setDuration(currentDuration);
-      if (currentTrack) {
-        saveDuration(currentTrack.id, currentDuration);
-      }
+    if (audioRef.current && currentTrack) {
+        const currentDuration = audioRef.current.duration;
+        setDuration(currentDuration);
+        setPodcastDurations(prev => {
+            const newDurations = { ...prev, [currentTrack.id]: currentDuration };
+            try {
+                localStorage.setItem(PODCAST_DURATIONS_KEY, JSON.stringify(newDurations));
+            } catch (e) {
+                console.error("Failed to save durations", e);
+            }
+            return newDurations;
+        });
     }
   };
   
@@ -811,7 +796,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         audio.removeEventListener("ended", handleTrackEnd);
       };
     }
-  }, [handleTrackEnd, volume, currentTrack, saveDuration]);
+  }, [handleTrackEnd, volume, currentTrack]);
 
    // Media Session API Integration
   useEffect(() => {
@@ -915,6 +900,8 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     repeatMode,
     setRepeatMode,
     toggleRepeatMode,
+    playbackProgress,
+    podcastDurations,
   };
 
   return (
