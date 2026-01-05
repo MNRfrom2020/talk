@@ -798,6 +798,69 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [handleTrackEnd, volume, currentTrack, saveDuration]);
 
+   // Media Session API Integration
+  useEffect(() => {
+    if ("mediaSession" in navigator) {
+      if (currentTrack) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+          title: currentTrack.title,
+          artist: Array.isArray(currentTrack.artist)
+            ? currentTrack.artist.join(", ")
+            : currentTrack.artist,
+          album: "MNR Talk",
+          artwork: [
+            { src: currentTrack.coverArt, sizes: "96x96", type: "image/png" },
+            { src: currentTrack.coverArt, sizes: "128x128", type: "image/png" },
+            { src: currentTrack.coverArt, sizes: "192x192", type: "image/png" },
+            { src: currentTrack.coverArt, sizes: "256x256", type: "image/png" },
+            { src: currentTrack.coverArt, sizes: "384x384", type: "image/png" },
+            { src: currentTrack.coverArt, sizes: "512x512", type: "image/png" },
+          ],
+        });
+
+        navigator.mediaSession.setActionHandler("play", () => togglePlay());
+        navigator.mediaSession.setActionHandler("pause", () => togglePlay());
+        navigator.mediaSession.setActionHandler("previoustrack", () => prevTrack());
+        navigator.mediaSession.setActionHandler("nexttrack", () => nextTrack());
+        navigator.mediaSession.setActionHandler("seekbackward", () => seekBackward());
+        navigator.mediaSession.setActionHandler("seekforward", () => seekForward());
+
+        // Update position state for the media session
+        const updatePositionState = () => {
+          if (audioRef.current) {
+            navigator.mediaSession.setPositionState({
+              duration: audioRef.current.duration || 0,
+              playbackRate: audioRef.current.playbackRate,
+              position: audioRef.current.currentTime || 0,
+            });
+          }
+        };
+
+        const intervalId = setInterval(updatePositionState, 1000);
+        return () => clearInterval(intervalId);
+
+      } else {
+        // Clear media session when no track is playing
+        navigator.mediaSession.metadata = null;
+        navigator.mediaSession.playbackState = "none";
+        navigator.mediaSession.setActionHandler("play", null);
+        navigator.mediaSession.setActionHandler("pause", null);
+        navigator.mediaSession.setActionHandler("previoustrack", null);
+        navigator.mediaSession.setActionHandler("nexttrack", null);
+        navigator.mediaSession.setActionHandler("seekbackward", null);
+        navigator.mediaSession.setActionHandler("seekforward", null);
+      }
+    }
+  }, [currentTrack, togglePlay, prevTrack, nextTrack, seekBackward, seekForward, audioRef]);
+
+  // Update playback state for Media Session
+  useEffect(() => {
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.playbackState = isPlaying ? "playing" : "paused";
+    }
+  }, [isPlaying]);
+
+
   const value = {
     currentTrack,
     isPlaying,
@@ -846,3 +909,4 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     </PlayerContext.Provider>
   );
 };
+
