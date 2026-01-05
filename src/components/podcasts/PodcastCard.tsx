@@ -34,6 +34,28 @@ import { type MouseEvent } from "react";
 import { usePodcast } from "@/context/PodcastContext";
 import { useUser } from "@/context/UserContext";
 import { Progress } from "../ui/progress";
+import { motion } from "framer-motion";
+
+const AudioWave = () => (
+  <div className="flex w-6 h-6 items-center justify-center gap-0.5">
+    <motion.div
+      className="w-1 h-2 bg-current rounded-full"
+      animate={{ scaleY: [1, 1.5, 1] }}
+      transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }}
+    />
+    <motion.div
+      className="w-1 h-3 bg-current rounded-full"
+      animate={{ scaleY: [1.5, 1, 1.5] }}
+      transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
+    />
+    <motion.div
+      className="w-1 h-2 bg-current rounded-full"
+      animate={{ scaleY: [1, 1.5, 1] }}
+      transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
+    />
+  </div>
+);
+
 
 interface PodcastCardProps {
   podcast: Podcast;
@@ -264,7 +286,11 @@ export default function PodcastCard({
             { "opacity-100 scale-100": isActive && isPlaying },
           )}
         >
-          <Play className="ml-1 h-6 w-6 fill-current" />
+          {isActive && isPlaying ? (
+            <AudioWave />
+          ) : (
+            <Play className="ml-1 h-6 w-6 fill-current" />
+          )}
         </button>
       </div>
     </Card>
