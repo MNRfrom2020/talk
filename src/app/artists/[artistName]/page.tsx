@@ -24,6 +24,9 @@ import { usePlayer } from "@/context/PlayerContext";
 import { Button } from "@/components/ui/button";
 import { Play } from "lucide-react";
 import { usePodcast } from "@/context/PodcastContext";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { usePlaylist } from "@/context/PlaylistContext";
+import PlaylistCard from "@/components/playlists/PlaylistCard";
 
 export const runtime = 'edge';
 
@@ -38,6 +41,7 @@ const ArtistPage = ({ params }: ArtistPageProps) => {
   const artistName = decodeURIComponent(encodedArtistName);
   const { isExpanded, play } = usePlayer();
   const { podcasts: allPodcasts } = usePodcast();
+  const { playlists: allPlaylists, getPodcastsForPlaylist } = usePlaylist();
 
   const [sortOrder, setSortOrder] = React.useState("newest");
   const [searchTerm, setSearchTerm] = React.useState("");
@@ -76,6 +80,13 @@ const ArtistPage = ({ params }: ArtistPageProps) => {
     return podcasts;
   }, [artistName, sortOrder, searchTerm, allPodcasts]);
 
+  const playlistsByArtist = React.useMemo(() => {
+    return allPlaylists.filter(playlist => {
+      const playlistPodcasts = getPodcastsForPlaylist(playlist.id, allPodcasts);
+      return playlistPodcasts.some(p => p.artist.includes(artistName));
+    })
+  }, [artistName, allPlaylists, getPodcastsForPlaylist, allPodcasts]);
+
   const handlePlayAll = () => {
     if (podcastsByArtist.length > 0) {
       play(podcastsByArtist[0].id, podcastsByArtist, { expand: true });
@@ -104,32 +115,56 @@ const ArtistPage = ({ params }: ArtistPageProps) => {
                       </Button>
                     )}
                   </div>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Filter in this artist..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full md:w-48"
-                    />
-                    <Select value={sortOrder} onValueChange={setSortOrder}>
-                      <SelectTrigger className="w-32">
-                        <SelectValue placeholder="Sort by" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="newest">Newest</SelectItem>
-                        <SelectItem value="oldest">Oldest</SelectItem>
-                        <SelectItem value="a-z">A-Z</SelectItem>
-                        <SelectItem value="z-a">Z-A</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                  {podcastsByArtist.map((podcast) => (
-                    <PodcastCard key={podcast.id} podcast={podcast} playlist={podcastsByArtist}/>
-                  ))}
-                </div>
+                <Tabs defaultValue="audios" className="w-full">
+                  <div className="mb-6 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+                    <TabsList>
+                      <TabsTrigger value="audios">Audio</TabsTrigger>
+                      <TabsTrigger value="playlists">Playlist</TabsTrigger>
+                    </TabsList>
+                     <div className="flex w-full gap-2 md:w-auto">
+                      <Input
+                        placeholder="Filter in this artist..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full md:w-48"
+                      />
+                      <Select value={sortOrder} onValueChange={setSortOrder}>
+                        <SelectTrigger className="w-full md:w-32">
+                          <SelectValue placeholder="Sort by" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="newest">Newest</SelectItem>
+                          <SelectItem value="oldest">Oldest</SelectItem>
+                          <SelectItem value="a-z">A-Z</SelectItem>
+                          <SelectItem value="z-a">Z-A</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <TabsContent value="audios">
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                      {podcastsByArtist.map((podcast) => (
+                        <PodcastCard key={podcast.id} podcast={podcast} playlist={podcastsByArtist}/>
+                      ))}
+                    </div>
+                  </TabsContent>
+                  <TabsContent value="playlists">
+                     {playlistsByArtist.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                          {playlistsByArtist.map((playlist) => (
+                            <PlaylistCard key={playlist.id} playlist={playlist} />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex h-48 items-center justify-center rounded-md border border-dashed">
+                          <p className="text-muted-foreground">No playlists found for this artist.</p>
+                        </div>
+                      )}
+                  </TabsContent>
+                </Tabs>
                 <hr className="h-20 border-transparent md:hidden" />
               </main>
             </ScrollArea>
