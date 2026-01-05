@@ -141,11 +141,17 @@ const CategoryPage = ({ params }: CategoryPageProps) => {
                   </div>
 
                   <TabsContent value="audios">
-                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                      {podcastsInCategory.map((podcast) => (
-                        <PodcastCard key={podcast.id} podcast={podcast} playlist={podcastsInCategory}/>
-                      ))}
-                    </div>
+                    {podcastsInCategory.length > 0 ? (
+                      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+                        {podcastsInCategory.map((podcast) => (
+                          <PodcastCard key={podcast.id} podcast={podcast} playlist={podcastsInCategory}/>
+                        ))}
+                      </div>
+                    ) : (
+                       <div className="flex h-48 items-center justify-center rounded-md border border-dashed">
+                          <p className="text-muted-foreground">No audios found in this category.</p>
+                        </div>
+                    )}
                   </TabsContent>
                   <TabsContent value="playlists">
                      {playlistsInCategory.length > 0 ? (
