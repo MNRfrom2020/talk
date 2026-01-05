@@ -19,6 +19,7 @@ import { getListeningActivity } from "@/lib/data";
 const HISTORY_STORAGE_KEY = "podcast_history";
 const LISTENING_LOG_KEY = "listening_log";
 const PLAYER_VOLUME_KEY = "player_volume";
+const PLAYBACK_PROGRESS_KEY = "playback_progress";
 
 // --- useThrottle Hook ---
 function useThrottle<T extends (...args: any[]) => any>(
@@ -55,6 +56,7 @@ interface SleepTimerInfo {
 }
 
 type ListeningLog = Record<string, number>; // { 'YYYY-MM-DD': seconds }
+type PlaybackProgress = Record<string, number>; // { 'podcastId': seconds }
 type RepeatMode = "off" | "one" | "all";
 
 interface PlayOptions {
@@ -139,6 +141,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     isActive: false,
   });
   const [listeningLog, setListeningLog] = useState<ListeningLog>({});
+  const [playbackProgress, setPlaybackProgress] = useState<PlaybackProgress>({});
   const audioRef = useRef<HTMLAudioElement>(null);
   const playPromiseController = useRef<AbortController | null>(null);
   const lastTimeUpdate = useRef(0);
@@ -222,7 +225,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
 
       }
       
-      // Load volume for all users
+      // Load volume & playback progress for all users
       try {
         const storedVolume = localStorage.getItem(PLAYER_VOLUME_KEY);
         if (storedVolume) {
@@ -232,8 +235,12 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
             if (audioRef.current) audioRef.current.volume = parsedVolume;
           }
         }
+        const storedProgress = localStorage.getItem(PLAYBACK_PROGRESS_KEY);
+        if (storedProgress) {
+            setPlaybackProgress(JSON.parse(storedProgress));
+        }
       } catch (error) {
-        console.error("Failed to load volume from localStorage", error);
+        console.error("Failed to load player settings from localStorage", error);
       }
     };
     if (!user.loading) {
@@ -260,6 +267,22 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, 5000);
 
+  const savePlaybackProgress = useThrottle((trackId: string, currentTime: number, duration: number) => {
+    const newProgress = { ...playbackProgress };
+    if (duration - currentTime < 10) {
+      newProgress[trackId] = 0; // Reset progress
+    } else {
+      newProgress[trackId] = currentTime;
+    }
+    setPlaybackProgress(newProgress);
+    try {
+        localStorage.setItem(PLAYBACK_PROGRESS_KEY, JSON.stringify(newProgress));
+    } catch (e) {
+        console.error("Failed to save playback progress", e);
+    }
+  }, 5000);
+
+
   const saveDuration = useThrottle(
     (trackId: string, duration: number) => {
       if (!trackId || isNaN(duration) || duration <= 0) return;
@@ -281,9 +304,12 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     if (playPromiseController.current) {
       playPromiseController.current.abort();
     }
+    if (audioRef.current && currentTrack) {
+        savePlaybackProgress(currentTrack.id, audioRef.current.currentTime, audioRef.current.duration);
+    }
     audioRef.current?.pause();
     setIsPlaying(false);
-  }, []);
+  }, [currentTrack, savePlaybackProgress]);
 
   const setAudioSource = useCallback(
     async (
@@ -297,7 +323,13 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   
       if (audioRef.current.src !== sourceUrl) {
         audioRef.current.src = sourceUrl;
-        setProgress(0); // Reset visual progress when source changes
+        
+        const savedProgress = playbackProgress[track.id];
+        if (savedProgress && savedProgress > 0) {
+            audioRef.current.currentTime = savedProgress;
+        } else {
+            setProgress(0);
+        }
       }
   
       if (options.expand) {
@@ -335,7 +367,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         }
       }
     },
-    [playbackRate],
+    [playbackRate, playbackProgress],
   );
 
   const addToHistory = useCallback((track: Podcast) => {
@@ -368,6 +400,11 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       shouldAutoPlay = true,
       options: PlayOptions = {},
     ) => {
+      // Save progress of the current track before switching
+      if (audioRef.current && currentTrack) {
+        savePlaybackProgress(currentTrack.id, audioRef.current.currentTime, audioRef.current.duration);
+      }
+        
       const playlistToUse =
         playlist && playlist.length > 0 ? playlist : podcasts;
 
@@ -407,7 +444,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         setAudioSource(trackToPlay, shouldAutoPlay, options);
       }
     },
-    [podcasts, currentTrack, addToHistory, setAudioSource],
+    [podcasts, currentTrack, addToHistory, setAudioSource, savePlaybackProgress],
   );
 
   const play = useCallback(
@@ -455,6 +492,11 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         const trackToPlay = queue[trackIndex];
         const newQueue = queue.slice(trackIndex + 1);
         
+        // Save progress of the old track before switching
+        if (audioRef.current && currentTrack) {
+            savePlaybackProgress(currentTrack.id, audioRef.current.currentTime, audioRef.current.duration);
+        }
+        
         setCurrentTrack(trackToPlay);
         addToHistory(trackToPlay);
         setQueue(newQueue);
@@ -476,7 +518,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         setAudioSource(trackToPlay, true, options);
       }
     },
-    [queue, addToHistory, setAudioSource, isShuffled, currentPlaylist]
+    [queue, addToHistory, setAudioSource, isShuffled, currentPlaylist, currentTrack, savePlaybackProgress]
   );
 
   const nextTrack = useCallback(() => {
@@ -658,7 +700,12 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       const currentTime = audioRef.current.currentTime;
+      const currentDuration = audioRef.current.duration;
       setProgress(currentTime);
+      
+      if (currentTrack && !isNaN(currentDuration) && currentDuration > 0) {
+        savePlaybackProgress(currentTrack.id, currentTime, currentDuration);
+      }
     }
   };
 
@@ -673,6 +720,9 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   };
   
   const handleTrackEnd = () => {
+     if (currentTrack && audioRef.current) {
+        savePlaybackProgress(currentTrack.id, audioRef.current.duration, audioRef.current.duration);
+     }
     if (repeatMode === "one" && currentTrack) {
       seek(0);
       play(currentTrack.id);
