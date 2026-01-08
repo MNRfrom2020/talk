@@ -15,6 +15,8 @@ import { useUser } from "./UserContext";
 import { supabase } from "@/lib/supabase";
 import { upsertListeningHistory } from "@/lib/actions";
 import { getListeningActivity } from "@/lib/data";
+import { getAudio } from "@/lib/idb";
+
 
 const HISTORY_STORAGE_KEY = "podcast_history";
 const LISTENING_LOG_KEY = "listening_log";
@@ -153,6 +155,8 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   const isPlayingRef = React.useRef(isPlaying);
   const sleepTimerId = useRef<NodeJS.Timeout | null>(null);
   const sleepTimerIntervalId = useRef<NodeJS.Timeout | null>(null);
+  const currentBlobUrl = useRef<string | null>(null);
+
 
   useEffect(() => {
     isPlayingRef.current = isPlaying;
@@ -257,12 +261,15 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [user]);
 
-  // Cleanup timers
+  // Cleanup timers and blob URL
   useEffect(() => {
     return () => {
       if (sleepTimerId.current) clearTimeout(sleepTimerId.current);
       if (sleepTimerIntervalId.current)
         clearInterval(sleepTimerIntervalId.current);
+      if (currentBlobUrl.current) {
+        URL.revokeObjectURL(currentBlobUrl.current);
+      }
     };
   }, []);
 
@@ -312,8 +319,20 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       options: PlayOptions = {},
     ) => {
       if (!audioRef.current) return;
-  
-      const sourceUrl = track.audioUrl;
+
+      // Revoke previous blob URL if it exists
+      if (currentBlobUrl.current) {
+        URL.revokeObjectURL(currentBlobUrl.current);
+        currentBlobUrl.current = null;
+      }
+
+      let sourceUrl = track.audioUrl;
+      const offlineAudio = await getAudio(track.id);
+
+      if (offlineAudio) {
+        sourceUrl = URL.createObjectURL(offlineAudio);
+        currentBlobUrl.current = sourceUrl;
+      }
   
       if (audioRef.current.src !== sourceUrl) {
         audioRef.current.src = sourceUrl;

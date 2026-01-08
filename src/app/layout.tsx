@@ -9,6 +9,7 @@ import { UserProvider } from "@/context/UserContext";
 export const metadata: Metadata = {
   title: "MNR Talk",
   description: "Your personalized audio library.",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({

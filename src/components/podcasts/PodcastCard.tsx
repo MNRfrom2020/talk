@@ -7,9 +7,11 @@ import {
   Play,
   Heart,
   Plus,
-  Trash2,
   ListPlus,
   Share2,
+  Download,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import type { Podcast } from "@/lib/types";
 import { usePlayer } from "@/context/PlayerContext";
@@ -30,11 +32,16 @@ import { usePlaylist } from "@/context/PlaylistContext";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "../ui/button";
 import { CreatePlaylistDialog } from "../playlists/CreatePlaylistDialog";
-import { type MouseEvent } from "react";
+import { type MouseEvent, useState, useEffect } from "react";
 import { usePodcast } from "@/context/PodcastContext";
 import { useUser } from "@/context/UserContext";
 import { Progress } from "../ui/progress";
 import { motion } from "framer-motion";
+import {
+  saveAudio,
+  getDownloadedPodcastIds,
+  deleteAudio,
+} from "@/lib/idb";
 
 const AudioWave = () => (
   <div className="flex w-6 h-6 items-center justify-center gap-0.5">
@@ -56,6 +63,7 @@ const AudioWave = () => (
   </div>
 );
 
+type DownloadState = "idle" | "downloading" | "downloaded";
 
 interface PodcastCardProps {
   podcast: Podcast;
@@ -91,7 +99,17 @@ export default function PodcastCard({
   const { toast } = useToast();
   const isActive = currentTrack?.id === podcast.id;
   const isFavorite = isFavoritePodcast(podcast.id);
+  const [downloadState, setDownloadState] = useState<DownloadState>("idle");
 
+  useEffect(() => {
+    async function checkDownloadStatus() {
+      const downloadedIds = await getDownloadedPodcastIds();
+      if (downloadedIds.includes(podcast.id)) {
+        setDownloadState("downloaded");
+      }
+    }
+    checkDownloadStatus();
+  }, [podcast.id]);
 
   const userPlaylists = playlists.filter(
     (p) => !p.isPredefined && p.id !== FAVORITES_PLAYLIST_ID,
@@ -132,6 +150,51 @@ export default function PodcastCard({
       title: "Link Copied",
       description: "A shareable link has been copied to your clipboard.",
     });
+  };
+  
+  const handleDownload = async (e: MouseEvent) => {
+    e.stopPropagation();
+    setDownloadState("downloading");
+    try {
+      const response = await fetch(podcast.audioUrl);
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      const blob = await response.blob();
+      await saveAudio(podcast, blob);
+      setDownloadState("downloaded");
+      toast({
+        title: "Download Complete",
+        description: `"${podcast.title}" is now available offline.`,
+      });
+    } catch (error) {
+      setDownloadState("idle");
+      console.error("Download failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Download Failed",
+        description: `Could not download "${podcast.title}".`,
+      });
+    }
+  };
+
+  const handleDeleteAudio = async (e: MouseEvent) => {
+    e.stopPropagation();
+    try {
+      await deleteAudio(podcast.id);
+      setDownloadState("idle");
+      toast({
+        title: "Audio Deleted",
+        description: `"${podcast.title}" has been removed from your device.`,
+      });
+    } catch (error) {
+      console.error("Deletion failed:", error);
+       toast({
+        variant: "destructive",
+        title: "Deletion Failed",
+        description: `Could not delete "${podcast.title}".`,
+      });
+    }
   };
 
   const artistText = Array.isArray(podcast.artist)
@@ -223,6 +286,27 @@ export default function PodcastCard({
               Share
             </DropdownMenuItem>
 
+            <DropdownMenuSeparator />
+
+            {downloadState === "idle" && (
+              <DropdownMenuItem onClick={handleDownload}>
+                <Download className="mr-2 h-4 w-4" />
+                Download
+              </DropdownMenuItem>
+            )}
+            {downloadState === "downloading" && (
+              <DropdownMenuItem disabled>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Downloading...
+              </DropdownMenuItem>
+            )}
+            {downloadState === "downloaded" && (
+              <DropdownMenuItem onClick={handleDeleteAudio} className="text-destructive">
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Download
+              </DropdownMenuItem>
+            )}
+
             {onRemove && playlistId && (
               <>
                 <DropdownMenuSeparator />
@@ -255,6 +339,11 @@ export default function PodcastCard({
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               data-ai-hint={podcast.coverArtHint}
             />
+             {downloadState === 'downloaded' && (
+              <div className="absolute bottom-1.5 right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary/80 backdrop-blur-sm">
+                <Download className="h-3 w-3 text-primary-foreground" />
+              </div>
+            )}
             {progressPercentage > 0 && (
               <div className="absolute bottom-1 left-1 right-1">
                  <Progress value={progressPercentage} className="h-1.5" />
