@@ -19,6 +19,7 @@ import PredefinedPlaylistSection from "@/components/playlists/PredefinedPlaylist
 import { cn } from "@/lib/utils";
 import CategorySection from "@/components/podcasts/CategorySection";
 import { usePlayer } from "@/context/PlayerContext";
+import DownloadedList from "@/components/podcasts/DownloadedList";
 
 export default function LibraryPage() {
   const { isExpanded } = usePlayer();
@@ -36,6 +37,7 @@ export default function LibraryPage() {
                   "pb-24 md:pb-8",
                 )}
               >
+                <hr className="h-20 border-transparent md:hidden" />
                 <div className="space-y-8">
                   <div className="flex items-center justify-between">
                     <h1 className="font-headline text-3xl font-bold tracking-tight">
@@ -49,11 +51,14 @@ export default function LibraryPage() {
                   </div>
 
                   <HistoryList />
+                  
+                  <DownloadedList />
 
                   <PredefinedPlaylistSection />
 
                   <PlaylistList />
                 </div>
+                <hr className="h-20 border-transparent md:hidden" />
               </main>
             </ScrollArea>
           </SidebarInset>
