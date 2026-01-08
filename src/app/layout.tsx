@@ -5,6 +5,7 @@ import { PodcastProvider } from "@/context/PodcastContext";
 import { PlayerProvider } from "@/context/PlayerContext";
 import { PlaylistProvider } from "@/context/PlaylistContext";
 import { UserProvider } from "@/context/UserContext";
+import OfflineIndicator from "@/components/layout/OfflineIndicator";
 
 export const metadata: Metadata = {
   title: "MNR Talk",
@@ -31,6 +32,7 @@ export default function RootLayout({
           <PodcastProvider>
             <PlaylistProvider>
               <PlayerProvider>
+                <OfflineIndicator />
                 {children}
                 <Toaster />
               </PlayerProvider>
