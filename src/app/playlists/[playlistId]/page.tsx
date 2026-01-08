@@ -13,7 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import MobileHeader from "@/components/layout/MobileHeader";
 import { usePlaylist } from "@/context/PlaylistContext";
 import { usePodcast } from "@/context/PodcastContext";
-import { Heart, Play, Share2, Download, Loader2 } from "lucide-react";
+import { Heart, Play, Share2, Download, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -28,8 +28,20 @@ import {
 import { Input } from "@/components/ui/input";
 import { usePlayer } from "@/context/PlayerContext";
 import { useUser } from "@/context/UserContext";
-import { getDownloadedPodcastIds, saveAudio } from "@/lib/idb";
+import { getDownloadedPodcastIds, saveAudio, deleteAudios } from "@/lib/idb";
 import type { Podcast } from "@/lib/types";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
 
 interface PlaylistPageProps {
   params: Promise<{
@@ -57,6 +69,7 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
     "idle" | "downloading" | "downloaded"
   >("idle");
   const [downloadedIds, setDownloadedIds] = React.useState<string[]>([]);
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = React.useState(false);
 
   const playlist = getPlaylistById(playlistId);
 
@@ -144,8 +157,13 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
     });
   };
 
-  const handleDownloadAll = async () => {
-    if (podcastsInPlaylist.length === 0) return;
+  const handleDownloadToggle = async () => {
+    if (downloadState === "downloaded") {
+      setIsDeleteAlertOpen(true);
+      return;
+    }
+
+    if (podcastsInPlaylist.length === 0 || downloadState === "downloading") return;
 
     setDownloadState("downloading");
     toast({
@@ -182,6 +200,26 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
       description: `All audios in "${playlist?.name}" are available offline.`,
     });
   };
+  
+  const handleDeleteAll = async () => {
+    if (podcastsInPlaylist.length === 0) return;
+    try {
+        const idsToDelete = podcastsInPlaylist.map(p => p.id);
+        await deleteAudios(idsToDelete);
+        setDownloadState('idle');
+        toast({
+            title: "Downloads Deleted",
+            description: `All downloaded audios from "${playlist?.name}" have been removed from this device.`,
+        });
+    } catch(e) {
+        toast({
+            variant: 'destructive',
+            title: 'Deletion Failed',
+            description: 'Could not delete all downloaded audios.',
+        });
+    }
+    setIsDeleteAlertOpen(false);
+  }
 
 
   if (!playlist) {
@@ -267,17 +305,19 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
                           <Share2 className="h-6 w-6" />
                         </Button>
                         {podcastsInPlaylist.length > 0 && (
-                          <Button
+                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={handleDownloadAll}
-                            disabled={downloadState !== "idle"}
-                            aria-label="Download all audios in playlist"
+                            onClick={handleDownloadToggle}
+                            disabled={downloadState === "downloading"}
+                            aria-label={downloadState === 'downloaded' ? "Delete all audios in playlist" : "Download all audios in playlist"}
                           >
                             {downloadState === "downloading" ? (
                               <Loader2 className="h-6 w-6 animate-spin" />
+                            ) : downloadState === "downloaded" ? (
+                              <Trash2 className="h-6 w-6 text-destructive" />
                             ) : (
-                              <Download className={cn("h-6 w-6", downloadState === "downloaded" && "text-primary")} />
+                              <Download className="h-6 w-6" />
                             )}
                           </Button>
                         )}
@@ -313,7 +353,7 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
                         playlist={podcastsInPlaylist}
                         playlistId={playlist.id}
                         onRemove={
-                          !playlist.isPredefined ? () => onRemove(podcast.id) : undefined
+                          !playlist.isPredefined ? () => onRemove(podcast.id, playlist.id) : undefined
                         }
                       />
                     ))}
@@ -335,6 +375,20 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
         </AnimatePresence>
         {!isExpanded && <BottomNavBar />}
       </div>
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This will delete all {podcastsInPlaylist.length} downloaded audios in &quot;{playlist.name}&quot; from this device. This action cannot be undone.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteAll} className="bg-destructive hover:bg-destructive/90">Delete</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarProvider>
   );
 };

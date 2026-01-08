@@ -40,12 +40,12 @@ export async function saveAudio(podcast: Podcast, blob: Blob) {
   return dbInstance.put(STORE_NAME, { podcast, blob });
 }
 
-export async function getAudio(podcastId: string) {
+export async function getAudio(podcastId: string): Promise<Blob | null> {
   const db = getDb();
   if (!db) return null;
   const dbInstance = await db;
   const result = await dbInstance.get(STORE_NAME, podcastId);
-  return result?.blob;
+  return result?.blob ?? null;
 }
 
 export async function getDownloadedPodcastIds(): Promise<string[]> {
@@ -60,4 +60,13 @@ export async function deleteAudio(podcastId: string) {
   if (!db) return;
   const dbInstance = await db;
   return dbInstance.delete(STORE_NAME, podcastId);
+}
+
+export async function deleteAudios(podcastIds: string[]) {
+    const db = getDb();
+    if (!db) return;
+    const dbInstance = await db;
+    const tx = dbInstance.transaction(STORE_NAME, 'readwrite');
+    await Promise.all(podcastIds.map(id => tx.store.delete(id)));
+    await tx.done;
 }
