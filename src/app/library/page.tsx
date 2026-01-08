@@ -19,6 +19,7 @@ import PredefinedPlaylistSection from "@/components/playlists/PredefinedPlaylist
 import { cn } from "@/lib/utils";
 import CategorySection from "@/components/podcasts/CategorySection";
 import { usePlayer } from "@/context/PlayerContext";
+import DownloadedList from "@/components/podcasts/DownloadedList";
 
 export default function LibraryPage() {
   const { isExpanded } = usePlayer();
@@ -50,6 +51,8 @@ export default function LibraryPage() {
                   </div>
 
                   <HistoryList />
+                  
+                  <DownloadedList />
 
                   <PredefinedPlaylistSection />
 
