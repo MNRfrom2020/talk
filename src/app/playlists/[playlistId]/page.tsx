@@ -13,7 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import MobileHeader from "@/components/layout/MobileHeader";
 import { usePlaylist } from "@/context/PlaylistContext";
 import { usePodcast } from "@/context/PodcastContext";
-import { Heart, Play, Share2 } from "lucide-react";
+import { Heart, Play, Share2, Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
@@ -28,6 +28,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { usePlayer } from "@/context/PlayerContext";
 import { useUser } from "@/context/UserContext";
+import { getDownloadedPodcastIds, saveAudio } from "@/lib/idb";
+import type { Podcast } from "@/lib/types";
 
 interface PlaylistPageProps {
   params: Promise<{
@@ -51,8 +53,16 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
 
   const [sortOrder, setSortOrder] = React.useState("oldest");
   const [searchTerm, setSearchTerm] = React.useState("");
+  const [downloadState, setDownloadState] = React.useState<
+    "idle" | "downloading" | "downloaded"
+  >("idle");
+  const [downloadedIds, setDownloadedIds] = React.useState<string[]>([]);
 
   const playlist = getPlaylistById(playlistId);
+
+  const onRemove = user.isGuest
+    ? removePodcastFromGuestPlaylist
+    : removePodcastFromUserPlaylist;
 
   const podcastsInPlaylist = React.useMemo(() => {
     if (!playlist) return [];
@@ -90,6 +100,22 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
     getPodcastsForPlaylist,
     playlist,
   ]);
+  
+  React.useEffect(() => {
+    const checkDownloads = async () => {
+      const ids = await getDownloadedPodcastIds();
+      setDownloadedIds(ids);
+      if (podcastsInPlaylist.length > 0 && podcastsInPlaylist.every(p => ids.includes(p.id))) {
+        setDownloadState("downloaded");
+      } else {
+        setDownloadState("idle");
+      }
+    };
+    checkDownloads();
+     const interval = setInterval(checkDownloads, 3000); // Poll for changes
+    return () => clearInterval(interval);
+  }, [podcastsInPlaylist]);
+
 
   const handlePlayAll = () => {
     if (podcastsInPlaylist.length > 0) {
@@ -118,6 +144,46 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
     });
   };
 
+  const handleDownloadAll = async () => {
+    if (podcastsInPlaylist.length === 0) return;
+
+    setDownloadState("downloading");
+    toast({
+      title: "Starting Download",
+      description: `Downloading ${podcastsInPlaylist.length} audios. This may take a while.`,
+    });
+
+    let downloadedCount = 0;
+    for (const podcast of podcastsInPlaylist) {
+      if (!downloadedIds.includes(podcast.id)) {
+        try {
+          const response = await fetch(podcast.audioUrl);
+          if (!response.ok) throw new Error(`Failed to fetch ${podcast.title}`);
+          const blob = await response.blob();
+          await saveAudio(podcast, blob);
+          downloadedCount++;
+          toast({
+            title: `Downloaded: ${podcast.title}`,
+            description: `${downloadedCount} of ${podcastsInPlaylist.length} audios downloaded.`,
+          });
+        } catch (error) {
+          console.error(`Failed to download ${podcast.title}:`, error);
+          toast({
+            variant: "destructive",
+            title: "Download Failed",
+            description: `Could not download "${podcast.title}".`,
+          });
+        }
+      }
+    }
+    setDownloadState("downloaded");
+    toast({
+      title: "All Downloads Complete",
+      description: `All audios in "${playlist?.name}" are available offline.`,
+    });
+  };
+
+
   if (!playlist) {
     return (
       <SidebarProvider>
@@ -141,26 +207,6 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
         </div>
       </SidebarProvider>
     );
-  }
-
-  const onRemove = async (podcastId: string) => {
-    try {
-      if (user.isGuest) {
-        removePodcastFromGuestPlaylist(playlist.id, podcastId);
-      } else {
-        await removePodcastFromUserPlaylist(playlist.id, podcastId);
-      }
-      toast({
-        title: "Podcast Removed",
-        description: "The podcast has been removed from the playlist.",
-      });
-    } catch (error) {
-       toast({
-        variant: "destructive",
-        title: "Uh oh! Something went wrong.",
-        description: "Could not remove podcast from playlist.",
-      });
-    }
   }
 
   return (
@@ -220,6 +266,21 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
                         >
                           <Share2 className="h-6 w-6" />
                         </Button>
+                        {podcastsInPlaylist.length > 0 && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={handleDownloadAll}
+                            disabled={downloadState !== "idle"}
+                            aria-label="Download all audios in playlist"
+                          >
+                            {downloadState === "downloading" ? (
+                              <Loader2 className="h-6 w-6 animate-spin" />
+                            ) : (
+                              <Download className={cn("h-6 w-6", downloadState === "downloaded" && "text-primary")} />
+                            )}
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -251,7 +312,9 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
                         podcast={podcast}
                         playlist={podcastsInPlaylist}
                         playlistId={playlist.id}
-                        onRemove={!playlist.isPredefined ? () => onRemove(podcast.id) : undefined}
+                        onRemove={
+                          !playlist.isPredefined ? () => onRemove(podcast.id) : undefined
+                        }
                       />
                     ))}
                   </div>
@@ -262,7 +325,7 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
                     </p>
                   </div>
                 )}
-                <hr className="h-20 border-transparent md:hidden" />
+                 <hr className="h-20 border-transparent md:hidden" />
               </main>
             </ScrollArea>
           </SidebarInset>
