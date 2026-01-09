@@ -30,7 +30,25 @@ export async function upsertListeningHistory(payload: {
 
     if (payload.duration !== undefined && !isNaN(payload.duration)) {
       dataToUpsert.duration = Math.round(payload.duration);
+    } else {
+      // Check if the record already exists
+      const { data: existingRecord, error: selectError } = await supabase
+        .from("listening_history")
+        .select("id")
+        .eq("user_uid", payload.user_uid)
+        .eq("podcast_id", payload.podcast_id)
+        .single();
+      
+      if (selectError && selectError.code !== 'PGRST116') { // PGRST116: No rows found
+        throw selectError;
+      }
+
+      // If record does not exist, set initial duration to 0
+      if (!existingRecord) {
+        dataToUpsert.duration = 0;
+      }
     }
+
 
     const { error } = await supabase.from("listening_history").upsert(
       dataToUpsert,
