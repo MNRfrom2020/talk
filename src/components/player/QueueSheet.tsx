@@ -16,6 +16,27 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import * as React from "react";
+import Link from "next/link";
+
+const ArtistLinks = ({ artists }: { artists: string[] }) => {
+  return (
+    <div className="truncate text-sm text-muted-foreground">
+      {artists.map((artist, index) => (
+        <React.Fragment key={artist}>
+          <Link
+            href={`/artists/${encodeURIComponent(artist)}`}
+            className="hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {artist}
+          </Link>
+          {index < artists.length - 1 && ", "}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+};
+
 
 export function QueueSheet({ children }: { children: React.ReactNode }) {
   const {
@@ -75,9 +96,7 @@ export function QueueSheet({ children }: { children: React.ReactNode }) {
                       <p className="truncate font-semibold text-primary">
                         {currentTrack.title}
                       </p>
-                      <p className="truncate text-sm text-primary/80">
-                         {Array.isArray(currentTrack.artist) ? currentTrack.artist.join(", ") : currentTrack.artist}
-                      </p>
+                      <ArtistLinks artists={Array.isArray(currentTrack.artist) ? currentTrack.artist : [currentTrack.artist || 'Unknown Artist']} />
                     </div>
                   </div>
                 </div>
@@ -127,9 +146,7 @@ export function QueueSheet({ children }: { children: React.ReactNode }) {
                         />
                         <div className="flex-1 overflow-hidden">
                           <p className="truncate font-semibold">{track.title}</p>
-                          <p className="truncate text-sm text-muted-foreground">
-                             {Array.isArray(track.artist) ? track.artist.join(", ") : track.artist}
-                          </p>
+                           <ArtistLinks artists={Array.isArray(track.artist) ? track.artist : [track.artist || 'Unknown Artist']} />
                         </div>
                       </button>
                       <Button

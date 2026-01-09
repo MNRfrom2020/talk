@@ -19,8 +19,9 @@ import {
   Repeat1,
   Shuffle,
 } from "lucide-react";
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 
 import { usePlayer } from "@/context/PlayerContext";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,25 @@ function formatTime(seconds: number) {
 
 const playbackRates = [1, 1.25, 1.5, 1.75, 2];
 const sleepTimerOptions = [15, 30, 45, 60];
+
+const ArtistLinks = ({ artists }: { artists: string[] }) => {
+  return (
+    <div className="truncate text-base text-muted-foreground">
+      {artists.map((artist, index) => (
+        <React.Fragment key={artist}>
+          <Link
+            href={`/artists/${encodeURIComponent(artist)}`}
+            className="hover:underline"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {artist}
+          </Link>
+          {index < artists.length - 1 && ", "}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+};
 
 
 const PlayerControls = ({ isExpanded = false }: { isExpanded?: boolean }) => {
@@ -204,6 +224,11 @@ const ExpandedPlayerMobile = () => {
   );
 
   if (!currentTrack) return null;
+  
+  const artists = Array.isArray(currentTrack.artist)
+    ? currentTrack.artist
+    : [currentTrack.artist || "Unknown Artist"];
+
 
   return (
     <div className="flex flex-1 flex-col justify-center gap-8 px-8">
@@ -217,7 +242,7 @@ const ExpandedPlayerMobile = () => {
       </motion.div>
       <div className="w-full overflow-hidden text-center">
         <h3 className="text-lg font-bold line-clamp-3">{currentTrack.title}</h3>
-        <p className="truncate text-base text-muted-foreground">{Array.isArray(currentTrack.artist) ? currentTrack.artist.join(", ") : currentTrack.artist}</p>
+        <ArtistLinks artists={artists} />
       </div>
 
       <div className="mx-auto flex w-full max-w-sm flex-col items-center justify-center gap-4">
@@ -332,6 +357,11 @@ const ExpandedPlayerDesktop = () => {
   );
 
   if (!currentTrack) return null;
+  
+  const artists = Array.isArray(currentTrack.artist)
+    ? currentTrack.artist
+    : [currentTrack.artist || "Unknown Artist"];
+
 
   return (
     <div className="flex h-full w-full items-center justify-center gap-16 p-8">
@@ -347,7 +377,7 @@ const ExpandedPlayerDesktop = () => {
       <div className="flex w-full max-w-sm flex-col items-center gap-6">
         <div className="w-full overflow-hidden text-center">
           <h3 className="text-2xl font-bold line-clamp-none">{currentTrack.title}</h3>
-          <p className="truncate text-base text-muted-foreground">{Array.isArray(currentTrack.artist) ? currentTrack.artist.join(", ") : currentTrack.artist}</p>
+          <ArtistLinks artists={artists} />
         </div>
         
         <div className="flex w-full flex-col items-center justify-center gap-2">
@@ -482,6 +512,11 @@ export default function Player() {
       />
     </div>
   )
+  
+  const artists = Array.isArray(currentTrack.artist)
+    ? currentTrack.artist
+    : [currentTrack.artist || "Unknown Artist"];
+
 
   return (
     <>
@@ -572,9 +607,16 @@ export default function Player() {
                     <h3 className="truncate text-sm font-semibold">
                       {currentTrack.title}
                     </h3>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {Array.isArray(currentTrack.artist) ? currentTrack.artist.join(", ") : currentTrack.artist}
-                    </p>
+                     <div className="truncate text-xs text-muted-foreground">
+                        {artists.map((artist, index) => (
+                          <React.Fragment key={artist}>
+                            <Link href={`/artists/${encodeURIComponent(artist)}`} className="hover:underline">
+                              {artist}
+                            </Link>
+                            {index < artists.length - 1 && ', '}
+                          </React.Fragment>
+                        ))}
+                    </div>
                   </div>
                 </div>
 
