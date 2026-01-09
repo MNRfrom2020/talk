@@ -18,9 +18,13 @@ import {
   Repeat,
   Repeat1,
   Shuffle,
+  Download,
+  Trash2,
+  Loader2,
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
+import Link from "next/link";
 
 import { usePlayer } from "@/context/PlayerContext";
 import { Button } from "@/components/ui/button";
@@ -40,6 +44,9 @@ import {
 } from "@/components/ui/popover";
 import { QueueSheet } from "@/components/player/QueueSheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useToast } from "@/hooks/use-toast";
+import { saveAudio, getDownloadedPodcastIds, deleteAudio } from "@/lib/idb";
+import type { Podcast } from "@/lib/types";
 
 function formatTime(seconds: number) {
   if (isNaN(seconds)) return "0:00";
@@ -50,6 +57,28 @@ function formatTime(seconds: number) {
 
 const playbackRates = [1, 1.25, 1.5, 1.75, 2];
 const sleepTimerOptions = [15, 30, 45, 60];
+
+const ArtistLinks = ({ artists, onLinkClick }: { artists: string[], onLinkClick: () => void }) => {
+  return (
+    <div className="truncate text-base text-muted-foreground">
+      {artists.map((artist, index) => (
+        <React.Fragment key={artist}>
+          <Link
+            href={`/artists/${encodeURIComponent(artist)}`}
+            className="hover:underline"
+            onClick={(e) => {
+                e.stopPropagation();
+                onLinkClick();
+            }}
+          >
+            {artist}
+          </Link>
+          {index < artists.length - 1 && ", "}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+};
 
 
 const PlayerControls = ({ isExpanded = false }: { isExpanded?: boolean }) => {
@@ -165,6 +194,89 @@ const PlayerControls = ({ isExpanded = false }: { isExpanded?: boolean }) => {
   );
 }
 
+const DownloadButton = ({ podcast }: { podcast: Podcast }) => {
+  const { toast } = useToast();
+  const [downloadState, setDownloadState] = useState<"idle" | "downloading" | "downloaded">("idle");
+
+  useEffect(() => {
+    async function checkStatus() {
+      const downloadedIds = await getDownloadedPodcastIds();
+      if (downloadedIds.includes(podcast.id)) {
+        setDownloadState("downloaded");
+      } else {
+        setDownloadState("idle");
+      }
+    }
+    checkStatus();
+    // Poll for changes in case download happens elsewhere
+    const interval = setInterval(checkStatus, 3000);
+    return () => clearInterval(interval);
+  }, [podcast.id]);
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (downloadState !== "idle") return;
+
+    setDownloadState("downloading");
+    toast({
+      title: "Download Started",
+      description: `Downloading "${podcast.title}"...`,
+    });
+    try {
+      const response = await fetch(podcast.audioUrl);
+      if (!response.ok) throw new Error("Network response was not ok");
+      const blob = await response.blob();
+      await saveAudio(podcast, blob);
+      setDownloadState("downloaded");
+      toast({
+        title: "Download Complete",
+        description: `"${podcast.title}" is now available offline.`,
+      });
+    } catch (error) {
+      setDownloadState("idle");
+      toast({
+        variant: "destructive",
+        title: "Download Failed",
+        description: `Could not download "${podcast.title}".`,
+      });
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (downloadState !== "downloaded") return;
+
+    try {
+      await deleteAudio(podcast.id);
+      setDownloadState("idle");
+      toast({
+        title: "Download Deleted",
+        description: `"${podcast.title}" has been removed from your device.`,
+      });
+    } catch (error) {
+       toast({
+        variant: "destructive",
+        title: "Delete Failed",
+        description: `Could not delete "${podcast.title}".`,
+      });
+    }
+  };
+
+  return (
+    <Button
+      variant="outline"
+      size="icon"
+      onClick={downloadState === 'downloaded' ? handleDelete : handleDownload}
+      disabled={downloadState === 'downloading'}
+      className="h-10 w-10"
+    >
+      {downloadState === 'downloading' && <Loader2 className="h-5 w-5 animate-spin" />}
+      {downloadState === 'idle' && <Download className="h-5 w-5" />}
+      {downloadState === 'downloaded' && <Trash2 className="h-5 w-5 text-destructive" />}
+    </Button>
+  );
+};
+
 
 const ExpandedPlayerMobile = () => {
     const { 
@@ -178,8 +290,9 @@ const ExpandedPlayerMobile = () => {
     setSleepTimer,
     toggleRepeatMode,
     repeatMode,
-    toggleShuffle,
-    isShuffled,
+    volume,
+    setVolume,
+    setIsExpanded,
   } = usePlayer();
   
   const sleepTimerDisplay = useMemo(() => {
@@ -194,9 +307,20 @@ const ExpandedPlayerMobile = () => {
     return Repeat;
   }, [repeatMode]);
 
+  const VolumeControl = (
+    <div className="flex w-full items-center gap-2">
+      <Button variant="ghost" size="icon" className="h-10 w-8" onClick={() => setVolume(volume > 0 ? 0 : 0.5)}>
+        {volume > 0 ? <Volume2 className="h-5 w-5" /> : <VolumeX className="h-5 w-5" />}
+      </Button>
+      <Slider value={[volume]} max={1} step={0.01} onValueChange={(v) => setVolume(v[0])} className="w-full flex-1" />
+    </div>
+  );
+
   if (!currentTrack) return null;
   
-  const artistText = Array.isArray(currentTrack.artist) ? currentTrack.artist.join(", ") : (currentTrack.artist || "Unknown Artist");
+  const artists = Array.isArray(currentTrack.artist)
+    ? currentTrack.artist
+    : [currentTrack.artist || "Unknown Artist"];
 
 
   return (
@@ -210,8 +334,8 @@ const ExpandedPlayerMobile = () => {
         />
       </motion.div>
       <div className="w-full overflow-hidden text-center">
-        <h3 className="text-2xl font-bold line-clamp-3">{currentTrack.title}</h3>
-        <p className="truncate text-base text-muted-foreground">{artistText}</p>
+        <h3 className="text-lg font-bold line-clamp-3">{currentTrack.title}</h3>
+        <ArtistLinks artists={artists} onLinkClick={() => setIsExpanded(false)} />
       </div>
 
       <div className="mx-auto flex w-full max-w-sm flex-col items-center justify-center gap-4">
@@ -227,7 +351,7 @@ const ExpandedPlayerMobile = () => {
         <div className="flex w-full items-center justify-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="h-10 flex-grow" onClick={(e) => e.stopPropagation()}>
+                <Button variant="outline" className="h-10 w-10" onClick={(e) => e.stopPropagation()}>
                   {playbackRate}x
                 </Button>
               </DropdownMenuTrigger>
@@ -243,7 +367,7 @@ const ExpandedPlayerMobile = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="h-10 flex-grow" onClick={(e) => e.stopPropagation()}>
-                  <Moon className="mr-2 h-4 w-4" /> {sleepTimerDisplay || "Timer"}
+                  <Moon className="mr-2 h-4 w-4" /> {sleepTimerDisplay || ""}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
@@ -264,14 +388,17 @@ const ExpandedPlayerMobile = () => {
             >
               <RepeatButtonIcon className="h-5 w-5" />
             </Button>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={(e) => { e.stopPropagation(); toggleShuffle(); }}
-              className={cn("h-10 w-10", isShuffled && "text-primary bg-primary/10")}
-            >
-              <Shuffle className="h-5 w-5" />
-            </Button>
+            <DownloadButton podcast={currentTrack} />
+            <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-10 w-10" onClick={(e) => e.stopPropagation()}>
+                    <Volume2 className="h-5 w-5"/>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent side="top" onClick={(e) => e.stopPropagation()} className="w-48 p-2 mb-2">
+                  {VolumeControl}
+                </PopoverContent>
+            </Popover>
             <QueueSheet>
               <Button variant="outline" size="icon" className="h-10 w-10">
                 <ListMusic className="h-5 w-5" />
@@ -299,6 +426,7 @@ const ExpandedPlayerDesktop = () => {
     setVolume,
     toggleShuffle,
     isShuffled,
+    setIsExpanded,
   } = usePlayer();
 
   const sleepTimerDisplay = useMemo(() => {
@@ -324,7 +452,9 @@ const ExpandedPlayerDesktop = () => {
 
   if (!currentTrack) return null;
   
-  const artistText = Array.isArray(currentTrack.artist) ? currentTrack.artist.join(", ") : (currentTrack.artist || "Unknown Artist");
+  const artists = Array.isArray(currentTrack.artist)
+    ? currentTrack.artist
+    : [currentTrack.artist || "Unknown Artist"];
 
 
   return (
@@ -341,7 +471,7 @@ const ExpandedPlayerDesktop = () => {
       <div className="flex w-full max-w-sm flex-col items-center gap-6">
         <div className="w-full overflow-hidden text-center">
           <h3 className="text-2xl font-bold line-clamp-none">{currentTrack.title}</h3>
-          <p className="truncate text-base text-muted-foreground">{artistText}</p>
+          <ArtistLinks artists={artists} onLinkClick={() => setIsExpanded(false)} />
         </div>
         
         <div className="flex w-full flex-col items-center justify-center gap-2">
@@ -371,7 +501,7 @@ const ExpandedPlayerDesktop = () => {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="h-10 w-24" onClick={(e) => e.stopPropagation()}>
+                <Button variant="outline" className="h-10 w-20" onClick={(e) => e.stopPropagation()}>
                   <Moon className="mr-2 h-4 w-4" /> {sleepTimerDisplay || "Timer"}
                 </Button>
               </DropdownMenuTrigger>
@@ -401,6 +531,7 @@ const ExpandedPlayerDesktop = () => {
             >
               <Shuffle className="h-5 w-5" />
             </Button>
+            <DownloadButton podcast={currentTrack} />
             <QueueSheet>
                <Button variant="outline" className="h-10 w-auto px-4">
                 <ListMusic className="mr-2 h-5 w-5" />
@@ -428,8 +559,9 @@ export default function Player() {
     repeatMode,
     toggleShuffle,
     isShuffled,
+    isExpanded,
+    setIsExpanded,
   } = usePlayer();
-  const [isExpanded, setIsExpanded] = useState(false);
   const isMobile = useIsMobile();
 
 
@@ -457,7 +589,7 @@ export default function Player() {
   }
   
   const VolumeControl = (
-    <div className="flex w-full flex-1 items-center gap-2">
+    <div className="flex w-full items-center gap-2">
       <Button variant="ghost" size="icon" className="h-10 w-8" onClick={(e) => {e.stopPropagation(); setVolume(volume > 0 ? 0 : 0.5)}}>
         {volume > 0 ? (
           <Volume2 className="h-5 w-5" />
@@ -476,7 +608,9 @@ export default function Player() {
     </div>
   )
   
-  const artistText = Array.isArray(currentTrack.artist) ? currentTrack.artist.join(", ") : (currentTrack.artist || "Unknown Artist");
+  const artists = Array.isArray(currentTrack.artist)
+    ? currentTrack.artist
+    : [currentTrack.artist || "Unknown Artist"];
 
 
   return (
@@ -503,7 +637,7 @@ export default function Player() {
           "fixed left-0 right-0 z-50 border-t border-border/50 bg-card/80 backdrop-blur-sm",
           "md:scale-90 md:origin-bottom",
           isExpanded
-            ? "bottom-0 top-0 h-screen pb-16 md:pb-0"
+            ? "bottom-0 top-0 h-screen"
             : "bottom-16 h-24 md:bottom-0",
         )}
         onClick={(e) => {
@@ -554,7 +688,7 @@ export default function Player() {
                        <Button
                         variant="ghost"
                         size="icon"
-                        className="absolute -right-2 -top-2 z-10 h-6 w-6 rounded-full bg-card/80 p-1 text-muted-foreground backdrop-blur-sm transition-opacity"
+                        className="absolute -left-2 -top-2 z-10 h-6 w-6 rounded-full bg-card/80 p-1 text-muted-foreground backdrop-blur-sm"
                         onClick={(e) => {
                           e.stopPropagation();
                           closePlayer();
@@ -568,9 +702,16 @@ export default function Player() {
                     <h3 className="truncate text-sm font-semibold">
                       {currentTrack.title}
                     </h3>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {artistText}
-                    </p>
+                     <div className="truncate text-xs text-muted-foreground">
+                        {artists.map((artist, index) => (
+                          <React.Fragment key={artist}>
+                            <Link href={`/artists/${encodeURIComponent(artist)}`} className="hover:underline">
+                              {artist}
+                            </Link>
+                            {index < artists.length - 1 && ', '}
+                          </React.Fragment>
+                        ))}
+                    </div>
                   </div>
                 </div>
 
@@ -595,29 +736,33 @@ export default function Player() {
                 </div>
 
                 <div className="flex w-1/4 items-center justify-end gap-2">
-                  <div className="hidden w-full flex-1 items-center gap-2 sm:flex">
-                    {VolumeControl}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => { e.stopPropagation(); toggleRepeatMode(); }}
-                      className={cn("h-10 w-10", repeatMode !== 'off' && "text-primary bg-primary/10")}
-                    >
-                      <RepeatButtonIcon className="h-5 w-5" />
-                    </Button>
-                     <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => { e.stopPropagation(); toggleShuffle(); }}
-                      className={cn("h-10 w-10", isShuffled && "text-primary bg-primary/10")}
-                    >
-                      <Shuffle className="h-5 w-5" />
-                    </Button>
-                    <QueueSheet>
-                      <Button variant="ghost" size="icon" className="h-10 w-10" onClick={(e) => e.stopPropagation()}>
-                        <ListMusic className="h-5 w-5" />
+                  <div className="hidden flex-col items-end gap-2 sm:flex">
+                    <div className="w-full flex-1">
+                      {VolumeControl}
+                    </div>
+                    <div className="flex items-center gap-2">
+                       <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => { e.stopPropagation(); toggleRepeatMode(); }}
+                        className={cn("h-8 w-8", repeatMode !== 'off' && "text-primary bg-primary/10")}
+                      >
+                        <RepeatButtonIcon className="h-4 w-4" />
                       </Button>
-                    </QueueSheet>
+                       <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => { e.stopPropagation(); toggleShuffle(); }}
+                        className={cn("h-8 w-8", isShuffled && "text-primary bg-primary/10")}
+                      >
+                        <Shuffle className="h-4 w-4" />
+                      </Button>
+                      <QueueSheet>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => e.stopPropagation()}>
+                          <ListMusic className="h-4 w-4" />
+                        </Button>
+                      </QueueSheet>
+                    </div>
                   </div>
                   
                   <div className="flex flex-col items-center gap-0 sm:hidden">
@@ -646,3 +791,4 @@ export default function Player() {
     </>
   );
 }
+
