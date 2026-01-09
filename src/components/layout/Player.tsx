@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from "next/image";
@@ -365,8 +366,8 @@ const ExpandedPlayerMobile = () => {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="h-10 flex-grow" onClick={(e) => e.stopPropagation()}>
-                  <Moon className="mr-2 h-4 w-4" /> {sleepTimerDisplay}
+                <Button variant="outline" className="h-10 w-10" onClick={(e) => e.stopPropagation()}>
+                  <Moon className={cn(sleepTimerDisplay && "mr-0")} /> {sleepTimerDisplay}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
