@@ -501,22 +501,43 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     [playInternal],
   );
 
-  const togglePlay = useCallback(() => {
-    if (!currentTrack) {
-      const playlist = currentPlaylist || podcasts;
-      if (!playlist || playlist.length === 0) return;
-      play(playlist[0].id, playlist, { expand: false });
-      return;
-    }
-
+  const togglePlay = useCallback(async () => {
     if (isPlaying) {
       pause();
     } else {
-      if (audioRef.current) {
-        audioRef.current.play().then(() => setIsPlaying(true)).catch(e => console.error("Toggle play failed", e));
+      if (currentTrack) {
+        if (audioRef.current) {
+          audioRef.current.play().then(() => setIsPlaying(true)).catch(e => console.error("Toggle play failed", e));
+        }
+      } else {
+        let trackToPlayId: string | null = null;
+        if (!user.isGuest && user.uid) {
+           const { data, error } = await supabase
+            .from("listening_history")
+            .select("podcast_id")
+            .eq("user_uid", user.uid)
+            .order("last_played_at", { ascending: false })
+            .limit(1)
+            .single();
+            if (data) {
+                trackToPlayId = data.podcast_id;
+            }
+        }
+        
+        if (trackToPlayId) {
+            play(trackToPlayId, podcasts, { expand: false });
+        } else {
+            const lastPlayedJson = localStorage.getItem(LAST_PLAYED_STORAGE_KEY);
+            if (lastPlayedJson) {
+                const lastPlayed = JSON.parse(lastPlayedJson);
+                play(lastPlayed.id, podcasts, { expand: false });
+            } else if (podcasts.length > 0) {
+                 play(podcasts[0].id, podcasts, { expand: false });
+            }
+        }
       }
     }
-  }, [isPlaying, pause, play, currentTrack, podcasts, currentPlaylist]);
+  }, [isPlaying, pause, play, currentTrack, podcasts, user]);
 
   const findCurrentTrackIndex = useCallback(() => {
     const playlist = currentPlaylist || podcasts;
@@ -625,12 +646,6 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     }
     // Don't clear last played track from local storage
     const lastTrack = currentTrack;
-    setCurrentTrack(null);
-    setIsPlaying(false);
-    setQueue([]);
-    setCurrentPlaylist(null);
-    setProgress(0);
-    setDuration(0);
     if(lastTrack) {
        try {
         localStorage.setItem(LAST_PLAYED_STORAGE_KEY, JSON.stringify(lastTrack));
@@ -638,6 +653,12 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
           console.error("Failed to save last played track", e);
       }
     }
+    setCurrentTrack(null);
+    setIsPlaying(false);
+    setQueue([]);
+    setCurrentPlaylist(null);
+    setProgress(0);
+    setDuration(0);
   }, [pause, currentTrack]);
 
   const seek = (time: number) => {
