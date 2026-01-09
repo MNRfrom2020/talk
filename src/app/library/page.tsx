@@ -21,6 +21,7 @@ import CategorySection from "@/components/podcasts/CategorySection";
 import { usePlayer } from "@/context/PlayerContext";
 import DownloadedList from "@/components/podcasts/DownloadedList";
 import DownloadedPlaylistSection from "@/components/playlists/DownloadedPlaylistSection";
+import ResumePlayButton from "@/components/player/ResumePlayButton";
 
 export default function LibraryPage() {
   const { isExpanded } = usePlayer();
@@ -69,6 +70,7 @@ export default function LibraryPage() {
         <AnimatePresence>
           <Player />
         </AnimatePresence>
+        <ResumePlayButton />
         {!isExpanded && <BottomNavBar />}
       </div>
     </SidebarProvider>

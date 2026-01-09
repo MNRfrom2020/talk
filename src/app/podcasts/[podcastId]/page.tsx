@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { usePodcast } from "@/context/PodcastContext";
 import CategorySection from "@/components/podcasts/CategorySection";
 import { Separator } from "@/components/ui/separator";
+import ResumePlayButton from "@/components/player/ResumePlayButton";
 
 export const runtime = 'edge';
 
@@ -98,6 +99,7 @@ const PodcastPage = ({ params }: PodcastPageProps) => {
           <AnimatePresence>
             <Player />
           </AnimatePresence>
+          <ResumePlayButton />
           {!isExpanded && <BottomNavBar />}
         </div>
       </SidebarProvider>
@@ -200,6 +202,7 @@ const PodcastPage = ({ params }: PodcastPageProps) => {
         <AnimatePresence>
           <Player />
         </AnimatePresence>
+        <ResumePlayButton />
         {!isExpanded && <BottomNavBar />}
       </div>
     </SidebarProvider>

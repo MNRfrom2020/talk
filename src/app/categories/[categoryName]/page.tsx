@@ -26,6 +26,7 @@ import { usePodcast } from "@/context/PodcastContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePlaylist } from "@/context/PlaylistContext";
 import PlaylistCard from "@/components/playlists/PlaylistCard";
+import ResumePlayButton from "@/components/player/ResumePlayButton";
 
 export const runtime = 'edge';
 
@@ -169,6 +170,7 @@ const CategoryPage = ({ params }: CategoryPageProps) => {
         <AnimatePresence>
           <Player />
         </AnimatePresence>
+        <ResumePlayButton />
         {!isExpanded && <BottomNavBar />}
       </div>
     </SidebarProvider>

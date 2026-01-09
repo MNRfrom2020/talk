@@ -451,9 +451,13 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         if (startFromIndex !== -1) {
           trackToPlay = playlistToUse[startFromIndex];
         }
+      } else if (currentTrack) {
+         trackToPlay = currentTrack;
+         startFromIndex = playlistToUse.findIndex(
+            (p) => p.id === trackToPlay!.id,
+          );
       } else {
-        trackToPlay =
-          currentTrack || (playlistToUse.length > 0 ? playlistToUse[0] : null);
+        trackToPlay = playlistToUse.length > 0 ? playlistToUse[0] : null;
         if (trackToPlay) {
           startFromIndex = playlistToUse.findIndex(
             (p) => p.id === trackToPlay!.id,
@@ -498,8 +502,8 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   );
 
   const togglePlay = useCallback(() => {
-    const playlist = currentPlaylist || podcasts;
     if (!currentTrack) {
+      const playlist = currentPlaylist || podcasts;
       if (!playlist || playlist.length === 0) return;
       play(playlist[0].id, playlist, { expand: true });
       return;
@@ -958,5 +962,3 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     </PlayerContext.Provider>
   );
 };
-
-    

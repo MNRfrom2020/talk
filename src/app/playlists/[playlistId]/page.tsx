@@ -41,6 +41,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import ResumePlayButton from "@/components/player/ResumePlayButton";
 
 
 interface PlaylistPageProps {
@@ -241,6 +242,7 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
           <AnimatePresence>
             <Player />
           </AnimatePresence>
+          <ResumePlayButton />
           {!isExpanded && <BottomNavBar />}
         </div>
       </SidebarProvider>
@@ -373,6 +375,7 @@ const PlaylistPage = ({ params }: PlaylistPageProps) => {
         <AnimatePresence>
           <Player />
         </AnimatePresence>
+        <ResumePlayButton />
         {!isExpanded && <BottomNavBar />}
       </div>
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
