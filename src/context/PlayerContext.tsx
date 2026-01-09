@@ -23,6 +23,8 @@ const LISTENING_LOG_KEY = "listening_log";
 const PLAYER_VOLUME_KEY = "player_volume";
 const PLAYBACK_PROGRESS_KEY = "playback_progress";
 const PODCAST_DURATIONS_KEY = "podcast_durations";
+const LAST_PLAYED_STORAGE_KEY = "last_played_podcast";
+
 
 // --- useThrottle Hook ---
 function useThrottle<T extends (...args: any[]) => any>(
@@ -169,14 +171,18 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       if (user.uid && !user.isGuest) {
         localStorage.removeItem(HISTORY_STORAGE_KEY);
         localStorage.removeItem(LISTENING_LOG_KEY);
+        localStorage.removeItem(LAST_PLAYED_STORAGE_KEY);
         setHistory([]); // Reset history state
         setListeningLog({}); // Reset log state
       }
+      
+      let loadedHistory: Podcast[] = [];
 
       if (user.isGuest) {
         try {
           const storedHistory = localStorage.getItem(HISTORY_STORAGE_KEY);
-          if (storedHistory) setHistory(JSON.parse(storedHistory));
+          if (storedHistory) loadedHistory = JSON.parse(storedHistory);
+          setHistory(loadedHistory);
           
           const storedLog = localStorage.getItem(LISTENING_LOG_KEY);
           if (storedLog) setListeningLog(JSON.parse(storedLog));
@@ -195,10 +201,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (error) {
           console.error("Error fetching listening history:", error);
-          return;
-        }
-
-        if (listeningHistory && listeningHistory.length > 0) {
+        } else if (listeningHistory && listeningHistory.length > 0) {
           const podcastIds = listeningHistory.map(item => item.podcast_id);
           const { data: podcastsData, error: podcastsError } = await supabase
             .from("podcasts")
@@ -207,34 +210,33 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
 
           if (podcastsError) {
              console.error("Error fetching podcasts for history:", podcastsError);
-             return;
+          } else {
+            const podcastsMap = new Map(podcastsData.map(p => [String(p.id), p]));
+            const dbHistory: Podcast[] = listeningHistory.map(item => {
+               const podcastDetails = podcastsMap.get(String(item.podcast_id));
+               if (!podcastDetails) return null;
+                return {
+                  id: String(podcastDetails.id),
+                  title: podcastDetails.title,
+                  artist: podcastDetails.artist,
+                  categories: podcastDetails.categories,
+                  coverArt: podcastDetails.cover_art,
+                  coverArtHint: podcastDetails.cover_art_hint,
+                  audioUrl: podcastDetails.audio_url,
+                  created_at: podcastDetails.created_at,
+                };
+            }).filter((p): p is Podcast => p !== null);
+            loadedHistory = dbHistory;
+            setHistory(loadedHistory);
           }
-
-          const podcastsMap = new Map(podcastsData.map(p => [String(p.id), p]));
-          const dbHistory: Podcast[] = listeningHistory.map(item => {
-             const podcastDetails = podcastsMap.get(String(item.podcast_id));
-             if (!podcastDetails) return null;
-              return {
-                id: String(podcastDetails.id),
-                title: podcastDetails.title,
-                artist: podcastDetails.artist,
-                categories: podcastDetails.categories,
-                coverArt: podcastDetails.cover_art,
-                coverArtHint: podcastDetails.cover_art_hint,
-                audioUrl: podcastDetails.audio_url,
-                created_at: podcastDetails.created_at,
-              };
-          }).filter((p): p is Podcast => p !== null);
-          setHistory(dbHistory);
         }
         
         // Fetch listening activity log for chart
         const activityLog = await getListeningActivity(user.uid);
         setListeningLog(activityLog);
-
       }
       
-      // Load volume & playback progress for all users
+      // Load volume, playback progress, and last played track for all users
       try {
         const storedVolume = localStorage.getItem(PLAYER_VOLUME_KEY);
         if (storedVolume) {
@@ -252,14 +254,22 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         if (storedDurations) {
             setPodcastDurations(JSON.parse(storedDurations));
         }
+         const lastPlayedTrackJSON = localStorage.getItem(LAST_PLAYED_STORAGE_KEY);
+        if (lastPlayedTrackJSON) {
+            const lastPlayedTrack = JSON.parse(lastPlayedTrackJSON) as Podcast;
+            const fullTrackDetails = podcasts.find(p => p.id === lastPlayedTrack.id) || lastPlayedTrack;
+            setCurrentTrack(fullTrackDetails);
+            setAudioSource(fullTrackDetails, false);
+        }
+
       } catch (error) {
         console.error("Failed to load player settings from localStorage", error);
       }
     };
-    if (!user.loading) {
+    if (!user.loading && podcasts.length > 0) {
       loadData();
     }
-  }, [user]);
+  }, [user, podcasts]);
 
   // Cleanup timers and blob URL
   useEffect(() => {
@@ -286,8 +296,9 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   const savePlaybackProgress = useThrottle((trackId: string, currentTime: number, duration: number) => {
     setPlaybackProgress(currentProgress => {
       const newProgress = { ...currentProgress };
-      if (duration - currentTime < 10) {
-        newProgress[trackId] = 0; // Reset progress
+      if (duration > 0 && duration - currentTime < 10) {
+        // If track is finished, reset progress
+        delete newProgress[trackId]; 
       } else {
         newProgress[trackId] = currentTime;
       }
@@ -336,13 +347,20 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   
       if (audioRef.current.src !== sourceUrl) {
         audioRef.current.src = sourceUrl;
-        
-        const savedProgress = playbackProgress[track.id];
-        if (savedProgress && savedProgress > 0) {
-            audioRef.current.currentTime = savedProgress;
-        } else {
-            setProgress(0);
-        }
+      }
+      
+      const savedProgress = playbackProgress[track.id];
+      if (savedProgress && savedProgress > 0) {
+          // Setting currentTime can only happen after metadata is loaded
+          const setTime = () => {
+             if(audioRef.current) {
+                audioRef.current.currentTime = savedProgress;
+             }
+             audioRef.current?.removeEventListener('loadedmetadata', setTime);
+          }
+          audioRef.current.addEventListener('loadedmetadata', setTime);
+      } else {
+          setProgress(0);
       }
   
       if (options.expand) {
@@ -390,6 +408,11 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     ].slice(0, 50);
     
     setHistory(newHistory);
+     try {
+        localStorage.setItem(LAST_PLAYED_STORAGE_KEY, JSON.stringify(track));
+    } catch(e) {
+        console.error("Failed to save last played track", e);
+    }
     
     if (user.isGuest) {
       try {
@@ -598,6 +621,11 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     setCurrentPlaylist(null);
     setProgress(0);
     setDuration(0);
+    try {
+        localStorage.removeItem(LAST_PLAYED_STORAGE_KEY);
+    } catch(e) {
+        console.error("Failed to remove last played track", e);
+    }
   }, [pause]);
 
   const seek = (time: number) => {
@@ -930,3 +958,5 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     </PlayerContext.Provider>
   );
 };
+
+    
