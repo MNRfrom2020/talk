@@ -505,7 +505,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     if (!currentTrack) {
       const playlist = currentPlaylist || podcasts;
       if (!playlist || playlist.length === 0) return;
-      play(playlist[0].id, playlist, { expand: true });
+      play(playlist[0].id, playlist, { expand: false });
       return;
     }
 
