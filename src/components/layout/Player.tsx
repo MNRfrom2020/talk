@@ -387,14 +387,23 @@ const ExpandedPlayerMobile = () => {
             >
               <RepeatButtonIcon className="h-5 w-5" />
             </Button>
-             <DownloadButton podcast={currentTrack} />
+            <DownloadButton podcast={currentTrack} />
+            <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon" className="h-10 w-10" onClick={(e) => e.stopPropagation()}>
+                    <Volume2 className="h-5 w-5"/>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent side="top" onClick={(e) => e.stopPropagation()} className="w-48 p-2 mb-2">
+                  {VolumeControl}
+                </PopoverContent>
+            </Popover>
             <QueueSheet>
               <Button variant="outline" size="icon" className="h-10 w-10">
                 <ListMusic className="h-5 w-5" />
               </Button>
             </QueueSheet>
         </div>
-        {VolumeControl}
       </div>
     </div>
   );
