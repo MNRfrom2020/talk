@@ -28,33 +28,34 @@ export async function upsertListeningHistory(payload: {
       last_played_at: getBstDate().toISOString(),
     };
 
-    if (payload.duration !== undefined && !isNaN(payload.duration)) {
-      dataToUpsert.duration = Math.round(payload.duration);
-    } else {
-      // Check if the record already exists
-      const { data: existingRecord, error: selectError } = await supabase
-        .from("listening_history")
-        .select("id")
-        .eq("user_uid", payload.user_uid)
-        .eq("podcast_id", payload.podcast_id)
-        .single();
-      
-      if (selectError && selectError.code !== 'PGRST116') { // PGRST116: No rows found
-        throw selectError;
-      }
+    const { data: existingRecord, error: selectError } = await supabase
+      .from("listening_history")
+      .select("id, duration")
+      .eq("user_uid", payload.user_uid)
+      .eq("podcast_id", payload.podcast_id)
+      .single();
 
-      // If record does not exist, set initial duration to 0
-      if (!existingRecord) {
-        dataToUpsert.duration = 0;
-      }
+    if (selectError && selectError.code !== 'PGRST116') { // PGRST116: No rows found
+      throw selectError;
     }
 
+    if (payload.duration !== undefined && !isNaN(payload.duration)) {
+      // If a duration is provided, use it.
+      dataToUpsert.duration = Math.round(payload.duration);
+    } else if (!existingRecord) {
+      // If it's a new record and no duration is provided, default to 0.
+      dataToUpsert.duration = 0;
+    }
+    // If it's an existing record and no duration is provided, we don't set the duration field,
+    // so it keeps its existing value in the database.
 
     const { error } = await supabase.from("listening_history").upsert(
       dataToUpsert,
       { onConflict: "user_uid,podcast_id" },
     );
+
     if (error) throw error;
+    
     return { message: "Successfully updated listening history." };
   } catch (error: any) {
     return {
@@ -469,3 +470,5 @@ export async function updateUserFavoritePlaylists(
     };
   }
 }
+
+    

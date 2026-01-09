@@ -312,6 +312,16 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     });
   }, 5000);
 
+  const updateListeningHistoryDuration = useThrottle((trackId: string, currentTime: number) => {
+    if (!user.isGuest && user.uid && trackId) {
+        upsertListeningHistory({
+            user_uid: user.uid,
+            podcast_id: trackId,
+            duration: currentTime,
+        });
+    }
+  }, 5000); // Update every 5 seconds
+
   const pause = useCallback(() => {
     if (playPromiseController.current) {
       playPromiseController.current.abort();
@@ -421,6 +431,8 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         console.error("Failed to save history to localStorage", error);
       }
     } else if (user.uid && track.id) {
+        // This call ensures the record exists with last_played_at updated.
+        // Duration is handled in onTimeUpdate.
         upsertListeningHistory({
             user_uid: user.uid,
             podcast_id: track.id,
@@ -779,6 +791,9 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       
       if (currentTrack && !isNaN(currentDuration) && currentDuration > 0) {
         savePlaybackProgress(currentTrack.id, currentTime, currentDuration);
+        if (isPlayingRef.current) {
+            updateListeningHistoryDuration(currentTrack.id, currentTime);
+        }
       }
     }
   };
@@ -991,3 +1006,5 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     </PlayerContext.Provider>
   );
 };
+
+    
