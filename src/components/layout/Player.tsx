@@ -52,7 +52,7 @@ function formatTime(seconds: number) {
 const playbackRates = [1, 1.25, 1.5, 1.75, 2];
 const sleepTimerOptions = [15, 30, 45, 60];
 
-const ArtistLinks = ({ artists }: { artists: string[] }) => {
+const ArtistLinks = ({ artists, onLinkClick }: { artists: string[], onLinkClick: () => void }) => {
   return (
     <div className="truncate text-base text-muted-foreground">
       {artists.map((artist, index) => (
@@ -60,7 +60,10 @@ const ArtistLinks = ({ artists }: { artists: string[] }) => {
           <Link
             href={`/artists/${encodeURIComponent(artist)}`}
             className="hover:underline"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+                e.stopPropagation();
+                onLinkClick();
+            }}
           >
             {artist}
           </Link>
@@ -200,6 +203,7 @@ const ExpandedPlayerMobile = () => {
     repeatMode,
     volume,
     setVolume,
+    setIsExpanded,
   } = usePlayer();
   
   const sleepTimerDisplay = useMemo(() => {
@@ -242,7 +246,7 @@ const ExpandedPlayerMobile = () => {
       </motion.div>
       <div className="w-full overflow-hidden text-center">
         <h3 className="text-lg font-bold line-clamp-3">{currentTrack.title}</h3>
-        <ArtistLinks artists={artists} />
+        <ArtistLinks artists={artists} onLinkClick={() => setIsExpanded(false)} />
       </div>
 
       <div className="mx-auto flex w-full max-w-sm flex-col items-center justify-center gap-4">
@@ -333,6 +337,7 @@ const ExpandedPlayerDesktop = () => {
     setVolume,
     toggleShuffle,
     isShuffled,
+    setIsExpanded,
   } = usePlayer();
 
   const sleepTimerDisplay = useMemo(() => {
@@ -377,7 +382,7 @@ const ExpandedPlayerDesktop = () => {
       <div className="flex w-full max-w-sm flex-col items-center gap-6">
         <div className="w-full overflow-hidden text-center">
           <h3 className="text-2xl font-bold line-clamp-none">{currentTrack.title}</h3>
-          <ArtistLinks artists={artists} />
+          <ArtistLinks artists={artists} onLinkClick={() => setIsExpanded(false)} />
         </div>
         
         <div className="flex w-full flex-col items-center justify-center gap-2">

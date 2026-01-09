@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import * as React from "react";
 import Link from "next/link";
 
-const ArtistLinks = ({ artists }: { artists: string[] }) => {
+const ArtistLinks = ({ artists, onLinkClick }: { artists: string[]; onLinkClick: () => void; }) => {
   return (
     <div className="truncate text-sm text-muted-foreground">
       {artists.map((artist, index) => (
@@ -26,7 +26,10 @@ const ArtistLinks = ({ artists }: { artists: string[] }) => {
           <Link
             href={`/artists/${encodeURIComponent(artist)}`}
             className="hover:underline"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              onLinkClick();
+            }}
           >
             {artist}
           </Link>
@@ -47,6 +50,7 @@ export function QueueSheet({ children }: { children: React.ReactNode }) {
     moveTrackInQueue,
     toggleShuffle,
     isShuffled,
+    setIsExpanded,
   } = usePlayer();
 
   return (
@@ -96,7 +100,7 @@ export function QueueSheet({ children }: { children: React.ReactNode }) {
                       <p className="truncate font-semibold text-primary">
                         {currentTrack.title}
                       </p>
-                      <ArtistLinks artists={Array.isArray(currentTrack.artist) ? currentTrack.artist : [currentTrack.artist || 'Unknown Artist']} />
+                      <ArtistLinks artists={Array.isArray(currentTrack.artist) ? currentTrack.artist : [currentTrack.artist || 'Unknown Artist']} onLinkClick={() => setIsExpanded(false)} />
                     </div>
                   </div>
                 </div>
@@ -146,7 +150,7 @@ export function QueueSheet({ children }: { children: React.ReactNode }) {
                         />
                         <div className="flex-1 overflow-hidden">
                           <p className="truncate font-semibold">{track.title}</p>
-                           <ArtistLinks artists={Array.isArray(track.artist) ? track.artist : [track.artist || 'Unknown Artist']} />
+                           <ArtistLinks artists={Array.isArray(track.artist) ? track.artist : [track.artist || 'Unknown Artist']} onLinkClick={() => setIsExpanded(false)} />
                         </div>
                       </button>
                       <Button
