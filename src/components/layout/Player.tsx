@@ -1,4 +1,3 @@
-
 "use client";
 
 import Image from "next/image";
@@ -18,8 +17,11 @@ import {
   Repeat,
   Repeat1,
   Shuffle,
+  Download,
+  Trash2,
+  Loader2,
 } from "lucide-react";
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import Link from "next/link";
 
@@ -41,6 +43,9 @@ import {
 } from "@/components/ui/popover";
 import { QueueSheet } from "@/components/player/QueueSheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useToast } from "@/hooks/use-toast";
+import { saveAudio, getDownloadedPodcastIds, deleteAudio } from "@/lib/idb";
+import type { Podcast } from "@/lib/types";
 
 function formatTime(seconds: number) {
   if (isNaN(seconds)) return "0:00";
@@ -188,6 +193,89 @@ const PlayerControls = ({ isExpanded = false }: { isExpanded?: boolean }) => {
   );
 }
 
+const DownloadButton = ({ podcast }: { podcast: Podcast }) => {
+  const { toast } = useToast();
+  const [downloadState, setDownloadState] = useState<"idle" | "downloading" | "downloaded">("idle");
+
+  useEffect(() => {
+    async function checkStatus() {
+      const downloadedIds = await getDownloadedPodcastIds();
+      if (downloadedIds.includes(podcast.id)) {
+        setDownloadState("downloaded");
+      } else {
+        setDownloadState("idle");
+      }
+    }
+    checkStatus();
+    // Poll for changes in case download happens elsewhere
+    const interval = setInterval(checkStatus, 3000);
+    return () => clearInterval(interval);
+  }, [podcast.id]);
+
+  const handleDownload = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (downloadState !== "idle") return;
+
+    setDownloadState("downloading");
+    toast({
+      title: "Download Started",
+      description: `Downloading "${podcast.title}"...`,
+    });
+    try {
+      const response = await fetch(podcast.audioUrl);
+      if (!response.ok) throw new Error("Network response was not ok");
+      const blob = await response.blob();
+      await saveAudio(podcast, blob);
+      setDownloadState("downloaded");
+      toast({
+        title: "Download Complete",
+        description: `"${podcast.title}" is now available offline.`,
+      });
+    } catch (error) {
+      setDownloadState("idle");
+      toast({
+        variant: "destructive",
+        title: "Download Failed",
+        description: `Could not download "${podcast.title}".`,
+      });
+    }
+  };
+
+  const handleDelete = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (downloadState !== "downloaded") return;
+
+    try {
+      await deleteAudio(podcast.id);
+      setDownloadState("idle");
+      toast({
+        title: "Download Deleted",
+        description: `"${podcast.title}" has been removed from your device.`,
+      });
+    } catch (error) {
+       toast({
+        variant: "destructive",
+        title: "Delete Failed",
+        description: `Could not delete "${podcast.title}".`,
+      });
+    }
+  };
+
+  return (
+    <Button
+      variant="outline"
+      size="icon"
+      onClick={downloadState === 'downloaded' ? handleDelete : handleDownload}
+      disabled={downloadState === 'downloading'}
+      className="h-10 w-10"
+    >
+      {downloadState === 'downloading' && <Loader2 className="h-5 w-5 animate-spin" />}
+      {downloadState === 'idle' && <Download className="h-5 w-5" />}
+      {downloadState === 'downloaded' && <Trash2 className="h-5 w-5 text-destructive" />}
+    </Button>
+  );
+};
+
 
 const ExpandedPlayerMobile = () => {
     const { 
@@ -278,7 +366,7 @@ const ExpandedPlayerMobile = () => {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="h-10 flex-grow" onClick={(e) => e.stopPropagation()}>
-                  <Moon className="mr-2 h-4 w-4" /> {sleepTimerDisplay || "Timer"}
+                  <Moon className="mr-2 h-4 w-4" /> {sleepTimerDisplay || ""}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
@@ -299,16 +387,7 @@ const ExpandedPlayerMobile = () => {
             >
               <RepeatButtonIcon className="h-5 w-5" />
             </Button>
-             <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" size="icon" className="h-10 w-10" onClick={(e) => e.stopPropagation()}>
-                    <Volume2 className="h-5 w-5"/>
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent side="top" onClick={(e) => e.stopPropagation()} className="w-48 p-2 mb-2">
-                  {VolumeControl}
-                </PopoverContent>
-            </Popover>
+             <DownloadButton podcast={currentTrack} />
             <QueueSheet>
               <Button variant="outline" size="icon" className="h-10 w-10">
                 <ListMusic className="h-5 w-5" />
@@ -442,6 +521,7 @@ const ExpandedPlayerDesktop = () => {
             >
               <Shuffle className="h-5 w-5" />
             </Button>
+            <DownloadButton podcast={currentTrack} />
             <QueueSheet>
                <Button variant="outline" className="h-10 w-auto px-4">
                 <ListMusic className="mr-2 h-5 w-5" />
@@ -701,4 +781,3 @@ export default function Player() {
     </>
   );
 }
-    
