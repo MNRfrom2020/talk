@@ -366,8 +366,12 @@ const ExpandedPlayerMobile = () => {
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="h-10 w-10" onClick={(e) => e.stopPropagation()}>
-                  <Moon className={cn(sleepTimerDisplay && "mr-0")} /> {sleepTimerDisplay}
+                 <Button variant="outline" className="h-10 w-10" onClick={(e) => e.stopPropagation()}>
+                  {sleepTimerDisplay ? (
+                    <span className="text-xs">{sleepTimerDisplay}</span>
+                  ) : (
+                    <Moon className="h-5 w-5" />
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
@@ -405,7 +409,9 @@ const ExpandedPlayerMobile = () => {
               </Button>
             </QueueSheet>
         </div>
-        {VolumeControl}
+        <div className="sm:hidden">
+          {VolumeControl}
+        </div>
       </div>
     </div>
   );
