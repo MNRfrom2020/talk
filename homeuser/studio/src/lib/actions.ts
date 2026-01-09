@@ -4,14 +4,17 @@
 import { revalidatePath } from "next/cache";
 import { supabase } from "./supabase";
 import { z } from "zod";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 // Function to get current time in Bangladesh Standard Time (UTC+6)
 const getBstDate = () => {
-  const now = new Date();
-  const bstOffset = 6 * 60 * 60 * 1000; // 6 hours in milliseconds
-  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-  return new Date(utc + bstOffset);
-}
+  return dayjs().tz("Asia/Dhaka").toDate();
+};
 
 export async function upsertListeningHistory(payload: {
   user_uid: string;
@@ -19,7 +22,18 @@ export async function upsertListeningHistory(payload: {
   duration?: number;
 }) {
   try {
-    const dataToUpsert: { [key: string]: any } = {
+    const { data: existingRecord, error: selectError } = await supabase
+      .from("listening_history")
+      .select("id, duration")
+      .eq("user_uid", payload.user_uid)
+      .eq("podcast_id", payload.podcast_id)
+      .single();
+
+    if (selectError && selectError.code !== 'PGRST116') { // PGRST116: No rows found
+      throw selectError;
+    }
+
+    const dataToUpsert: { [key: string]: any; } = {
       user_uid: payload.user_uid,
       podcast_id: payload.podcast_id,
       last_played_at: getBstDate().toISOString(),
@@ -27,13 +41,20 @@ export async function upsertListeningHistory(payload: {
 
     if (payload.duration !== undefined && !isNaN(payload.duration)) {
       dataToUpsert.duration = Math.round(payload.duration);
+    } else if (!existingRecord) {
+      // If it's a new record and no duration is provided, default to 0 to satisfy NOT NULL constraint.
+      dataToUpsert.duration = 0;
     }
+    // If it's an existing record and no duration is provided, we don't set the duration field,
+    // so it keeps its existing value in the database unless explicitly updated.
 
     const { error } = await supabase.from("listening_history").upsert(
       dataToUpsert,
       { onConflict: "user_uid,podcast_id" },
     );
+
     if (error) throw error;
+    
     return { message: "Successfully updated listening history." };
   } catch (error: any) {
     return {
@@ -55,6 +76,8 @@ const PodcastFormSchema = z.object({
   created_at: z.string().optional(),
 });
 
+const PartialPodcastFormSchema = PodcastFormSchema.partial();
+
 type PodcastFormValues = z.infer<typeof PodcastFormSchema>;
 
 export type PodcastState = {
@@ -62,7 +85,7 @@ export type PodcastState = {
   message?: string | null;
 };
 
-export async function savePodcast(
+export async function createPodcast(
   values: PodcastFormValues,
 ): Promise<PodcastState> {
   const validatedFields = PodcastFormSchema.safeParse(values);
@@ -70,50 +93,79 @@ export async function savePodcast(
   if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
-      message: "Missing Fields. Failed to Save Podcast.",
+      message: "Missing Fields. Failed to Create Podcast.",
     };
   }
-
+  
   const { id, ...data } = validatedFields.data;
 
-  const podcastData: { [key: string]: any } = {
+  const podcastData: { [key: string]: any; } = {
     title: data.title,
     artist: data.artist.split(",").map((s) => s.trim()),
     categories: data.categories.split(",").map((s) => s.trim()),
     cover_art: data.cover_art,
     cover_art_hint: data.cover_art_hint,
     audio_url: data.audio_url,
+    created_at: data.created_at ? new Date(data.created_at).toISOString() : getBstDate().toISOString(),
   };
 
-  if (data.created_at) {
-    podcastData.created_at = new Date(data.created_at).toISOString();
-  } else if (!id) {
-    podcastData.created_at = getBstDate().toISOString();
-  }
-
   try {
-    if (id) {
-      // Update existing podcast
-      const { error } = await supabase
-        .from("podcasts")
-        .update(podcastData)
-        .eq("id", id);
-      if (error) throw error;
-    } else {
-      // Create new podcast
-      const { error } = await supabase.from("podcasts").insert(podcastData);
-      if (error) throw error;
-    }
+    const { error } = await supabase.from("podcasts").insert(podcastData);
+    if (error) throw error;
   } catch (error: any) {
     return {
-      message: `Database Error: Failed to ${id ? "Update" : "Create"} Podcast. ${error.message}`,
+      message: `Database Error: Failed to Create Podcast. ${error.message}`,
     };
   }
 
   revalidatePath("/admin/dashboard/audios");
   revalidatePath("/");
-  return { message: "Successfully saved podcast." };
+  return { message: "Successfully created podcast." };
 }
+
+export async function updatePodcast(
+  id: string,
+  values: Partial<PodcastFormValues>,
+): Promise<PodcastState> {
+    const validatedFields = PartialPodcastFormSchema.safeParse(values);
+
+    if (!validatedFields.success) {
+        return {
+            errors: validatedFields.error.flatten().fieldErrors,
+            message: "Invalid Fields. Failed to Update Podcast.",
+        };
+    }
+    
+    const data = validatedFields.data;
+
+    const podcastData: { [key: string]: any; } = {};
+
+    // Only add fields that are present in the partial `data` object
+    if (data.title) podcastData.title = data.title;
+    if (data.artist) podcastData.artist = data.artist.split(",").map((s) => s.trim());
+    if (data.categories) podcastData.categories = data.categories.split(",").map((s) => s.trim());
+    if (data.cover_art) podcastData.cover_art = data.cover_art;
+    if (data.cover_art_hint) podcastData.cover_art_hint = data.cover_art_hint;
+    if (data.audio_url) podcastData.audio_url = data.audio_url;
+    if (data.created_at) podcastData.created_at = new Date(data.created_at).toISOString();
+
+    try {
+        const { error } = await supabase
+            .from("podcasts")
+            .update(podcastData)
+            .eq("id", id);
+        if (error) throw error;
+    } catch (error: any) {
+        return {
+            message: `Database Error: Failed to Update Podcast. ${error.message}`,
+        };
+    }
+
+    revalidatePath("/admin/dashboard/audios");
+    revalidatePath("/");
+    return { message: "Successfully updated podcast." };
+}
+
 
 export async function deletePodcast(id: string) {
   try {
@@ -160,7 +212,7 @@ export async function savePlaylist(
   
   const { id, ...data } = validatedFields.data;
 
-  const playlistData: { [key: string]: any } = {
+  const playlistData: { [key: string]: any; } = {
       name: data.name,
       podcast_ids: data.podcast_ids,
       cover: data.cover,
@@ -215,13 +267,13 @@ type UserPlaylistFormValues = z.infer<typeof UserPlaylistFormSchema>;
 export async function saveUserPlaylist(
   values: Partial<UserPlaylistFormValues>,
 ): Promise<PlaylistState> {
-  const isUpdate = !!values.id;
-  const schema = isUpdate ? PartialUserPlaylistFormSchema : UserPlaylistFormSchema;
 
-  const validatedFields = schema.safeParse(values);
+   const isUpdate = !!values.id;
+   const schema = isUpdate ? PartialUserPlaylistFormSchema : UserPlaylistFormSchema;
 
+   const validatedFields = schema.safeParse(values);
+  
   if (!validatedFields.success) {
-    console.error("Validation Errors:", validatedFields.error.flatten().fieldErrors);
     return {
       errors: validatedFields.error.flatten().fieldErrors,
       message: "Missing Fields. Failed to Save User Playlist.",
@@ -229,10 +281,8 @@ export async function saveUserPlaylist(
   }
 
   const { id, ...data } = validatedFields.data;
-
-  // Build the payload with only defined fields to avoid overwriting with undefined
-  const playlistData: { [key: string]: any } = {};
-  if (data.user_uid) playlistData.user_uid = data.user_uid;
+  
+  const playlistData: { [key: string]: any; } = { user_uid: data.user_uid };
   if (data.name) playlistData.name = data.name;
   if (data.podcast_ids) playlistData.podcast_ids = data.podcast_ids;
   if (data.cover !== undefined) playlistData.cover = data.cover;
@@ -248,7 +298,6 @@ export async function saveUserPlaylist(
       if (error) throw error;
     } else {
       playlistData.created_at = getBstDate().toISOString();
-      if(!playlistData.user_uid) throw new Error("user_uid is required for new playlists");
       const { error } = await supabase.from("user_playlists").insert(playlistData);
       if (error) throw error;
     }
@@ -324,7 +373,7 @@ export async function saveUser(values: UserFormValues): Promise<UserState> {
 
   const { uid, ...data } = validatedFields.data;
 
-  const userData: { [key: string]: any } = {
+  const userData: { [key: string]: any; } = {
     full_name: data.full_name,
     username: data.username,
     email: data.email,
@@ -337,8 +386,10 @@ export async function saveUser(values: UserFormValues): Promise<UserState> {
 
   try {
     if (uid) {
-      // Update existing user
-      userData.updated_at = new Date().toISOString();
+      // Update existing user, but do not change updated_at unless password is changed
+      if (data.pass) {
+        userData.updated_at = new Date().toISOString();
+      }
       const { error } = await supabase.from("users").update(userData).eq("uid", uid);
       if (error) throw error;
     } else {
@@ -418,5 +469,3 @@ export async function updateUserFavoritePlaylists(
     };
   }
 }
-
-    
