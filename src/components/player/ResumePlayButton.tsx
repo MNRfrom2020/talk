@@ -3,36 +3,15 @@
 
 import { usePlayer } from "@/context/PlayerContext";
 import { Button } from "@/components/ui/button";
-import { Play, Pause } from "lucide-react";
+import { Play } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { cn } from "@/lib/utils";
-
-const AudioWave = () => (
-    <motion.div
-        className={cn("flex w-6 h-6 items-center justify-center gap-0.5")}
-        >
-        <motion.div
-        className="w-1.5 h-4 bg-current rounded-full"
-        animate={{ scaleY: [1, 1.5, 1] }}
-        transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div
-        className="w-1.5 h-6 bg-current rounded-full"
-        animate={{ scaleY: [1.5, 1, 1.5] }}
-        transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.2 }}
-        />
-        <motion.div
-        className="w-1.5 h-4 bg-current rounded-full"
-        animate={{ scaleY: [1, 1.5, 1] }}
-        transition={{ duration: 0.8, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
-        />
-    </motion.div>
-)
 
 export default function ResumePlayButton() {
-  const { currentTrack, togglePlay, isExpanded, isPlaying } = usePlayer();
+  const { currentTrack, togglePlay, isExpanded } = usePlayer();
 
-  const isVisible = currentTrack && !isExpanded && !isPlaying;
+  // Show the button only when there is NO track in the player
+  // and the player is not expanded.
+  const isVisible = !currentTrack && !isExpanded;
 
   return (
     <AnimatePresence>
@@ -42,7 +21,7 @@ export default function ResumePlayButton() {
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 100 }}
           transition={{ duration: 0.3 }}
-          className="fixed bottom-24 right-4 z-50 md:bottom-28 md:right-8"
+          className="fixed bottom-24 right-4 z-50 md:bottom-8 md:right-8"
         >
           <Button
             size="icon"
@@ -52,7 +31,7 @@ export default function ResumePlayButton() {
                 togglePlay();
             }}
           >
-            {isPlaying ? <AudioWave /> : <Play className="h-8 w-8 fill-current" />}
+            <Play className="h-8 w-8 fill-current" />
           </Button>
         </motion.div>
       )}

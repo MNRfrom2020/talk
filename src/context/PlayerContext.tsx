@@ -618,19 +618,27 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     if (audioRef.current) {
       pause();
       audioRef.current.src = "";
+       if (currentBlobUrl.current) {
+        URL.revokeObjectURL(currentBlobUrl.current);
+        currentBlobUrl.current = null;
+      }
     }
+    // Don't clear last played track from local storage
+    const lastTrack = currentTrack;
     setCurrentTrack(null);
     setIsPlaying(false);
     setQueue([]);
     setCurrentPlaylist(null);
     setProgress(0);
     setDuration(0);
-    try {
-        localStorage.removeItem(LAST_PLAYED_STORAGE_KEY);
-    } catch(e) {
-        console.error("Failed to remove last played track", e);
+    if(lastTrack) {
+       try {
+        localStorage.setItem(LAST_PLAYED_STORAGE_KEY, JSON.stringify(lastTrack));
+      } catch(e) {
+          console.error("Failed to save last played track", e);
+      }
     }
-  }, [pause]);
+  }, [pause, currentTrack]);
 
   const seek = (time: number) => {
     if (audioRef.current) {
