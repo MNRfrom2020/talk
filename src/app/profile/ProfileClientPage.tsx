@@ -289,7 +289,7 @@ export default function ProfileClientPage({ initialUser, initialStats, allPodcas
           <FormItem>
             <FormLabel>Avatar URL</FormLabel>
             <FormControl>
-              <Input placeholder="https://example.com/avatar.png" {...field} />
+            <Input placeholder="https://example.com/avatar.png" {...field} value={field.value ?? ""} />
             </FormControl>
             <FormMessage />
           </FormItem>

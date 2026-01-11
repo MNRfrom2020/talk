@@ -50,6 +50,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import type { Podcast } from "@/lib/types";
+import ThemeSwitcher from "@/components/ThemeSwitcher";
 
 const guestFormSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -226,12 +227,12 @@ export default function ProfilePage() {
   const handleExport = () => {
     try {
       const dataToExport: any = {};
-      const keysToExport = ["user_profile", "podcast_history", "podcast_playlists_guest", "listening_log"];
+      const keysToExport = ["user_profile", "podcast_history", "podcast_playlists_guest", "listening_log", "app_theme"];
       
       keysToExport.forEach(key => {
         const item = localStorage.getItem(key);
         if(item) {
-           dataToExport[key] = JSON.parse(item);
+           dataToExport[key] = key === "user_profile" || key === "app_theme" ? item : JSON.parse(item);
         }
       });
 
@@ -271,7 +272,8 @@ export default function ProfilePage() {
         const data = JSON.parse(text);
 
         Object.keys(data).forEach(key => {
-          localStorage.setItem(key, JSON.stringify(data[key]));
+          const value = typeof data[key] === 'string' ? data[key] : JSON.stringify(data[key]);
+          localStorage.setItem(key, value);
         });
 
         toast({
@@ -466,6 +468,10 @@ export default function ProfilePage() {
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
+                  
+                  <Separator />
+
+                  <ThemeSwitcher />
                   
                   <Separator />
                   
