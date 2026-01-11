@@ -171,7 +171,8 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       if (user.uid && !user.isGuest) {
         localStorage.removeItem(HISTORY_STORAGE_KEY);
         localStorage.removeItem(LISTENING_LOG_KEY);
-        localStorage.removeItem(LAST_PLAYED_STORAGE_KEY);
+        // We keep LAST_PLAYED_STORAGE_KEY for resume functionality across sessions even for logged-in users.
+        // localStorage.removeItem(LAST_PLAYED_STORAGE_KEY);
         setHistory([]); // Reset history state
         setListeningLog({}); // Reset log state
       }
@@ -254,22 +255,25 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         if (storedDurations) {
             setPodcastDurations(JSON.parse(storedDurations));
         }
+        // DO NOT set current track on load. Wait for user interaction.
+        /* 
          const lastPlayedTrackJSON = localStorage.getItem(LAST_PLAYED_STORAGE_KEY);
         if (lastPlayedTrackJSON) {
             const lastPlayedTrack = JSON.parse(lastPlayedTrackJSON) as Podcast;
             const fullTrackDetails = podcasts.find(p => p.id === lastPlayedTrack.id) || lastPlayedTrack;
-            setCurrentTrack(fullTrackDetails);
-            setAudioSource(fullTrackDetails, false);
+            // setCurrentTrack(fullTrackDetails); 
+            // setAudioSource(fullTrackDetails, false);
         }
+        */
 
       } catch (error) {
         console.error("Failed to load player settings from localStorage", error);
       }
     };
-    if (!user.loading && podcasts.length > 0) {
+    if (!user.loading) {
       loadData();
     }
-  }, [user, podcasts]);
+  }, [user]);
 
   // Cleanup timers and blob URL
   useEffect(() => {
@@ -357,6 +361,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   
       if (audioRef.current.src !== sourceUrl) {
         audioRef.current.src = sourceUrl;
+        audioRef.current.load(); // important to load new source
       }
       
       const savedProgress = playbackProgress[track.id];
@@ -371,6 +376,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
           audioRef.current.addEventListener('loadedmetadata', setTime);
       } else {
           setProgress(0);
+          if (audioRef.current) audioRef.current.currentTime = 0;
       }
   
       if (options.expand) {
@@ -1006,3 +1012,5 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     </PlayerContext.Provider>
   );
 };
+
+    
