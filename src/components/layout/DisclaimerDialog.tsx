@@ -24,8 +24,14 @@ export function DisclaimerDialog({ children }: { children: ReactNode }) {
           <DialogTitle>Disclaimer</DialogTitle>
           <DialogDescription>
             এখানে ব্যবহৃত সব অডিও শুধুমাত্র দাওয়াহ ও শিক্ষামূলক উদ্দেশ্যে
-            অন্তর্ভুক্ত করা হয়েছে। কতৃপক্ষের কোনো কপিরাইট সংক্রান্ত আপত্তি বা
-            অসুবিধা থাকলে অনুগ্রহ করে আমাদের সাথে যোগাযোগ করুন: mail@mnr.world
+            যুক্ত করা হয়েছে। কতৃপক্ষের কোনো কপিরাইট সংক্রান্ত আপত্তি বা
+            অসুবিধা থাকলে অনুগ্রহ করে আমাদের সাথে যোগাযোগ করুন:{" "}
+            <a
+              href="mailto:mail@mnr.world"
+              className="text-accent hover:underline"
+            >
+              mail@mnr.world
+            </a>
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="sm:justify-center">
