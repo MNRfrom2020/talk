@@ -5,18 +5,14 @@ import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ColumnDef,
-  ColumnFiltersState,
   SortingState,
-  flexRender,
   getCoreRowModel,
-  getFilteredRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
 import { PlusCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
