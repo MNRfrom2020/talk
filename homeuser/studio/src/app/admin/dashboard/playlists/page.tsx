@@ -5,6 +5,8 @@ import { columns } from "@/components/admin/playlists/columns";
 
 const ITEMS_PER_PAGE = 12;
 
+export const dynamic = 'force-dynamic';
+
 export default async function PlaylistsPage({
   searchParams,
 }: {

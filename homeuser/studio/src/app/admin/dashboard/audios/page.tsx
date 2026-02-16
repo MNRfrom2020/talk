@@ -4,6 +4,8 @@ import { columns } from "@/components/admin/audios/columns";
 
 const ITEMS_PER_PAGE = 20;
 
+export const dynamic = 'force-dynamic';
+
 export default async function AudiosPage({
   searchParams,
 }: {

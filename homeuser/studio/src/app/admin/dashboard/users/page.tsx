@@ -5,6 +5,8 @@ import { columns } from "@/components/admin/users/columns";
 
 const ITEMS_PER_PAGE = 12;
 
+export const dynamic = 'force-dynamic';
+
 export default async function UsersPage({
   searchParams,
 }: {
