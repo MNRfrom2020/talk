@@ -46,10 +46,6 @@ export function UsersDataTable<TData extends User, TValue>({
   const currentPage = Number(page);
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    [],
-  );
-  const [globalFilter, setGlobalFilter] = React.useState("");
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [selectedUser, setSelectedUser] = React.useState<TData | null>(null);
 
@@ -86,29 +82,14 @@ export function UsersDataTable<TData extends User, TValue>({
     pageCount,
     manualPagination: true,
     onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    onGlobalFilterChange: setGlobalFilter,
     state: {
       sorting,
-      columnFilters,
-      globalFilter,
       pagination: {
         pageIndex: currentPage - 1,
         pageSize: 12,
       },
-    },
-    globalFilterFn: (row, columnId, filterValue) => {
-      const user = row.original as User;
-      const search = filterValue.toLowerCase();
-
-      return (
-        user.full_name.toLowerCase().includes(search) ||
-        user.username.toLowerCase().includes(search) ||
-        user.email.toLowerCase().includes(search)
-      );
     },
   });
   
@@ -123,12 +104,7 @@ export function UsersDataTable<TData extends User, TValue>({
     <div className="w-full">
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <div className="flex flex-col gap-4 py-4 md:flex-row md:items-center md:justify-between">
-          <Input
-            placeholder="নাম, ইউজারনেম বা ইমেইল দিয়ে খুঁজুন..."
-            value={globalFilter ?? ""}
-            onChange={(event) => setGlobalFilter(event.target.value)}
-            className="w-full md:max-w-sm"
-          />
+          <div className="w-full md:max-w-sm" />
           <Button onClick={handleAddNew} className="w-full md:w-auto">
             <PlusCircle className="mr-2 h-4 w-4" />
             Add User
@@ -151,7 +127,7 @@ export function UsersDataTable<TData extends User, TValue>({
 
         <div className="flex items-center justify-end space-x-2 py-4">
           <div className="flex-1 text-sm text-muted-foreground">
-             {table.getFilteredRowModel().rows.length} user(s) on this page.
+             {table.getRowModel().rows.length} user(s) on this page.
           </div>
           <div className="flex items-center space-x-2">
             <Button
