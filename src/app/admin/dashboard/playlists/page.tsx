@@ -1,10 +1,23 @@
 
-import { getPlaylists, getPodcasts } from "@/lib/data";
+import { getPaginatedPlaylists, getPodcasts } from "@/lib/data";
 import { PlaylistsDataTable } from "@/components/admin/playlists/DataTable";
 import { columns } from "@/components/admin/playlists/columns";
 
-export default async function PlaylistsPage() {
-  const playlists = await getPlaylists();
+const ITEMS_PER_PAGE = 12;
+
+export const dynamic = 'force-dynamic';
+
+export default async function PlaylistsPage({
+  searchParams,
+}: {
+  searchParams?: { page?: string };
+}) {
+  const currentPage = Number(searchParams?.page) || 1;
+  const { playlists, count } =
+    await getPaginatedPlaylists(currentPage, ITEMS_PER_PAGE);
+  const totalPages = Math.ceil((count ?? 0) / ITEMS_PER_PAGE);
+
+  // getPodcasts is still needed for the playlist detail sheet view
   const podcasts = await getPodcasts();
 
   return (
@@ -16,6 +29,7 @@ export default async function PlaylistsPage() {
         columns={columns}
         data={playlists}
         podcasts={podcasts}
+        pageCount={totalPages}
       />
     </main>
   );

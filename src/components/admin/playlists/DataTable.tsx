@@ -2,21 +2,17 @@
 "use client";
 
 import * as React from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ColumnDef,
-  ColumnFiltersState,
   SortingState,
-  flexRender,
   getCoreRowModel,
-  getFilteredRowModel,
-  getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
 import { PlusCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
@@ -28,10 +24,15 @@ import type { Playlist, Podcast } from "@/lib/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { CellActions } from "./columns";
 import PlaylistCard from "./PlaylistCard";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import AudioCard from "../audios/AudioCard";
 import AudioForm from "../audios/AudioForm";
-
 
 const ITEMS_PER_PAGE = 20;
 
@@ -79,7 +80,6 @@ const Pagination = ({
   );
 };
 
-
 const PlaylistDetailSheet = ({
   playlist,
   allPodcasts,
@@ -93,9 +93,11 @@ const PlaylistDetailSheet = ({
 
   const podcastsInPlaylist = React.useMemo(() => {
     const podcastMap = new Map(allPodcasts.map((p) => [p.id, p]));
-    return playlist.podcast_ids
-      .map((id) => podcastMap.get(id))
-      .filter((p): p is Podcast => !!p);
+    return (
+      playlist.podcast_ids
+        ?.map((id) => podcastMap.get(id))
+        .filter((p): p is Podcast => !!p) || []
+    );
   }, [playlist, allPodcasts]);
 
   const totalPages = Math.ceil(podcastsInPlaylist.length / ITEMS_PER_PAGE);
@@ -137,27 +139,31 @@ const PlaylistDetailSheet = ({
   );
 };
 
-
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
   data: TData[];
   podcasts: Podcast[];
+  pageCount: number;
 }
 
 export function PlaylistsDataTable<TData extends Playlist, TValue>({
   columns: initialColumns,
   data,
   podcasts,
+  pageCount,
 }: DataTableProps<TData, TValue>) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const page = searchParams.get("page") ?? "1";
+  const currentPage = Number(page);
+
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    [],
-  );
   const [rowSelection, setRowSelection] = React.useState({});
-  const [globalFilter, setGlobalFilter] = React.useState("");
   const [isFormOpen, setIsFormOpen] = React.useState(false);
   const [isAudioFormOpen, setIsAudioFormOpen] = React.useState(false);
-  const [selectedPodcast, setSelectedPodcast] = React.useState<Podcast | null>(null);
+  const [selectedPodcast, setSelectedPodcast] = React.useState<Podcast | null>(
+    null,
+  );
 
   const [selectedPlaylist, setSelectedPlaylist] =
     React.useState<TData | null>(null);
@@ -171,69 +177,60 @@ export function PlaylistsDataTable<TData extends Playlist, TValue>({
     setSelectedPlaylist(playlist);
     setIsFormOpen(true);
   };
-  
+
   const handleAudioEdit = (podcast: Podcast) => {
     setSelectedPodcast(podcast);
     setIsAudioFormOpen(true);
   };
 
-
-  const columns = React.useMemo<ColumnDef<TData, TValue>[]>(() => {
-    return initialColumns.map((col) => {
-      if ("id" in col && col.id === "actions") {
-        return {
-          ...col,
-          cell: (props) => (
-            <CellActions {...(props as any)} onEdit={handleEdit} />
-          ),
-        };
-      }
-      return col;
-    });
-  }, [initialColumns]);
+  const columns = React.useMemo<ColumnDef<TData, TValue>[]>(
+    () => {
+      return initialColumns.map((col) => {
+        if ("id" in col && col.id === "actions") {
+          return {
+            ...col,
+            cell: (props) => (
+              <CellActions {...(props as any)} onEdit={handleEdit} />
+            ),
+          };
+        }
+        return col;
+      });
+    },
+    [initialColumns],
+  );
 
   const table = useReactTable({
     data,
     columns,
+    pageCount,
+    manualPagination: true,
     onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     onRowSelectionChange: setRowSelection,
-    onGlobalFilterChange: setGlobalFilter,
     state: {
       sorting,
-      columnFilters,
       rowSelection,
-      globalFilter,
-    },
-    initialState: {
       pagination: {
+        pageIndex: currentPage - 1,
         pageSize: 12,
       },
     },
-     globalFilterFn: (row, columnId, filterValue) => {
-        const playlist = row.original as Playlist;
-        const search = filterValue.toLowerCase();
-        
-        return (
-          playlist.name.toLowerCase().includes(search)
-        );
-      },
   });
+  
+  const createPageURL = (pageNumber: number | string) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", pageNumber.toString());
+    return `/admin/dashboard/playlists?${params.toString()}`;
+  };
+
 
   return (
     <div className="w-full">
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <div className="flex flex-col gap-4 py-4 md:flex-row md:items-center md:justify-between">
-          <Input
-            placeholder="প্লেলিস্ট খুঁজুন..."
-            value={globalFilter ?? ""}
-            onChange={(event) => setGlobalFilter(event.target.value)}
-            className="w-full md:max-w-sm"
-          />
+          <div className="w-full md:max-w-sm" />
           <Button onClick={handleAddNew} className="w-full md:w-auto">
             <PlusCircle className="mr-2 h-4 w-4" />
             Add Playlist
@@ -243,7 +240,7 @@ export function PlaylistsDataTable<TData extends Playlist, TValue>({
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => (
-               <Sheet key={row.original.id}>
+              <Sheet key={row.original.id}>
                 <SheetTrigger asChild>
                   <div className="cursor-pointer">
                     <PlaylistCard
@@ -265,33 +262,31 @@ export function PlaylistsDataTable<TData extends Playlist, TValue>({
         </div>
 
         <div className="flex items-center justify-between space-x-2 py-4">
-            <div className="flex-1 text-sm text-muted-foreground">
-              {table.getFilteredRowModel().rows.length} of {data.length}{" "}
-              playlist(s).
-            </div>
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.previousPage()}
-                disabled={!table.getCanPreviousPage()}
-              >
-                Previous
-              </Button>
-              <span className="text-sm">
-                Page {table.getState().pagination.pageIndex + 1} of{" "}
-                {table.getPageCount()}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => table.nextPage()}
-                disabled={!table.getCanNextPage()}
-              >
-                Next
-              </Button>
-            </div>
+          <div className="flex-1 text-sm text-muted-foreground">
+            {table.getRowModel().rows.length} playlist(s) on this page.
           </div>
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push(createPageURL(currentPage - 1))}
+              disabled={currentPage <= 1}
+            >
+              Previous
+            </Button>
+            <span className="text-sm">
+              Page {currentPage} of {pageCount}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push(createPageURL(currentPage + 1))}
+              disabled={currentPage >= pageCount}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
 
         <DialogContent className="sm:max-w-[800px]">
           <DialogHeader>
@@ -308,8 +303,8 @@ export function PlaylistsDataTable<TData extends Playlist, TValue>({
           </ScrollArea>
         </DialogContent>
       </Dialog>
-      
-       <Dialog open={isAudioFormOpen} onOpenChange={setIsAudioFormOpen}>
+
+      <Dialog open={isAudioFormOpen} onOpenChange={setIsAudioFormOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Edit Audio</DialogTitle>
