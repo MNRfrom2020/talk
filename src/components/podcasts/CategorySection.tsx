@@ -1,22 +1,22 @@
 
-"use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { Podcast } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import PodcastCard from "./PodcastCard";
 import { Loader2 } from "lucide-react";
+import { usePodcast } from "@/context/PodcastContext";
 
 const getItemsPerRow = () => {
   if (typeof window === "undefined") {
-    return 6; // Default for server-side rendering
+    return 6;
   }
-  if (window.innerWidth >= 1536) return 6; // 2xl
-  if (window.innerWidth >= 1280) return 5; // xl
-  if (window.innerWidth >= 1024) return 4; // lg
-  if (window.innerWidth >= 768) return 3; // md
-  if (window.innerWidth >= 640) return 3; // sm
-  return 2; // mobile
+  if (window.innerWidth >= 1536) return 6;
+  if (window.innerWidth >= 1280) return 5;
+  if (window.innerWidth >= 1024) return 4;
+  if (window.innerWidth >= 768) return 3;
+  if (window.innerWidth >= 640) return 3;
+  return 2;
 };
 
 const Loader = () => (
@@ -27,62 +27,81 @@ const Loader = () => (
 
 export default function CategorySection({
   title,
-  podcasts,
+  podcasts: initialPodcasts, // Optional initial list for "Recently Added"
+  type = "category",
+  name,
 }: {
   title: string;
-  podcasts: Podcast[];
+  podcasts?: Podcast[];
+  type?: "category" | "artist" | "recent" | "quran";
+  name?: string;
 }) {
+  const { fetchPodcasts } = usePodcast();
   const [itemsPerRow, setItemsPerRow] = useState(getItemsPerRow());
-  const [visibleCount, setVisibleCount] = useState(itemsPerRow);
+  const [podcasts, setPodcasts] = useState<Podcast[]>(initialPodcasts || []);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const loaderRef = useRef<HTMLDivElement>(null);
+
+  const loadData = useCallback(async (isInitial = false) => {
+    if (isLoading || (!hasMore && !isInitial)) return;
+    
+    setIsLoading(true);
+    const limit = isInitial ? itemsPerRow : itemsPerRow * 4;
+    const offset = isInitial ? 0 : podcasts.length;
+
+    let params: any = { action: "list", limit, offset };
+    if (type === "category" || type === "quran") params.category = name || title;
+    if (type === "artist") params.artist = name || title;
+
+    const newItems = await fetchPodcasts(params);
+    
+    if (isInitial) {
+        setPodcasts(newItems);
+    } else {
+        setPodcasts(prev => [...prev, ...newItems]);
+    }
+
+    setHasMore(newItems.length >= limit);
+    setIsLoading(false);
+  }, [isLoading, hasMore, itemsPerRow, type, name, title, podcasts.length, fetchPodcasts]);
+
+  useEffect(() => {
+    // Only fetch if we don't have initial podcasts or if it's a specific category/artist
+    if (!initialPodcasts || initialPodcasts.length === 0) {
+        loadData(true);
+    }
+  }, []);
 
   useEffect(() => {
     const handleResize = () => {
-      const newItemsPerRow = getItemsPerRow();
-      setItemsPerRow(newItemsPerRow);
-      // Reset visible count on resize if not expanded
-      if (!isExpanded) {
-        setVisibleCount(newItemsPerRow);
-      }
+      setItemsPerRow(getItemsPerRow());
     };
-
     window.addEventListener("resize", handleResize);
-    handleResize();
-
     return () => window.removeEventListener("resize", handleResize);
-  }, [isExpanded]);
+  }, []);
   
   const handleSeeAll = () => {
     setIsExpanded(true);
-    setVisibleCount(itemsPerRow * 3);
+    if (podcasts.length <= itemsPerRow) {
+        loadData();
+    }
   };
   
   const handleShowLess = () => {
     setIsExpanded(false);
-    setVisibleCount(itemsPerRow);
   };
 
-  const displayedPodcasts = podcasts.slice(0, visibleCount);
-  const hasMore = podcasts.length > visibleCount;
-
-  const loadMore = useCallback(() => {
-    if (isLoading) return;
-    setIsLoading(true);
-    setTimeout(() => {
-      setVisibleCount(prev => Math.min(prev + itemsPerRow, podcasts.length));
-      setIsLoading(false);
-    }, 500); // Simulate network delay
-  }, [isLoading, itemsPerRow, podcasts.length]);
+  const displayedPodcasts = isExpanded ? podcasts : podcasts.slice(0, itemsPerRow);
 
   useEffect(() => {
     if (!isExpanded || !hasMore) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting) {
-          loadMore();
+        if (entries[0].isIntersecting && !isLoading) {
+          loadData();
         }
       },
       { rootMargin: "200px" },
@@ -98,7 +117,9 @@ export default function CategorySection({
         observer.unobserve(currentLoaderRef);
       }
     };
-  }, [isExpanded, hasMore, loadMore]);
+  }, [isExpanded, hasMore, isLoading, loadData]);
+
+  if (podcasts.length === 0 && !isLoading) return null;
 
   return (
     <section>
@@ -106,16 +127,15 @@ export default function CategorySection({
         <h2 className="font-headline text-2xl font-bold tracking-tight">
           {title}
         </h2>
-        {podcasts.length > itemsPerRow &&
-          (isExpanded ? (
-            <Button variant="link" onClick={handleShowLess}>
-              Show less
-            </Button>
-          ) : (
+        {hasMore && !isExpanded ? (
             <Button variant="link" onClick={handleSeeAll}>
               See all
             </Button>
-          ))}
+          ) : isExpanded ? (
+            <Button variant="link" onClick={handleShowLess}>
+              Show less
+            </Button>
+          ) : null}
       </div>
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 sm:gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
         {displayedPodcasts.map((podcast) => (
@@ -125,7 +145,7 @@ export default function CategorySection({
             playlist={podcasts}
           />
         ))}
-        {isExpanded && isLoading && <Loader />}
+        {isLoading && <Loader />}
       </div>
        <div ref={loaderRef} />
     </section>

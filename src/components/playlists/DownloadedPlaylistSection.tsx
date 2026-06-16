@@ -1,48 +1,44 @@
 
-"use client";
 
 import { useEffect, useState } from "react";
 import { usePlaylist } from "@/context/PlaylistContext";
-import { usePodcast } from "@/context/PodcastContext";
 import { getDownloadedPodcastIds } from "@/lib/idb";
 import type { Playlist } from "@/lib/types";
 import PlaylistCard from "./PlaylistCard";
 
 export default function DownloadedPlaylistSection() {
-  const { playlists, getPodcastsForPlaylist } = usePlaylist();
-  const { podcasts: allPodcasts } = usePodcast();
+  const { playlists } = usePlaylist();
   const [downloadedPlaylists, setDownloadedPlaylists] = useState<Playlist[]>([]);
 
   useEffect(() => {
     async function fetchAndCheckDownloads() {
-      if (playlists.length === 0 || allPodcasts.length === 0) return;
+      if (playlists.length === 0) return;
 
       const downloadedPodcastIds = new Set(await getDownloadedPodcastIds());
-      
-      const fullyDownloadedPlaylists = playlists.filter(playlist => {
-        if (playlist.podcast_ids.length === 0) {
+
+      // Deduplicate playlists by ID to prevent React key warnings
+      const uniquePlaylists = playlists.filter((playlist, index, self) =>
+        index === self.findIndex(p => p.id === playlist.id)
+      );
+
+      const fullyDownloadedPlaylists = uniquePlaylists.filter(playlist => {
+        if (!playlist.podcast_ids || playlist.podcast_ids.length === 0) {
           return false;
         }
 
-        const podcastsInPlaylist = getPodcastsForPlaylist(playlist.id, allPodcasts);
-        
-        // If some podcasts for the playlist are not in allPodcasts yet, we can't be sure.
-        if (podcastsInPlaylist.length !== playlist.podcast_ids.length) {
-            return false;
-        }
-
-        return podcastsInPlaylist.every(p => downloadedPodcastIds.has(p.id));
+        // A playlist is "downloaded" if ALL its podcast_ids exist in the downloads store
+        return playlist.podcast_ids.every(id => downloadedPodcastIds.has(id));
       });
-      
+
       setDownloadedPlaylists(fullyDownloadedPlaylists);
     }
-    
-    const interval = setInterval(fetchAndCheckDownloads, 2000);
+
+    const interval = setInterval(fetchAndCheckDownloads, 3000);
     fetchAndCheckDownloads();
 
     return () => clearInterval(interval);
 
-  }, [playlists, allPodcasts, getPodcastsForPlaylist]);
+  }, [playlists]);
 
   if (downloadedPlaylists.length === 0) {
     return null;

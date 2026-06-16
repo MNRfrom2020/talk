@@ -1,5 +1,4 @@
 
-"use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, type ReactNode } from "react";

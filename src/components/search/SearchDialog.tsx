@@ -1,8 +1,7 @@
 
-"use client";
 
 import { useState, useEffect, type ReactNode, type MouseEvent } from "react";
-import Image from "next/image";
+
 import {
   Play,
   Search,
@@ -98,7 +97,7 @@ const SearchResultItem = ({
       transition={{ duration: 0.2 }}
       className="group flex items-center gap-4 rounded-md p-2 transition-colors hover:bg-secondary"
     >
-      <Image
+      <img
         src={podcast.coverArt}
         alt={podcast.title}
         width={56}
@@ -230,7 +229,7 @@ export function SearchDialog({ children }: { children: ReactNode }) {
         return (
           podcast.title.toLowerCase().includes(lowerCaseQuery) ||
           artistMatch ||
-          podcast.categories.some((cat) =>
+          podcast.categories.some((cat: any) =>
             cat.toLowerCase().includes(lowerCaseQuery),
           ) ||
           podcast.coverArtHint.toLowerCase().includes(lowerCaseQuery)

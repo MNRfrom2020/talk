@@ -1,65 +1,75 @@
 
-"use client";
 
 import { useEffect, useState } from "react";
-import { getDownloadedPodcastIds } from "@/lib/idb";
-import { usePodcast } from "@/context/PodcastContext";
-import { usePlaylist } from "@/context/PlaylistContext";
+import { getDownloadedPodcasts, getDownloadedPodcastIds } from "@/lib/idb";
 import type { Podcast } from "@/lib/types";
 import CategorySection from "./CategorySection";
 
 export default function DownloadedList() {
-  const { podcasts: allPodcasts } = usePodcast();
-  const { playlists, getPodcastsForPlaylist } = usePlaylist();
   const [individualDownloads, setIndividualDownloads] = useState<Podcast[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function filterDownloads() {
-      if (allPodcasts.length === 0) return;
+      try {
+        const downloadedPodcasts = await getDownloadedPodcasts();
+        const downloadedPodcastIdsArray = await getDownloadedPodcastIds();
+        const downloadedPodcastIds = new Set(downloadedPodcastIdsArray); // Array to Set
 
-      const downloadedIds = new Set(await getDownloadedPodcastIds());
-      if (downloadedIds.size === 0) {
-        setIndividualDownloads([]);
-        return;
-      }
-
-      const podcastIdToPlaylistIds = new Map<string, string[]>();
-      playlists.forEach(p => {
-        p.podcast_ids.forEach(podcastId => {
-          if (!podcastIdToPlaylistIds.has(podcastId)) {
-            podcastIdToPlaylistIds.set(podcastId, []);
-          }
-          podcastIdToPlaylistIds.get(podcastId)!.push(p.id);
-        });
-      });
-
-      const fullyDownloadedPlaylistPocastIds = new Set<string>();
-      playlists.forEach(p => {
-        if (p.podcast_ids.length > 0 && p.podcast_ids.every(id => downloadedIds.has(id))) {
-          p.podcast_ids.forEach(id => fullyDownloadedPlaylistPocastIds.add(id));
-        }
-      });
-      
-      const individualDownloadIds = Array.from(downloadedIds).filter(id => !fullyDownloadedPlaylistPocastIds.has(id));
-
-      const finalPodcasts = individualDownloadIds
-        .map(id => allPodcasts.find(p => p.id === id))
-        .filter((p): p is Podcast => !!p);
+        // Get all playlists to check which podcasts belong to downloaded playlists
+        const playlistsResponse = await fetch("/api/playlists.php?action=list");
+        const playlists = await playlistsResponse.json();
         
-      finalPodcasts.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        // Find fully downloaded playlists
+        const fullyDownloadedPlaylistIds = new Set<string>();
+        const fullyDownloadedPodcastIds = new Set<string>();
+        
+        playlists.forEach((playlist: any) => {
+          const podcastIds = playlist.podcast_ids || [];
+          if (podcastIds.length > 0 && podcastIds.every((id: string) => downloadedPodcastIds.has(id))) {
+            fullyDownloadedPlaylistIds.add(playlist.id);
+            // Add all podcast IDs from this playlist to exclusion set
+            podcastIds.forEach((id: string) => fullyDownloadedPodcastIds.add(id));
+          }
+        });
 
-      setIndividualDownloads(finalPodcasts);
+        // Filter out podcasts that belong to fully downloaded playlists
+        const individualOnly = downloadedPodcasts.filter(
+          podcast => !fullyDownloadedPodcastIds.has(podcast.id)
+        );
+
+        // Sorting by created_at (most recent first)
+        const sorted = [...individualOnly].sort((a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        );
+
+        setIndividualDownloads(sorted);
+      } catch (error) {
+        console.error("Error loading downloads:", error);
+      } finally {
+        setIsLoading(false);
+      }
     }
 
-    const interval = setInterval(filterDownloads, 2000);
+    // Refresh every few seconds to catch new downloads
+    const interval = setInterval(filterDownloads, 3000);
     filterDownloads();
 
     return () => clearInterval(interval);
-  }, [allPodcasts, playlists, getPodcastsForPlaylist]);
+  }, []);
 
-  if (individualDownloads.length === 0) {
+  if (isLoading && individualDownloads.length === 0) {
     return null;
   }
 
-  return <CategorySection title="Downloads" podcasts={individualDownloads} />;
+  if (individualDownloads.length === 0) {
+    return (
+        <div className="flex flex-col items-center justify-center p-12 text-center opacity-70">
+            <p className="text-xl font-medium">No downloads found</p>
+            <p className="text-sm">Audios you download will appear here.</p>
+        </div>
+    );
+  }
+
+  return <CategorySection title="Your Downloads" podcasts={individualDownloads} />;
 }

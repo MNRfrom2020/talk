@@ -1,0 +1,29 @@
+# cPanel Configuration (.htaccess)
+
+# Disable directory browsing
+Options -Indexes
+
+# 1. Protect sensitive files
+<FilesMatch "^\.env">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Protect other config files
+<FilesMatch "^(package\.json|package-lock\.json|tsconfig\.json|vite\.config\.ts|biome\.json|apphosting\.yaml|next\.config\.ts)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# 2. React Router Fallback
+# All requests that are not for actual files or directories
+# should be handled by index.html
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME} !-l
+  RewriteRule . /index.html [L]
+</IfModule>

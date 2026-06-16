@@ -1,7 +1,6 @@
 
-"use client";
 
-import Image from "next/image";
+
 import {
   MoreVertical,
   Play,
@@ -331,12 +330,11 @@ export default function PodcastCard({
       >
         <CardContent className="p-4">
           <div className="relative mb-4 aspect-square">
-            <Image
+            <img
               src={podcast.coverArt}
               alt={podcast.title}
-              fill
-              className="rounded-md object-cover"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+              className="w-full h-full object-cover rounded-md object-cover"
+             
               data-ai-hint={podcast.coverArtHint}
             />
              {downloadState === 'downloaded' && (

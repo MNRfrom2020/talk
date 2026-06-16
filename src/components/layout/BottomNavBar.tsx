@@ -1,14 +1,13 @@
 
-"use client";
 
-import NextLink from "next/link";
-import { usePathname } from "next/navigation";
+import { Link as NextLink } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { Grid, Home, Library, MicVocal, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SearchDialog } from "../search/SearchDialog";
 
 export default function BottomNavBar() {
-  const pathname = usePathname();
+  const { pathname } = useLocation();
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 grid h-16 grid-cols-5 border-t border-border/50 bg-card/80 backdrop-blur-sm md:hidden">
       <NavItem
@@ -54,8 +53,7 @@ interface NavItemProps {
 
 function NavItem({ href, label, icon: Icon, isActive }: NavItemProps) {
   return (
-    <NextLink
-      href={href}
+    <NextLink to={href}
       className={cn(
         "flex flex-col items-center justify-center gap-1 text-xs transition-colors",
         isActive

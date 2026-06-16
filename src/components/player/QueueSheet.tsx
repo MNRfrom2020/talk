@@ -1,7 +1,6 @@
 
-"use client";
 
-import Image from "next/image";
+
 import { ListMusic, X, ChevronUp, ChevronDown, Shuffle } from "lucide-react";
 import {
   Sheet,
@@ -16,15 +15,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import * as React from "react";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 
 const ArtistLinks = ({ artists, onLinkClick }: { artists: string[]; onLinkClick: () => void; }) => {
   return (
     <div className="truncate text-sm text-muted-foreground">
       {artists.map((artist, index) => (
         <React.Fragment key={artist}>
-          <Link
-            href={`/artists/${encodeURIComponent(artist)}`}
+          <Link to={`/artists/${encodeURIComponent(artist)}`}
             className="hover:underline"
             onClick={(e) => {
               e.stopPropagation();
@@ -89,7 +87,7 @@ export function QueueSheet({ children }: { children: React.ReactNode }) {
                       "border border-primary bg-primary/10",
                     )}
                   >
-                    <Image
+                    <img
                       src={currentTrack.coverArt}
                       alt={currentTrack.title}
                       width={48}
@@ -141,7 +139,7 @@ export function QueueSheet({ children }: { children: React.ReactNode }) {
                         className="flex flex-1 items-center gap-4 overflow-hidden text-left"
                         onClick={() => playTrackFromQueue(track.id)}
                       >
-                        <Image
+                        <img
                           src={track.coverArt}
                           alt={track.title}
                           width={48}

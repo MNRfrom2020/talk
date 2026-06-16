@@ -1,5 +1,4 @@
 
-"use client";
 
 import { usePlaylist } from "@/context/PlaylistContext";
 import PlaylistCard from "./PlaylistCard";
@@ -15,21 +14,26 @@ export default function PlaylistList() {
   const favoritesPlaylist = playlists.find(
     (p) => p.id === FAVORITES_PLAYLIST_ID
   );
-  
+
   const otherUserPlaylists = playlists
     .filter((p) => p.id !== FAVORITES_PLAYLIST_ID && !p.isPredefined)
     .sort((a, b) => {
       return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
 
+  // 🔧 Fix: Assign fallback name for playlists missing it (predefined favorites from guest mode)
   const allUserPlaylists = [
     ...(favoritesPlaylist ? [favoritesPlaylist] : []),
-    ...otherUserPlaylists
+    ...otherUserPlaylists.map((p: any) => ({
+      ...p,
+      name: p.name || `Playlist ${String(p.id).slice(0, 8)}`
+    }))
   ];
 
 
+
   if (allUserPlaylists.length === 0 && user.isGuest) {
-    return null; 
+    return null;
   }
 
   return (

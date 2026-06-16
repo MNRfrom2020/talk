@@ -1,8 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
-/.pnp
+node_modules/
+.pnp/
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -11,24 +11,37 @@
 !.yarn/versions
 
 # testing
-/coverage
+coverage/
 
 # next.js
-/.next/
-/out/
+.next/
+out/
 
-# production
-/build
+# vite / production
+dist/
+dist-ssr/
+build/
 
-# misc
+# misc / IDEs
 .DS_Store
 *.pem
+.vscode/
+.idea/
+.idx/
 
-# debug
+# AI assistant directories
+.codex
+.qwen/
+
+# log files and error logs
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+errors.txt
+build_errors.txt
+build_errors_2.txt
 
 # vercel
 .vercel
@@ -37,9 +50,17 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-.genkit/*
+# genkit
+.genkit/
+
+# env files (allow .env.example)
 .env*
+!.env.example
 
 # firebase
 firebase-debug.log
 firestore-debug.log
+
+# PWA / Workbox generated assets
+public/workbox-*.js
+public/fallback-*.js

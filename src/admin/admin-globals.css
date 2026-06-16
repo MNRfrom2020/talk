@@ -1,0 +1,21 @@
+/* 
+  Removed hardcoded color overrides to allow 
+  the admin panel to inherit the main site's theme.
+*/
+
+.admin-panel {
+  --radius: 0.5rem;
+  @apply bg-background text-foreground transition-colors duration-300;
+}
+
+.admin-panel * {
+  @apply border-border;
+}
+
+/* 
+  Ensuring the admin panel follows the main site's 
+  typography and rich aesthetics.
+*/
+.admin-panel {
+    font-family: inherit;
+}

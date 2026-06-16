@@ -1,7 +1,6 @@
-"use client";
 
 import * as React from "react";
-import NextLink from "next/link";
+import { Link as NextLink } from "react-router-dom";
 import { Slot } from "@radix-ui/react-slot";
 import { VariantProps, cva } from "class-variance-authority";
 import { PanelLeft } from "lucide-react";

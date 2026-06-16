@@ -1,5 +1,4 @@
 
-"use client";
 
 import type { Podcast } from "@/lib/types";
 import React, {
@@ -12,8 +11,7 @@ import React, {
 } from "react";
 import { usePodcast } from "./PodcastContext";
 import { useUser } from "./UserContext";
-import { supabase } from "@/lib/supabase";
-import { upsertListeningHistory } from "@/lib/actions";
+import { apiClient } from "@/lib/api-client";
 import { getListeningActivity } from "@/lib/data";
 import { getAudio } from "@/lib/idb";
 
@@ -25,6 +23,11 @@ const PLAYBACK_PROGRESS_KEY = "playback_progress";
 const PODCAST_DURATIONS_KEY = "podcast_durations";
 const LAST_PLAYED_STORAGE_KEY = "last_played_podcast";
 
+const hasSuperUserRole = (role?: string | string[]) => {
+  const userRoles = Array.isArray(role) ? role : [role || ""];
+  return userRoles.some((item) => item.toLowerCase().trim() === "super user");
+};
+
 
 // --- useThrottle Hook ---
 function useThrottle<T extends (...args: any[]) => any>(
@@ -32,7 +35,7 @@ function useThrottle<T extends (...args: any[]) => any>(
   delay: number,
 ) {
   const lastCall = useRef(0);
-  const timeout = useRef<NodeJS.Timeout | null>(null);
+  const timeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   return useCallback(
     (...args: Parameters<T>) => {
@@ -58,6 +61,8 @@ function useThrottle<T extends (...args: any[]) => any>(
 interface SleepTimerInfo {
   timeLeft: number | null;
   isActive: boolean;
+  stopWhenCurrentTrackEnds: boolean;
+  stopWhenPlaylistEnds: boolean;
 }
 
 type ListeningLog = Record<string, number>; // { 'YYYY-MM-DD': seconds }
@@ -107,13 +112,14 @@ interface PlayerContextType {
   playbackRate: number;
   setPlaybackRate: (rate: number) => void;
   sleepTimer: SleepTimerInfo;
-  setSleepTimer: (minutes: number | null) => void;
+  setSleepTimer: (minutes: number | null, options?: { stopWhenCurrentTrackEnds?: boolean; stopWhenPlaylistEnds?: boolean }) => void;
   listeningLog: ListeningLog;
   repeatMode: RepeatMode;
   setRepeatMode: React.Dispatch<React.SetStateAction<RepeatMode>>;
   toggleRepeatMode: () => void;
   playbackProgress: PlaybackProgress;
   podcastDurations: PodcastDurations;
+  loadListeningHistory: () => Promise<void>;
 }
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
@@ -128,7 +134,7 @@ export const usePlayer = () => {
 
 export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   const { podcasts } = usePodcast();
-  const { user } = useUser();
+  const { user, loading: userLoading } = useUser();
   const [currentTrack, setCurrentTrack] = useState<Podcast | null>(null);
   const [currentPlaylist, setCurrentPlaylist] = useState<Podcast[] | null>(
     null,
@@ -147,6 +153,8 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   const [sleepTimer, setSleepTimerState] = useState<SleepTimerInfo>({
     timeLeft: null,
     isActive: false,
+    stopWhenCurrentTrackEnds: false,
+    stopWhenPlaylistEnds: false,
   });
   const [listeningLog, setListeningLog] = useState<ListeningLog>({});
   const [playbackProgress, setPlaybackProgress] = useState<PlaybackProgress>({});
@@ -155,8 +163,8 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   const playPromiseController = useRef<AbortController | null>(null);
   const lastTimeUpdate = useRef(0);
   const isPlayingRef = React.useRef(isPlaying);
-  const sleepTimerId = useRef<NodeJS.Timeout | null>(null);
-  const sleepTimerIntervalId = useRef<NodeJS.Timeout | null>(null);
+  const sleepTimerId = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sleepTimerIntervalId = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentBlobUrl = useRef<string | null>(null);
 
 
@@ -167,75 +175,65 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   // Load data from localStorage or DB on initial mount
   useEffect(() => {
     const loadData = async () => {
-      // Clear guest data first if user is logged in
-      if (user.uid && !user.isGuest) {
-        localStorage.removeItem(HISTORY_STORAGE_KEY);
-        localStorage.removeItem(LISTENING_LOG_KEY);
-        localStorage.removeItem(LAST_PLAYED_STORAGE_KEY);
-        setHistory([]); // Reset history state
-        setListeningLog({}); // Reset log state
-      }
-      
-      let loadedHistory: Podcast[] = [];
+      const needsCloudSync = !!user.uid && hasSuperUserRole(user.role);
 
-      if (user.isGuest) {
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // 🏠 LOCAL USERS (Guest + Normal MNR users): Use generic keys
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      if (user.isGuest || !needsCloudSync) {
         try {
           const storedHistory = localStorage.getItem(HISTORY_STORAGE_KEY);
-          if (storedHistory) loadedHistory = JSON.parse(storedHistory);
-          setHistory(loadedHistory);
-          
-          const storedLog = localStorage.getItem(LISTENING_LOG_KEY);
-          if (storedLog) setListeningLog(JSON.parse(storedLog));
-
-        } catch (error) {
-          console.error("Failed to load guest data from localStorage", error);
-        }
-      } else if (user.uid) {
-        // --- LOGGED-IN USER ---
-        // Fetch from DB for logged-in user
-        const { data: listeningHistory, error } = await supabase
-          .from("listening_history")
-          .select("podcast_id, last_played_at")
-          .eq("user_uid", user.uid)
-          .order("last_played_at", { ascending: false });
-
-        if (error) {
-          console.error("Error fetching listening history:", error);
-        } else if (listeningHistory && listeningHistory.length > 0) {
-          const podcastIds = listeningHistory.map(item => item.podcast_id);
-          const { data: podcastsData, error: podcastsError } = await supabase
-            .from("podcasts")
-            .select("*")
-            .in("id", podcastIds);
-
-          if (podcastsError) {
-             console.error("Error fetching podcasts for history:", podcastsError);
-          } else {
-            const podcastsMap = new Map(podcastsData.map(p => [String(p.id), p]));
-            const dbHistory: Podcast[] = listeningHistory.map(item => {
-               const podcastDetails = podcastsMap.get(String(item.podcast_id));
-               if (!podcastDetails) return null;
-                return {
-                  id: String(podcastDetails.id),
-                  title: podcastDetails.title,
-                  artist: podcastDetails.artist,
-                  categories: podcastDetails.categories,
-                  coverArt: podcastDetails.cover_art,
-                  coverArtHint: podcastDetails.cover_art_hint,
-                  audioUrl: podcastDetails.audio_url,
-                  created_at: podcastDetails.created_at,
-                };
-            }).filter((p): p is Podcast => p !== null);
-            loadedHistory = dbHistory;
-            setHistory(loadedHistory);
+          if (storedHistory) {
+            const parsed = JSON.parse(storedHistory);
+            setHistory(parsed);
           }
+
+          const storedLog = localStorage.getItem(LISTENING_LOG_KEY);
+          if (storedLog) {
+            setListeningLog(JSON.parse(storedLog));
+          }
+        } catch (error) {
+          console.error("Failed to load local data", error);
         }
-        
-        // Fetch listening activity log for chart
-        const activityLog = await getListeningActivity(user.uid);
-        setListeningLog(activityLog);
+        return;
       }
-      
+
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      // ☁️ SUPER USERS: Use cloud sync with UUID
+      // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+      const cloudUserUid = user.uid;
+      if (!cloudUserUid) {
+        return;
+      }
+
+
+      // Fetch cloud history
+      try {
+        const historyData = await apiClient.get("listening_history.php", { action: "list", user_uid: cloudUserUid });
+        const cloudHistory: Podcast[] = (historyData || []).map((p: any) => ({
+          id: String(p.id),
+          title: p.title,
+          artist: Array.isArray(p.artist) ? p.artist : [p.artist],
+          categories: Array.isArray(p.categories) ? p.categories : [p.categories],
+          coverArt: p.cover_art,
+          coverArtHint: p.cover_art_hint,
+          audioUrl: p.audio_url,
+          created_at: p.created_at,
+        }));
+        setHistory(cloudHistory);
+      } catch (error) {
+      }
+
+      // Fetch listening activity log for chart
+      try {
+        const activityLog = await getListeningActivity(cloudUserUid);
+        if (activityLog && Object.keys(activityLog).length > 0) {
+          setListeningLog(activityLog);
+        }
+      } catch (err) {
+        console.error("Error fetching listening activity:", err);
+      }
+
       // Load volume, playback progress, and last played track for all users
       try {
         const storedVolume = localStorage.getItem(PLAYER_VOLUME_KEY);
@@ -266,10 +264,37 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         console.error("Failed to load player settings from localStorage", error);
       }
     };
-    if (!user.loading && podcasts.length > 0) {
+    if (!userLoading && podcasts.length > 0) {
       loadData();
     }
-  }, [user, podcasts]);
+  }, [user, podcasts, userLoading]);
+
+  // 🎯 On-demand history loading function (call from Profile page)
+  const loadListeningHistory = useCallback(async () => {
+    if (user.isGuest) {
+      const storedHistory = localStorage.getItem(HISTORY_STORAGE_KEY);
+      if (storedHistory) {
+        setHistory(JSON.parse(storedHistory));
+      }
+    } else if (user.uid && hasSuperUserRole(user.role)) {
+      try {
+        const historyData = await apiClient.get("listening_history.php", { action: "list", user_uid: user.uid });
+        const typedHistory: Podcast[] = (historyData || []).map((p: any) => ({
+          id: String(p.id),
+          title: p.title,
+          artist: Array.isArray(p.artist) ? p.artist : [p.artist],
+          categories: Array.isArray(p.categories) ? p.categories : [p.categories],
+          coverArt: p.cover_art,
+          coverArtHint: p.cover_art_hint,
+          audioUrl: p.audio_url,
+          created_at: p.created_at,
+        }));
+        setHistory(typedHistory);
+      } catch (error) {
+        console.error("Error fetching listening history:", error);
+      }
+    }
+  }, [user]);
 
   // Cleanup timers and blob URL
   useEffect(() => {
@@ -284,12 +309,16 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const saveListeningLog = useThrottle((log: ListeningLog) => {
-    if (user.isGuest) {
-      try {
+    try {
+      const needsCloudSync = !!user.uid && hasSuperUserRole(user.role);
+
+      if (needsCloudSync) {
+        localStorage.setItem(`listening_log_${user.uid}`, JSON.stringify(log));
+      } else {
         localStorage.setItem(LISTENING_LOG_KEY, JSON.stringify(log));
-      } catch (error) {
-        console.error("Failed to save listening log", error);
       }
+    } catch (error) {
+      console.error("Failed to save listening log", error);
     }
   }, 5000);
 
@@ -313,13 +342,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   }, 5000);
 
   const updateListeningHistoryDuration = useThrottle((trackId: string, currentTime: number) => {
-    if (!user.isGuest && user.uid && trackId) {
-        upsertListeningHistory({
-            user_uid: user.uid,
-            podcast_id: trackId,
-            duration: currentTime,
-        });
-    }
+    // Only track locally, no cloud sync
   }, 5000); // Update every 5 seconds
 
   const pause = useCallback(() => {
@@ -354,7 +377,10 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         sourceUrl = URL.createObjectURL(offlineAudio);
         currentBlobUrl.current = sourceUrl;
       }
-  
+
+      // Extra safety check: ensure audioRef.current still exists
+      if (!audioRef.current) return;
+
       if (audioRef.current.src !== sourceUrl) {
         audioRef.current.src = sourceUrl;
       }
@@ -416,28 +442,45 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       track,
       ...history.filter((item) => item.id !== track.id),
     ].slice(0, 50);
-    
+
     setHistory(newHistory);
      try {
         localStorage.setItem(LAST_PLAYED_STORAGE_KEY, JSON.stringify(track));
     } catch(e) {
         console.error("Failed to save last played track", e);
     }
+
+    // ✅ Always save locally first (Offline-First)
+    const needsCloudSync = !!user.uid && hasSuperUserRole(user.role);
+    if (needsCloudSync) {
+      const userSpecificKey = `listening_history_${user.uid}`;
+      try {
+        // Convert history to format suitable for local storage
+        const historyForLocal = newHistory.map(podcast => ({
+          podcast_id: podcast.id,
+          title: podcast.title,
+          artist: podcast.artist,
+          categories: podcast.categories,
+          cover_art: podcast.coverArt,
+          cover_art_hint: podcast.coverArtHint,
+          audio_url: podcast.audioUrl,
+          last_played_at: new Date().toISOString(),
+        }));
+        localStorage.setItem(userSpecificKey, JSON.stringify(historyForLocal));
+      } catch (error) {
+        console.error("Failed to save history to localStorage", error);
+      }
+    }
     
-    if (user.isGuest) {
+    if (!needsCloudSync) {
       try {
         localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(newHistory));
       } catch (error) {
         console.error("Failed to save history to localStorage", error);
       }
-    } else if (user.uid && track.id) {
-        // This call ensures the record exists with last_played_at updated.
-        // Duration is handled in onTimeUpdate.
-        upsertListeningHistory({
-            user_uid: user.uid,
-            podcast_id: track.id,
-        });
     }
+    
+    // No cloud sync - data stays local only
   }, [history, user]);
 
   const playInternal = useCallback(
@@ -523,17 +566,18 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         }
       } else {
         let trackToPlayId: string | null = null;
-        if (!user.isGuest && user.uid) {
-           const { data, error } = await supabase
-            .from("listening_history")
-            .select("podcast_id")
-            .eq("user_uid", user.uid)
-            .order("last_played_at", { ascending: false })
-            .limit(1)
-            .single();
-            if (data) {
-                trackToPlayId = data.podcast_id;
-            }
+        if (!user.isGuest && user.uid && hasSuperUserRole(user.role)) {
+           try {
+             const data = await apiClient.get("listening_history.php", { 
+               action: "last_played", 
+               user_uid: user.uid 
+             });
+             if (data && data.podcast_id) {
+               trackToPlayId = String(data.podcast_id);
+             }
+           } catch (err) {
+             console.error("Error fetching last played track:", err);
+           }
         }
         
         if (trackToPlayId) {
@@ -611,7 +655,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   const prevTrack = useCallback(() => {
     const playlist = currentPlaylist || podcasts;
     if (!playlist || playlist.length === 0) return;
-    
+
     const currentIndex = findCurrentTrackIndex();
 
     if (currentIndex > 0) {
@@ -622,6 +666,40 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       play(lastTrackId, playlist);
     }
   }, [currentPlaylist, podcasts, play, findCurrentTrackIndex, repeatMode]);
+
+  const handleTrackEnd = useCallback(() => {
+     if (currentTrack && audioRef.current) {
+        savePlaybackProgress(currentTrack.id, audioRef.current.duration, audioRef.current.duration);
+     }
+    
+    // Check if we should stop when current track ends
+    if (sleepTimer.stopWhenCurrentTrackEnds) {
+      pause();
+      setSleepTimerState({ timeLeft: null, isActive: false, stopWhenCurrentTrackEnds: false, stopWhenPlaylistEnds: false });
+      return;
+    }
+
+    // Check if we should stop when playlist ends
+    if (sleepTimer.stopWhenPlaylistEnds) {
+      // Check if there are more tracks in the queue or playlist
+      const hasNextInQueue = queue.length > 0;
+      const hasNextInPlaylist = repeatMode === "all" && currentPlaylist && currentPlaylist.length > 0;
+      
+      if (!hasNextInQueue && !hasNextInPlaylist) {
+        // This is the last track
+        pause();
+        setSleepTimerState({ timeLeft: null, isActive: false, stopWhenCurrentTrackEnds: false, stopWhenPlaylistEnds: false });
+        return;
+      }
+    }
+
+    if (repeatMode === "one" && currentTrack) {
+      seek(0);
+      play(currentTrack.id);
+    } else {
+      nextTrack();
+    }
+  }, [currentTrack, sleepTimer, queue, currentPlaylist, repeatMode, pause, nextTrack, play, savePlaybackProgress]);
 
   const playRandom = useCallback((podcastsToShuffle: Podcast[]) => {
     if (podcastsToShuffle.length === 0) return;
@@ -813,22 +891,10 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         });
     }
   };
-  
-  const handleTrackEnd = () => {
-     if (currentTrack && audioRef.current) {
-        savePlaybackProgress(currentTrack.id, audioRef.current.duration, audioRef.current.duration);
-     }
-    if (repeatMode === "one" && currentTrack) {
-      seek(0);
-      play(currentTrack.id);
-    } else {
-      nextTrack();
-    }
-  };
 
 
   const setSleepTimer = useCallback(
-    (minutes: number | null) => {
+    (minutes: number | null, options?: { stopWhenCurrentTrackEnds?: boolean; stopWhenPlaylistEnds?: boolean }) => {
       if (sleepTimerId.current) {
         clearTimeout(sleepTimerId.current);
         sleepTimerId.current = null;
@@ -838,17 +904,45 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
         sleepTimerIntervalId.current = null;
       }
 
-      if (minutes === null) {
-        setSleepTimerState({ timeLeft: null, isActive: false });
+      if (minutes === null && !options?.stopWhenCurrentTrackEnds && !options?.stopWhenPlaylistEnds) {
+        setSleepTimerState({ timeLeft: null, isActive: false, stopWhenCurrentTrackEnds: false, stopWhenPlaylistEnds: false });
+        return;
+      }
+
+      // Handle stop when current track ends
+      if (options?.stopWhenCurrentTrackEnds) {
+        setSleepTimerState({ 
+          timeLeft: null, 
+          isActive: true, 
+          stopWhenCurrentTrackEnds: true,
+          stopWhenPlaylistEnds: false 
+        });
+        return;
+      }
+
+      // Handle stop when playlist ends
+      if (options?.stopWhenPlaylistEnds) {
+        setSleepTimerState({ 
+          timeLeft: null, 
+          isActive: true, 
+          stopWhenCurrentTrackEnds: false,
+          stopWhenPlaylistEnds: true 
+        });
+        return;
+      }
+
+      // Handle time-based timer
+      if (minutes === null || minutes <= 0) {
+        setSleepTimerState({ timeLeft: null, isActive: false, stopWhenCurrentTrackEnds: false, stopWhenPlaylistEnds: false });
         return;
       }
 
       const endTime = Date.now() + minutes * 60 * 1000;
-      setSleepTimerState({ timeLeft: minutes * 60, isActive: true });
+      setSleepTimerState({ timeLeft: minutes * 60, isActive: true, stopWhenCurrentTrackEnds: false, stopWhenPlaylistEnds: false });
 
       sleepTimerId.current = setTimeout(() => {
         pause();
-        setSleepTimerState({ timeLeft: null, isActive: false });
+        setSleepTimerState({ timeLeft: null, isActive: false, stopWhenCurrentTrackEnds: false, stopWhenPlaylistEnds: false });
         if (sleepTimerIntervalId.current) {
           clearInterval(sleepTimerIntervalId.current);
         }
@@ -857,9 +951,9 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       sleepTimerIntervalId.current = setInterval(() => {
         const newTimeLeft = Math.round((endTime - Date.now()) / 1000);
         if (newTimeLeft > 0) {
-          setSleepTimerState({ timeLeft: newTimeLeft, isActive: true });
+          setSleepTimerState({ timeLeft: newTimeLeft, isActive: true, stopWhenCurrentTrackEnds: false, stopWhenPlaylistEnds: false });
         } else {
-          setSleepTimerState({ timeLeft: null, isActive: false });
+          setSleepTimerState({ timeLeft: null, isActive: false, stopWhenCurrentTrackEnds: false, stopWhenPlaylistEnds: false });
           if (sleepTimerIntervalId.current) {
             clearInterval(sleepTimerIntervalId.current);
           }
@@ -897,6 +991,9 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if ("mediaSession" in navigator) {
       if (currentTrack) {
+        // Fallback image if coverArt is not available
+        const coverArtUrl = currentTrack.coverArt || 'https://placehold.co/512x512/1a1a1a/ffffff.png?text=No+Cover';
+        
         navigator.mediaSession.metadata = new MediaMetadata({
           title: currentTrack.title,
           artist: Array.isArray(currentTrack.artist)
@@ -904,12 +1001,12 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
             : currentTrack.artist,
           album: "MNR Talk",
           artwork: [
-            { src: currentTrack.coverArt, sizes: "96x96", type: "image/png" },
-            { src: currentTrack.coverArt, sizes: "128x128", type: "image/png" },
-            { src: currentTrack.coverArt, sizes: "192x192", type: "image/png" },
-            { src: currentTrack.coverArt, sizes: "256x256", type: "image/png" },
-            { src: currentTrack.coverArt, sizes: "384x384", type: "image/png" },
-            { src: currentTrack.coverArt, sizes: "512x512", type: "image/png" },
+            { src: coverArtUrl, sizes: "96x96", type: "image/png" },
+            { src: coverArtUrl, sizes: "128x128", type: "image/png" },
+            { src: coverArtUrl, sizes: "192x192", type: "image/png" },
+            { src: coverArtUrl, sizes: "256x256", type: "image/png" },
+            { src: coverArtUrl, sizes: "384x384", type: "image/png" },
+            { src: coverArtUrl, sizes: "512x512", type: "image/png" },
           ],
         });
 
@@ -997,6 +1094,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     toggleRepeatMode,
     playbackProgress,
     podcastDurations,
+    loadListeningHistory,
   };
 
   return (

@@ -1,16 +1,12 @@
 
-"use client";
 
-import Image from "next/image";
-import Link from "next/link";
+
+import { Link } from "react-router-dom";
 import {
   Heart,
-  ListMusic,
   Lock,
   MoreVertical,
-  Share2,
   Trash2,
-  Edit,
   Download,
   Loader2,
 } from "lucide-react";
@@ -18,7 +14,7 @@ import { useState, useEffect } from "react";
 
 import { usePodcast } from "@/context/PodcastContext";
 import { usePlaylist } from "@/context/PlaylistContext";
-import type { Playlist } from "@/lib/types";
+import type { Playlist, Podcast } from "@/lib/types";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -41,8 +37,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "../ui/button";
 import { cn } from "@/lib/utils";
 import PlaylistCover from "./PlaylistCover";
-import { EditPlaylistDialog } from "./EditPlaylistDialog";
-import { getDownloadedPodcastIds, saveAudio } from "@/lib/idb";
+import { getDownloadedPodcastIds, saveAudio, deleteAudios } from "@/lib/idb";
 
 type DownloadState = "idle" | "downloading" | "downloaded";
 
@@ -51,32 +46,87 @@ interface PlaylistCardProps {
 }
 
 export default function PlaylistCard({ playlist }: PlaylistCardProps) {
-  const { podcasts } = usePodcast();
+  const { podcasts, fetchPodcasts } = usePodcast();
   const { getPodcastsForPlaylist, deletePlaylist, toggleFavorite, FAVORITES_PLAYLIST_ID } = usePlaylist();
   const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [isDeleteDownloadOpen, setIsDeleteDownloadOpen] = useState(false);
   const { toast } = useToast();
   const [downloadState, setDownloadState] = useState<DownloadState>("idle");
+  const [playlistPodcasts, setPlaylistPodcasts] = useState<Podcast[]>([]);
+  const [allPlaylistPodcasts, setAllPlaylistPodcasts] = useState<Podcast[]>([]);
 
-  const playlistPodcasts = getPodcastsForPlaylist(playlist.id, podcasts);
-  
-    useEffect(() => {
+  // Count should come from the playlist's own IDs first, not from the limited podcast cache.
+  const audioCount =
+    playlist.podcast_ids?.length ??
+    playlist.audioCount ??
+    getPodcastsForPlaylist(playlist.id, podcasts).length;
+  const playlistIdsParam = playlist.podcast_ids?.join(",") ?? "";
+  const playlistFetchTarget = playlist.isPredefined ? playlist.id : playlistIdsParam;
+
+  // 🎯 Load first 4 podcasts for cover display if not already loaded
+  useEffect(() => {
+    // Only fetch if: playlist has audios AND we don't have podcasts loaded yet
+    if (audioCount > 0 && playlistPodcasts.length === 0) {
+      // Check if podcasts are already in context
+      const contextPodcasts = getPodcastsForPlaylist(playlist.id, podcasts);
+      if (contextPodcasts.length > 0) {
+        setPlaylistPodcasts(contextPodcasts);
+      } else if (playlistFetchTarget) {
+        // Fetch first 4 podcasts for cover display
+        fetchPodcasts({
+          action: "list",
+          playlist_id: playlistFetchTarget,
+          limit: 4,
+          offset: 0
+        }).then(setPlaylistPodcasts);
+      }
+    }
+  }, [playlist.id, audioCount, playlistFetchTarget, podcasts]);
+
+  // 🎯 Load ALL podcasts for download functionality
+  useEffect(() => {
+    if (audioCount > 0 && allPlaylistPodcasts.length === 0) {
+      // Check if all podcasts are already in context
+      const contextPodcasts = getPodcastsForPlaylist(playlist.id, podcasts);
+      if (contextPodcasts.length === audioCount || contextPodcasts.length > 0) {
+        setAllPlaylistPodcasts(contextPodcasts);
+      } else if (audioCount > 4 && playlistFetchTarget) {
+        // Need to fetch all podcasts (not just first 4)
+        fetchPodcasts({
+          action: "list",
+          playlist_id: playlistFetchTarget,
+          limit: audioCount,
+          offset: 0
+        }).then(setAllPlaylistPodcasts);
+      } else {
+        // If audioCount <= 4, the first fetch already got all
+        setAllPlaylistPodcasts(playlistPodcasts);
+      }
+    }
+  }, [playlist.id, audioCount, playlistFetchTarget, podcasts, playlistPodcasts]);
+
+  useEffect(() => {
     const checkDownloads = async () => {
-      if (playlistPodcasts.length === 0) {
+      if (audioCount === 0) {
         setDownloadState("idle");
         return;
       }
       const downloadedIds = await getDownloadedPodcastIds();
-      if (playlistPodcasts.every(p => downloadedIds.includes(p.id))) {
+      // Check if ALL podcasts in the playlist are downloaded (use allPlaylistPodcasts)
+      if (allPlaylistPodcasts.length > 0 && allPlaylistPodcasts.every(p => downloadedIds.includes(p.id))) {
         setDownloadState("downloaded");
+      } else if (allPlaylistPodcasts.length > 0 && allPlaylistPodcasts.some(p => downloadedIds.includes(p.id))) {
+        // Some downloaded, some not
+        setDownloadState("idle");
       } else {
         setDownloadState("idle");
       }
     };
-    
+
     checkDownloads();
     const interval = setInterval(checkDownloads, 3000);
     return () => clearInterval(interval);
-  }, [playlistPodcasts]);
+  }, [audioCount, allPlaylistPodcasts]);
 
   const handleDelete = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -105,31 +155,20 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
     });
   };
 
-  const handleShare = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const url = `${window.location.origin}/playlists/${playlist.id}`;
-    navigator.clipboard.writeText(url);
-    toast({
-      title: "Link Copied",
-      description: "Playlist link has been copied to your clipboard.",
-    });
-  };
-
   const handleDownloadAll = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (playlistPodcasts.length === 0) return;
+    if (allPlaylistPodcasts.length === 0) return;
 
     setDownloadState("downloading");
     toast({
       title: "Starting Download",
-      description: `Downloading ${playlistPodcasts.length} audios for "${playlist.name}".`,
+      description: `Downloading ${allPlaylistPodcasts.length} audios for "${playlist.name}".`,
     });
 
     const downloadedPodcastIds = await getDownloadedPodcastIds();
     let downloadedCount = 0;
-    
-    for (const podcast of playlistPodcasts) {
+
+    for (const podcast of allPlaylistPodcasts) {
       if (!downloadedPodcastIds.includes(podcast.id)) {
         try {
           const response = await fetch(podcast.audioUrl);
@@ -142,12 +181,41 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
         }
       }
     }
-    
+
     setDownloadState("downloaded");
     toast({
       title: "Download Complete",
       description: `${downloadedCount} new audios from "${playlist.name}" are now available offline.`,
     });
+  };
+
+  const handleDeleteDownloads = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (allPlaylistPodcasts.length === 0) return;
+
+    setDownloadState("downloading");
+    toast({
+      title: "Deleting Downloads",
+      description: `Removing ${allPlaylistPodcasts.length} audios from "${playlist.name}".`,
+    });
+
+    try {
+      const idsToDelete = allPlaylistPodcasts.map(p => p.id);
+      await deleteAudios(idsToDelete);
+      setDownloadState("idle");
+      toast({
+        title: "Downloads Deleted",
+        description: `All audios from "${playlist.name}" have been removed from your device.`,
+      });
+    } catch (error) {
+      console.error("Failed to delete downloads:", error);
+      toast({
+        variant: "destructive",
+        title: "Delete Failed",
+        description: "Could not delete downloaded audios.",
+      });
+      setDownloadState("downloaded");
+    }
   };
 
   return (
@@ -193,42 +261,45 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
                 }}
                 align="end"
               >
-                <DropdownMenuItem onClick={handleShare}>
-                  <Share2 className="mr-2 h-4 w-4" />
-                  <span>Share</span>
-                </DropdownMenuItem>
-
-                {playlistPodcasts.length > 0 && (
-                   <DropdownMenuItem
-                    onClick={handleDownloadAll}
-                    disabled={downloadState !== "idle"}
-                  >
-                    {downloadState === "downloading" ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {audioCount > 0 && (
+                  <>
+                    {downloadState === "downloaded" ? (
+                      <DropdownMenuItem
+                        onClick={handleDeleteDownloads}
+                        disabled={downloadState === "downloading"}
+                        className="text-destructive"
+                      >
+                        {downloadState === "downloading" ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="mr-2 h-4 w-4" />
+                        )}
+                        <span>Delete Downloads</span>
+                      </DropdownMenuItem>
                     ) : (
-                      <Download className="mr-2 h-4 w-4" />
+                      <DropdownMenuItem
+                        onClick={handleDownloadAll}
+                        disabled={downloadState === "downloading"}
+                      >
+                        {downloadState === "downloading" ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Download className="mr-2 h-4 w-4" />
+                        )}
+                        <span>
+                          {downloadState === "downloaded" ? "Downloaded" : "Download All"}
+                        </span>
+                      </DropdownMenuItem>
                     )}
-                    <span>
-                      {downloadState === "downloaded" ? "Downloaded" : "Download"}
-                    </span>
-                  </DropdownMenuItem>
+                  </>
                 )}
                 
                 {!playlist.isPredefined && playlist.id !== FAVORITES_PLAYLIST_ID && (
                   <>
                     <DropdownMenuSeparator />
-                     <EditPlaylistDialog playlist={playlist}>
-                      <DropdownMenuItem
-                        onSelect={(e) => e.preventDefault()}
-                        className="gap-2"
-                      >
-                        <Edit className="h-4 w-4" />
-                        <span>Edit</span>
-                      </DropdownMenuItem>
-                    </EditPlaylistDialog>
                     <DropdownMenuItem onClick={handleDelete} className="text-destructive">
                       <Trash2 className="mr-2 h-4 w-4" />
-                      <span>Delete</span>
+                      <span>Delete Playlist</span>
                     </DropdownMenuItem>
                   </>
                 )}
@@ -236,7 +307,7 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
             </DropdownMenu>
           </div>
 
-        <Link href={`/playlists/${playlist.id}`} passHref className="block h-full">
+        <Link to={`/playlists/${playlist.id}`}  className="block h-full">
           <CardContent className="p-4">
             <div className="relative mb-4 aspect-square">
               <PlaylistCover playlist={playlist} podcasts={playlistPodcasts} />
@@ -255,10 +326,10 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
                </div>
             </div>
             <h3 className="h-12 font-semibold text-foreground line-clamp-2">
-              {playlist.name}
+              {playlist.name || 'Untitled Playlist'}
             </h3>
             <p className="h-5 text-sm text-muted-foreground line-clamp-1">
-              {playlistPodcasts.length} {playlistPodcasts.length === 1 ? "audio" : "audios"}
+              {audioCount} {audioCount === 1 ? "audio" : "audios"}
             </p>
           </CardContent>
         </Link>

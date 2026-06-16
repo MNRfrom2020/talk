@@ -1,8 +1,5 @@
 
-"use server";
-
-import { revalidatePath } from "next/cache";
-import { supabase } from "./supabase";
+import { apiClient } from "./api-client";
 import { z } from "zod";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
@@ -13,121 +10,97 @@ dayjs.extend(timezone);
 
 // Function to get current time in Bangladesh Standard Time (UTC+6)
 const getBstDate = () => {
-  return dayjs().tz("Asia/Dhaka").toDate();
+    return dayjs().tz("Asia/Dhaka").toDate();
 };
 
 export async function upsertListeningHistory(payload: {
-  user_uid: string;
-  podcast_id: string;
-  duration?: number;
+    user_uid: string;
+    podcast_id: string;
+    duration?: number;
+    role?: string | string[]; // Add role for verification
 }) {
-  try {
-    const dataToUpsert: { [key: string]: any; } = {
-      user_uid: payload.user_uid,
-      podcast_id: payload.podcast_id,
-      last_played_at: getBstDate().toISOString(),
-    };
+    try {
+        // Check if role allows cloud sync (case-insensitive only, no space normalization)
+        const allowedRoles = ['super user'];
+        const userRoles = Array.isArray(payload.role) ? payload.role : [payload.role || ''];
+        const normalizedUserRoles = userRoles.map(r => r.toLowerCase().trim());
+        const hasAllowedRole = normalizedUserRoles.some(role => allowedRoles.includes(role));
 
-    const { data: existingRecord, error: selectError } = await supabase
-      .from("listening_history")
-      .select("id, duration")
-      .eq("user_uid", payload.user_uid)
-      .eq("podcast_id", payload.podcast_id)
-      .single();
+        if (!hasAllowedRole) {
+            return { message: 'Locally saved only (role not allowed for cloud sync)' };
+        }
 
-    if (selectError && selectError.code !== 'PGRST116') { // PGRST116: No rows found
-      throw selectError;
+        const dataToUpsert = {
+            user_uid: payload.user_uid,
+            podcast_id: payload.podcast_id,
+            role: payload.role, // Pass role for verification
+            duration: payload.duration ? Math.round(payload.duration) : 0,
+            last_played_at: getBstDate().toISOString(),
+        };
+
+
+
+        const result = await apiClient.post("actions.php?action=upsert_listening_history", dataToUpsert);
+        return { message: result.message || "Successfully updated listening history." };
+    } catch (error: any) {
+        console.error('❌ [Cloud Sync] Failed to update listening history:', error.message);
+        return {
+            message: `Database Error: Failed to update listening history. ${error.message}`,
+        };
     }
-
-    if (payload.duration !== undefined && !isNaN(payload.duration)) {
-      // If a duration is provided, use it.
-      dataToUpsert.duration = Math.round(payload.duration);
-    } else if (!existingRecord) {
-      // If it's a new record and no duration is provided, default to 0.
-      dataToUpsert.duration = 0;
-    }
-    // If it's an existing record and no duration is provided, we don't set the duration field,
-    // so it keeps its existing value in the database.
-
-    const { error } = await supabase.from("listening_history").upsert(
-      dataToUpsert,
-      { onConflict: "user_uid,podcast_id" },
-    );
-
-    if (error) throw error;
-    
-    return { message: "Successfully updated listening history." };
-  } catch (error: any) {
-    return {
-      message: `Database Error: Failed to update listening history. ${error.message}`,
-    };
-  }
 }
-
 
 // Podcast Actions
 const PodcastFormSchema = z.object({
-  id: z.string().optional(),
-  title: z.string().min(1, "Title is required"),
-  artist: z.string().min(1, "Artist is required"),
-  categories: z.string().min(1, "Categories are required"),
-  cover_art: z.string().url("Must be a valid URL"),
-  cover_art_hint: z.string().optional().or(z.literal("")),
-  audio_url: z.string().url("Must be a valid URL"),
-  created_at: z.string().optional(),
+    id: z.string().optional(),
+    title: z.string().min(1, "Title is required"),
+    artist: z.string().min(1, "Artist is required"),
+    categories: z.string().min(1, "Categories are required"),
+    cover_art: z.string().url("Must be a valid URL"),
+    cover_art_hint: z.string().optional().or(z.literal("")),
+    audio_url: z.string().url("Must be a valid URL"),
+    created_at: z.string().optional(),
 });
 
 const PartialPodcastFormSchema = PodcastFormSchema.partial();
-
 type PodcastFormValues = z.infer<typeof PodcastFormSchema>;
 
 export type PodcastState = {
-  errors?: z.ZodError<PodcastFormValues>["formErrors"]["fieldErrors"];
-  message?: string | null;
+    errors?: z.ZodError<PodcastFormValues>["formErrors"]["fieldErrors"];
+    message?: string | null;
 };
 
-export async function createPodcast(
-  values: PodcastFormValues,
-): Promise<PodcastState> {
-  const validatedFields = PodcastFormSchema.safeParse(values);
+export async function createPodcast(values: PodcastFormValues): Promise<PodcastState> {
+    const validatedFields = PodcastFormSchema.safeParse(values);
 
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: "Missing Fields. Failed to Create Podcast.",
+    if (!validatedFields.success) {
+        return {
+            errors: validatedFields.error.flatten().fieldErrors,
+            message: "Missing Fields. Failed to Create Podcast.",
+        };
+    }
+
+    const { id, ...data } = validatedFields.data;
+
+    const podcastData = {
+        title: data.title,
+        artist: data.artist.split(",").map((s) => s.trim()),
+        categories: data.categories.split(",").map((s) => s.trim()),
+        cover_art: data.cover_art,
+        cover_art_hint: data.cover_art_hint,
+        audio_url: data.audio_url,
+        created_at: data.created_at ? new Date(data.created_at).toISOString() : getBstDate().toISOString(),
     };
-  }
-  
-  const { id, ...data } = validatedFields.data;
 
-  const podcastData: { [key: string]: any; } = {
-    title: data.title,
-    artist: data.artist.split(",").map((s) => s.trim()),
-    categories: data.categories.split(",").map((s) => s.trim()),
-    cover_art: data.cover_art,
-    cover_art_hint: data.cover_art_hint,
-    audio_url: data.audio_url,
-    created_at: data.created_at ? new Date(data.created_at).toISOString() : getBstDate().toISOString(),
-  };
-
-  try {
-    const { error } = await supabase.from("podcasts").insert(podcastData);
-    if (error) throw error;
-  } catch (error: any) {
-    return {
-      message: `Database Error: Failed to Create Podcast. ${error.message}`,
-    };
-  }
-
-  revalidatePath("/admin/dashboard/audios");
-  revalidatePath("/");
-  return { message: "Successfully created podcast." };
+    try {
+        const result = await apiClient.post("actions.php?action=save_podcast", podcastData);
+        return { message: result.message || "Successfully created podcast." };
+    } catch (error: any) {
+        return { message: `Database Error: Failed to Create Podcast. ${error.message}` };
+    }
 }
 
-export async function updatePodcast(
-  id: string,
-  values: Partial<PodcastFormValues>,
-): Promise<PodcastState> {
+export async function updatePodcast(id: string, values: Partial<PodcastFormValues>): Promise<PodcastState> {
     const validatedFields = PartialPodcastFormSchema.safeParse(values);
 
     if (!validatedFields.success) {
@@ -136,12 +109,10 @@ export async function updatePodcast(
             message: "Invalid Fields. Failed to Update Podcast.",
         };
     }
-    
+
     const data = validatedFields.data;
+    const podcastData: any = { id };
 
-    const podcastData: { [key: string]: any; } = {};
-
-    // Only add fields that are present in the partial `data` object
     if (data.title) podcastData.title = data.title;
     if (data.artist) podcastData.artist = data.artist.split(",").map((s) => s.trim());
     if (data.categories) podcastData.categories = data.categories.split(",").map((s) => s.trim());
@@ -151,324 +122,137 @@ export async function updatePodcast(
     if (data.created_at) podcastData.created_at = new Date(data.created_at).toISOString();
 
     try {
-        const { error } = await supabase
-            .from("podcasts")
-            .update(podcastData)
-            .eq("id", id);
-        if (error) throw error;
+        const result = await apiClient.post("actions.php?action=save_podcast", podcastData);
+        return { message: result.message || "Successfully updated podcast." };
     } catch (error: any) {
-        return {
-            message: `Database Error: Failed to Update Podcast. ${error.message}`,
-        };
+        return { message: `Database Error: Failed to Update Podcast. ${error.message}` };
     }
-
-    revalidatePath("/admin/dashboard/audios");
-    revalidatePath("/");
-    return { message: "Successfully updated podcast." };
 }
 
-
 export async function deletePodcast(id: string) {
-  try {
-    const { error } = await supabase.from("podcasts").delete().eq("id", id);
-    if (error) throw error;
-    revalidatePath("/admin/dashboard/audios");
-    revalidatePath("/");
-    return { message: "Deleted Podcast." };
-  } catch (error: any) {
-    return {
-      message: `Database Error: Failed to Delete Podcast. ${error.message}`,
-    };
-  }
+    try {
+        const result = await apiClient.post("actions.php?action=delete_record", { table: "podcasts", id });
+        return { message: result.message || "Deleted Podcast." };
+    } catch (error: any) {
+        return { message: `Database Error: Failed to Delete Podcast. ${error.message}` };
+    }
 }
 
 // System Playlist Actions
 const PlaylistFormSchema = z.object({
-  id: z.string().uuid().optional(),
-  name: z.string().min(1, "Name is required"),
-  podcast_ids: z.array(z.string()).optional(),
-  cover: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-  created_at: z.string().optional(),
+    id: z.string().uuid().optional(),
+    name: z.string().min(1, "Name is required"),
+    podcast_ids: z.array(z.string()).optional(),
+    cover: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+    created_at: z.string().optional(),
 });
-
 
 type PlaylistFormValues = z.infer<typeof PlaylistFormSchema>;
 
 export type PlaylistState = {
-  errors?: z.ZodError<z.infer<typeof UserPlaylistFormSchema>>["formErrors"]["fieldErrors"];
-  message?: string | null;
+    errors?: z.ZodError<any>["formErrors"]["fieldErrors"];
+    message?: string | null;
 };
 
-export async function savePlaylist(
-  values: PlaylistFormValues,
-): Promise<PlaylistState> {
-  const validatedFields = PlaylistFormSchema.safeParse(values);
+export async function savePlaylist(values: PlaylistFormValues): Promise<PlaylistState> {
+    const validatedFields = PlaylistFormSchema.safeParse(values);
 
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: "Missing Fields. Failed to Save Playlist.",
-    };
-  }
-  
-  const { id, ...data } = validatedFields.data;
-
-  const playlistData: { [key: string]: any; } = {
-      name: data.name,
-      podcast_ids: data.podcast_ids,
-      cover: data.cover,
-  };
-  
-  if (data.created_at) {
-    playlistData.created_at = new Date(data.created_at).toISOString();
-  } else if (!id) {
-    playlistData.created_at = getBstDate().toISOString();
-  }
-
-  try {
-    if (id) {
-       const { error } = await supabase
-        .from("playlists")
-        .update(playlistData)
-        .eq("id", id);
-      if (error) throw error;
-    } else {
-      const { error } = await supabase.from("playlists").insert(playlistData);
-       if (error) throw error;
-    }
-  } catch (error: any) {
-     return {
-      message: `Database Error: Failed to ${id ? "Update" : "Create"} Playlist. ${error.message}`,
-    };
-  }
-
-  revalidatePath("/admin/dashboard/playlists");
-  revalidatePath("/library");
-  revalidatePath("/playlists/[playlistId]", "page");
-  return { message: "Successfully saved playlist." };
-}
-
-// User Playlist Actions
-const UserPlaylistFormSchema = z.object({
-  id: z.string().uuid().optional(),
-  name: z.string().min(1, "Name is required"),
-  podcast_ids: z.array(z.string()).optional(),
-  cover: z.string().url("Must be a valid URL").nullable().optional(),
-  user_uid: z.string().uuid(),
-});
-
-const PartialUserPlaylistFormSchema = UserPlaylistFormSchema.partial().extend({
-  id: z.string().uuid(),
-  user_uid: z.string().uuid(),
-});
-
-
-type UserPlaylistFormValues = z.infer<typeof UserPlaylistFormSchema>;
-
-export async function saveUserPlaylist(
-  values: Partial<UserPlaylistFormValues>,
-): Promise<PlaylistState> {
-
-   const isUpdate = !!values.id;
-   const schema = isUpdate ? PartialUserPlaylistFormSchema : UserPlaylistFormSchema;
-
-   const validatedFields = schema.safeParse(values);
-  
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: "Missing Fields. Failed to Save User Playlist.",
-    };
-  }
-
-  const { id, ...data } = validatedFields.data;
-  
-  const playlistData: { [key: string]: any; } = { user_uid: data.user_uid };
-  if (data.name) playlistData.name = data.name;
-  if (data.podcast_ids) playlistData.podcast_ids = data.podcast_ids;
-  if (data.cover !== undefined) playlistData.cover = data.cover;
-
-
-  try {
-    if (id) {
-      const { error } = await supabase
-        .from("user_playlists")
-        .update(playlistData)
-        .eq("id", id)
-        .eq("user_uid", data.user_uid);
-      if (error) throw error;
-    } else {
-      playlistData.created_at = getBstDate().toISOString();
-      const { error } = await supabase.from("user_playlists").insert(playlistData);
-      if (error) throw error;
-    }
-  } catch (error: any) {
-    return {
-      message: `Database Error: Failed to ${id ? "Update" : "Create"} User Playlist. ${error.message}`,
-    };
-  }
-
-  revalidatePath("/library");
-  revalidatePath("/playlists/[playlistId]", "page");
-  return { message: "Successfully saved user playlist." };
-}
-
-
-export async function deletePlaylist(id: string, isUserPlaylist: boolean) {
-    const table = isUserPlaylist ? 'user_playlists' : 'playlists';
-    try {
-        const { error } = await supabase.from(table).delete().eq("id", id);
-        if (error) throw error;
-        
-        revalidatePath("/admin/dashboard/playlists");
-        revalidatePath("/library");
-        revalidatePath("/playlists/[playlistId]", "page");
-        return { message: "Deleted Playlist." };
-    } catch (error: any) {
+    if (!validatedFields.success) {
         return {
-             message: `Database Error: Failed to Delete Playlist. ${error.message}`,
-        }
+            errors: validatedFields.error.flatten().fieldErrors,
+            message: "Missing Fields. Failed to Save Playlist.",
+        };
+    }
+
+    const { id, ...data } = validatedFields.data;
+    const playlistData: any = { id, ...data };
+
+    try {
+        const result = await apiClient.post("actions.php?action=save_playlist", playlistData);
+        return { message: result.message || "Successfully saved playlist." };
+    } catch (error: any) {
+        return { message: `Database Error: Failed to Save Playlist. ${error.message}` };
     }
 }
 
-
-// User Actions
+// User Action
 const UserFormSchema = z.object({
-  uid: z.string().uuid().optional(),
-  full_name: z.string().min(1, "Full name is required"),
-  username: z.string().min(3, "Username must be at least 3 characters"),
-  email: z.string().email("Please enter a valid email address"),
-  image: z.string().url("Must be a valid URL").optional().or(z.literal("")),
-  pass: z.string().optional().or(z.literal("")),
+    uid: z.string().optional(),
+    full_name: z.string().min(1, "Full name is required"),
+    username: z.string().min(3, "Username must be at least 3 characters"),
+    email: z.string().email("Please enter a valid email address"),
+    image: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+    pass: z.string().optional().or(z.literal("")),
+    playlists_ids: z.array(z.string()).optional(),
 });
 
 type UserFormValues = z.infer<typeof UserFormSchema>;
-
 export type UserState = {
-  errors?: z.ZodError<UserFormValues>["formErrors"]["fieldErrors"];
-  message?: string | null;
+    errors?: z.ZodError<UserFormValues>["formErrors"]["fieldErrors"];
+    message?: string | null;
 };
 
 export async function saveUser(values: UserFormValues): Promise<UserState> {
-  // If pass is provided, it must be at least 6 characters. If not provided, it's optional.
-  const schema = values.uid
-    ? UserFormSchema.extend({
-        pass: z
-          .string()
-          .min(6, "Password must be at least 6 characters")
-          .optional()
-          .or(z.literal("")),
-      })
-    : UserFormSchema.extend({
-        pass: z.string().min(6, "Password is required and must be at least 6 characters"),
-      });
+    const schema = values.uid
+        ? UserFormSchema.extend({
+            pass: z.string().min(6, "Password must be at least 6 characters").optional().or(z.literal("")),
+        })
+        : UserFormSchema.extend({
+            pass: z.string().min(6, "Password is required and must be at least 6 characters"),
+        });
 
-  const validatedFields = schema.safeParse(values);
-
-  if (!validatedFields.success) {
-    return {
-      errors: validatedFields.error.flatten().fieldErrors,
-      message: "Missing Fields. Failed to Save User.",
-    };
-  }
-
-  const { uid, ...data } = validatedFields.data;
-
-  const userData: { [key: string]: any; } = {
-    full_name: data.full_name,
-    username: data.username,
-    email: data.email,
-    image: data.image,
-  };
-
-  if (data.pass) {
-    userData.pass = data.pass; // In a real app, you'd hash this password
-  }
-
-  try {
-    if (uid) {
-      // Update existing user, but do not change updated_at unless password is changed
-      if (data.pass) {
-        userData.updated_at = new Date().toISOString();
-      }
-      const { error } = await supabase.from("users").update(userData).eq("uid", uid);
-      if (error) throw error;
-    } else {
-      // Create new user
-       userData.created_at = getBstDate().toISOString();
-       userData.updated_at = getBstDate().toISOString();
-      const { data: newUser, error } = await supabase
-        .from("users")
-        .insert(userData)
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      if (newUser) {
-        // Create a default "Favorites" playlist for the new user
-        const { error: playlistError } = await supabase
-          .from("user_playlists")
-          .insert({
-            user_uid: newUser.uid,
-            name: "Favorites",
-            podcast_ids: [],
-            created_at: getBstDate().toISOString(),
-          });
-
-        if (playlistError) {
-          // Log the error, but don't block the user creation response
-          console.error(
-            `Failed to create favorites playlist for user ${newUser.uid}:`,
-            playlistError,
-          );
-        }
-      }
+    const validatedFields = schema.safeParse(values);
+    if (!validatedFields.success) {
+        return {
+            errors: validatedFields.error.flatten().fieldErrors,
+            message: "Missing Fields. Failed to Save User.",
+        };
     }
-  } catch (error: any) {
-    return {
-      message: `Database Error: Failed to ${uid ? "Update" : "Create"} User. ${error.message}`,
-    };
-  }
 
-  revalidatePath("/admin/dashboard/users");
-  revalidatePath("/profile");
-  return { message: `Successfully ${uid ? "updated" : "created"} user.` };
+    try {
+        const result = await apiClient.post("actions.php?action=save_user", validatedFields.data);
+        return { message: result.message || `Successfully saved user.` };
+    } catch (error: any) {
+        return { message: `Database Error: Failed to save user. ${error.message}` };
+    }
 }
 
 export async function deleteUser(uid: string) {
-  try {
-    const { error } = await supabase.from("users").delete().eq("uid", uid);
-    if (error) throw error;
-    revalidatePath("/admin/dashboard/users");
-    return { message: "Deleted User." };
-  } catch (error: any) {
-    return {
-      message: `Database Error: Failed to Delete User. ${error.message}`,
-    };
-  }
+    try {
+        const result = await apiClient.post("actions.php?action=delete_record", { table: "users", id: uid });
+        return { message: result.message || "Deleted User." };
+    } catch (error: any) {
+        return { message: `Database Error: Failed to Delete User. ${error.message}` };
+    }
 }
 
-export async function updateUserFavoritePlaylists(
-  uid: string,
-  playlistIds: string[],
-) {
-  try {
-    const { error } = await supabase
-      .from("users")
-      .update({ playlists_ids: playlistIds })
-      .eq("uid", uid);
+export async function updateUserFavoritePlaylists(uid: string, playlistIds: string[]) {
+    try {
+        const result = await apiClient.post("actions.php?action=save_user", { uid, playlists_ids: playlistIds });
+        return { message: result.message || "Favorite playlists updated successfully." };
+    } catch (error: any) {
+        return { message: `Database Error: Failed to update favorite playlists. ${error.message}` };
+    }
+}
 
-    if (error) throw error;
+export async function saveUserPlaylist(values: any): Promise<PlaylistState> {
+    try {
+        const result = await apiClient.post("actions.php?action=save_user_playlist", values);
+        return { message: result.message || "Successfully saved user playlist." };
+    } catch (error: any) {
+        // Throw error so calling functions can handle it
+        throw new Error(`Database Error: Failed to save user playlist. ${error.message}`);
+    }
+}
 
-    revalidatePath("/library");
-    revalidatePath("/profile");
-    return { message: "Favorite playlists updated successfully." };
-  } catch (error: any) {
-    return {
-      message: `Database Error: Failed to update favorite playlists. ${error.message}`,
-    };
-  }
+export async function deletePlaylist(id: string, isUserPlaylist: boolean) {
+    const table = isUserPlaylist ? "user_playlists" : "playlists";
+    try {
+        const result = await apiClient.post("actions.php?action=delete_record", { table, id });
+        return { message: result.message || "Deleted Playlist." };
+    } catch (error: any) {
+        return { message: `Database Error: Failed to Delete Playlist. ${error.message}` };
+    }
 }
 
     

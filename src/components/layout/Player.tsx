@@ -1,7 +1,6 @@
 
-"use client";
 
-import Image from "next/image";
+
 import {
   ChevronDown,
   Moon,
@@ -21,10 +20,11 @@ import {
   Download,
   Trash2,
   Loader2,
+  Timer,
 } from "lucide-react";
 import React, { useMemo, useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 
 import { usePlayer } from "@/context/PlayerContext";
 import { Button } from "@/components/ui/button";
@@ -36,6 +36,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import {
   Popover,
@@ -47,6 +49,17 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { useToast } from "@/hooks/use-toast";
 import { saveAudio, getDownloadedPodcastIds, deleteAudio } from "@/lib/idb";
 import type { Podcast } from "@/lib/types";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 
 function formatTime(seconds: number) {
   if (isNaN(seconds)) return "0:00";
@@ -63,8 +76,7 @@ const ArtistLinks = ({ artists, onLinkClick }: { artists: string[], onLinkClick:
     <div className="truncate text-base text-muted-foreground">
       {artists.map((artist, index) => (
         <React.Fragment key={artist}>
-          <Link
-            href={`/artists/${encodeURIComponent(artist)}`}
+          <Link to={`/artists/${encodeURIComponent(artist)}`}
             className="hover:underline"
             onClick={(e) => {
                 e.stopPropagation();
@@ -77,6 +89,145 @@ const ArtistLinks = ({ artists, onLinkClick }: { artists: string[], onLinkClick:
         </React.Fragment>
       ))}
     </div>
+  );
+};
+
+const SleepTimerDropdown = ({ isMobile = false }: { isMobile?: boolean }) => {
+  const { sleepTimer, setSleepTimer } = usePlayer();
+  const [customMinutes, setCustomMinutes] = useState("");
+  const [open, setOpen] = useState(false);
+  const [customDialogOpen, setCustomDialogOpen] = useState(false);
+
+  const sleepTimerDisplay = useMemo(() => {
+    if (sleepTimer.isActive && sleepTimer.timeLeft !== null) {
+      return formatTime(sleepTimer.timeLeft);
+    }
+    if (sleepTimer.stopWhenCurrentTrackEnds) {
+      return "Track End";
+    }
+    if (sleepTimer.stopWhenPlaylistEnds) {
+      return "Playlist End";
+    }
+    return null;
+  }, [sleepTimer]);
+
+  const handleCustomTimeSubmit = () => {
+    const minutes = parseInt(customMinutes);
+    if (!isNaN(minutes) && minutes > 0) {
+      setSleepTimer(minutes);
+      setCustomMinutes("");
+      setCustomDialogOpen(false);
+      setOpen(false);
+    }
+  };
+
+  return (
+    <>
+      <DropdownMenu open={open} onOpenChange={setOpen}>
+        <DropdownMenuTrigger asChild>
+          {isMobile ? (
+            <Button variant="outline" className="h-10 w-10" onClick={(e) => e.stopPropagation()}>
+              {sleepTimerDisplay ? (
+                <span className="text-xs">{sleepTimerDisplay}</span>
+              ) : (
+                <Moon className="h-5 w-5" />
+              )}
+            </Button>
+          ) : (
+            <Button variant="outline" className="h-10 w-20" onClick={(e) => e.stopPropagation()}>
+              <Moon className="mr-2 h-4 w-4" /> {sleepTimerDisplay || "Timer"}
+            </Button>
+          )}
+        </DropdownMenuTrigger>
+        <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
+          <DropdownMenuItem onSelect={() => setSleepTimer(null)}>Off</DropdownMenuItem>
+          
+          <DropdownMenuSeparator />
+          
+          <DropdownMenuItem onSelect={() => setSleepTimer(15)}>
+            15 minutes
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setSleepTimer(30)}>
+            30 minutes
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setSleepTimer(45)}>
+            45 minutes
+          </DropdownMenuItem>
+          <DropdownMenuItem onSelect={() => setSleepTimer(60)}>
+            60 minutes
+          </DropdownMenuItem>
+          
+          <DropdownMenuSeparator />
+          
+          <Dialog open={customDialogOpen} onOpenChange={setCustomDialogOpen}>
+            <DialogTrigger asChild>
+              <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                <Timer className="mr-2 h-4 w-4" />
+                Custom Time...
+              </DropdownMenuItem>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Set Custom Sleep Timer</DialogTitle>
+                <DialogDescription>
+                  Enter the number of minutes after which playback should stop.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="py-4">
+                <Input
+                  type="number"
+                  min="1"
+                  placeholder="Enter minutes"
+                  value={customMinutes}
+                  onChange={(e) => setCustomMinutes(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleCustomTimeSubmit();
+                    }
+                  }}
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setCustomDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleCustomTimeSubmit}>
+                  Set Timer
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+          
+          <DropdownMenuSeparator />
+          
+          <DropdownMenuItem 
+            onSelect={() => {
+              setSleepTimer(null, { stopWhenCurrentTrackEnds: true });
+              setOpen(false);
+            }}
+            className={cn(
+              sleepTimer.stopWhenCurrentTrackEnds && "bg-accent"
+            )}
+          >
+            <Timer className="mr-2 h-4 w-4" />
+            Stop After Current Track
+          </DropdownMenuItem>
+          
+          <DropdownMenuItem 
+            onSelect={() => {
+              setSleepTimer(null, { stopWhenPlaylistEnds: true });
+              setOpen(false);
+            }}
+            className={cn(
+              sleepTimer.stopWhenPlaylistEnds && "bg-accent"
+            )}
+          >
+            <ListMusic className="mr-2 h-4 w-4" />
+            Stop After Playlist
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </>
   );
 };
 
@@ -279,28 +430,19 @@ const DownloadButton = ({ podcast }: { podcast: Podcast }) => {
 
 
 const ExpandedPlayerMobile = () => {
-    const { 
-    currentTrack, 
-    progress, 
-    duration, 
+    const {
+    currentTrack,
+    progress,
+    duration,
     handleProgressChange,
     playbackRate,
     setPlaybackRate,
-    sleepTimer,
-    setSleepTimer,
     toggleRepeatMode,
     repeatMode,
     volume,
     setVolume,
     setIsExpanded,
   } = usePlayer();
-  
-  const sleepTimerDisplay = useMemo(() => {
-    if (sleepTimer.isActive && sleepTimer.timeLeft !== null) {
-      return formatTime(sleepTimer.timeLeft);
-    }
-    return null;
-  }, [sleepTimer]);
 
   const RepeatButtonIcon = useMemo(() => {
     if (repeatMode === 'one') return Repeat1;
@@ -326,11 +468,10 @@ const ExpandedPlayerMobile = () => {
   return (
     <div className="flex flex-1 flex-col justify-center gap-8 px-8">
       <motion.div layoutId="player-image" className="relative mx-auto aspect-square w-full max-w-sm">
-        <Image
+        <img
           src={currentTrack.coverArt}
           alt={currentTrack.title}
-          fill
-          className="rounded-md object-cover"
+          className="w-full h-full object-cover rounded-md object-cover"
         />
       </motion.div>
       <div className="w-full overflow-hidden text-center">
@@ -364,26 +505,8 @@ const ExpandedPlayerMobile = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                 <Button variant="outline" className="h-10 w-10" onClick={(e) => e.stopPropagation()}>
-                  {sleepTimerDisplay ? (
-                    <span className="text-xs">{sleepTimerDisplay}</span>
-                  ) : (
-                    <Moon className="h-5 w-5" />
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
-                <DropdownMenuItem onSelect={() => setSleepTimer(null)}>Off</DropdownMenuItem>
-                {sleepTimerOptions.map((minutes) => (
-                  <DropdownMenuItem key={minutes} onSelect={() => setSleepTimer(minutes)}>
-                    {minutes} minutes
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
+            <SleepTimerDropdown isMobile={true} />
+
             <Button
               variant="outline"
               size="icon"
@@ -418,15 +541,13 @@ const ExpandedPlayerMobile = () => {
 };
 
 const ExpandedPlayerDesktop = () => {
-    const { 
-    currentTrack, 
-    progress, 
-    duration, 
+    const {
+    currentTrack,
+    progress,
+    duration,
     handleProgressChange,
     playbackRate,
     setPlaybackRate,
-    sleepTimer,
-    setSleepTimer,
     toggleRepeatMode,
     repeatMode,
     volume,
@@ -435,13 +556,6 @@ const ExpandedPlayerDesktop = () => {
     isShuffled,
     setIsExpanded,
   } = usePlayer();
-
-  const sleepTimerDisplay = useMemo(() => {
-    if (sleepTimer.isActive && sleepTimer.timeLeft !== null) {
-      return formatTime(sleepTimer.timeLeft);
-    }
-    return null;
-  }, [sleepTimer]);
 
   const RepeatButtonIcon = useMemo(() => {
     if (repeatMode === 'one') return Repeat1;
@@ -467,11 +581,10 @@ const ExpandedPlayerDesktop = () => {
   return (
     <div className="flex h-full w-full items-center justify-center gap-16 p-8">
        <motion.div layoutId="player-image" className="relative aspect-square w-full max-w-sm">
-        <Image
+        <img
           src={currentTrack.coverArt}
           alt={currentTrack.title}
-          fill
-          className="rounded-md object-cover"
+          className="w-full h-full object-cover rounded-md object-cover"
         />
       </motion.div>
 
@@ -506,22 +619,8 @@ const ExpandedPlayerDesktop = () => {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="h-10 w-20" onClick={(e) => e.stopPropagation()}>
-                  <Moon className="mr-2 h-4 w-4" /> {sleepTimerDisplay || "Timer"}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent onClick={(e) => e.stopPropagation()}>
-                <DropdownMenuItem onSelect={() => setSleepTimer(null)}>Off</DropdownMenuItem>
-                {sleepTimerOptions.map((minutes) => (
-                  <DropdownMenuItem key={minutes} onSelect={() => setSleepTimer(minutes)}>
-                    {minutes} minutes
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            
+            <SleepTimerDropdown />
+
             <Button
               variant="outline"
               size="icon"
@@ -622,22 +721,7 @@ export default function Player() {
 
   return (
     <>
-      <style jsx global>{`
-        @keyframes squish {
-          0% {
-            transform: scale(1);
-          }
-          50% {
-            transform: scale(0.9);
-          }
-          100% {
-            transform: scale(1);
-          }
-        }
-        .animate-squish {
-          animation: squish 0.3s ease-in-out;
-        }
-      `}</style>
+      
       <Overlay isVisible={isExpanded} onClick={() => setIsExpanded(false)} />
       <motion.div
         className={cn(
@@ -686,11 +770,10 @@ export default function Player() {
                       layoutId="player-image"
                       className="group relative h-12 w-12 shrink-0 sm:h-16 sm:w-16"
                     >
-                      <Image
+                      <img
                         src={currentTrack.coverArt}
                         alt={currentTrack.title}
-                        fill
-                        className="rounded-md object-cover"
+                        className="w-full h-full object-cover rounded-md object-cover"
                       />
                        <Button
                         variant="ghost"
@@ -712,7 +795,7 @@ export default function Player() {
                      <div className="truncate text-xs text-muted-foreground">
                         {artists.map((artist, index) => (
                           <React.Fragment key={artist}>
-                            <Link href={`/artists/${encodeURIComponent(artist)}`} className="hover:underline">
+                            <Link to={`/artists/${encodeURIComponent(artist)}`} className="hover:underline">
                               {artist}
                             </Link>
                             {index < artists.length - 1 && ', '}

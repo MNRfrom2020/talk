@@ -1,5 +1,4 @@
 
-"use client";
 
 import React, { createContext, useContext, useEffect, useState, useMemo } from "react";
 import { themes } from "@/lib/themes";
@@ -22,16 +21,18 @@ export const useTheme = () => {
 };
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  const [theme, setThemeState] = useState("theme-default");
-
-  useEffect(() => {
-    const storedTheme = localStorage.getItem(THEME_STORAGE_KEY) || "theme-default";
-    setThemeState(storedTheme);
-  }, []);
+  // Initialize theme from localStorage immediately (not in useEffect)
+  const [theme, setThemeState] = useState(() => {
+    try {
+      return localStorage.getItem(THEME_STORAGE_KEY) || "theme-default";
+    } catch {
+      return "theme-default";
+    }
+  });
 
   useEffect(() => {
     const root = document.documentElement;
-    
+
     // Remove any existing theme classes
     themes.forEach(t => root.classList.remove(t.id));
 
@@ -39,7 +40,11 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     root.classList.add(theme);
 
     // Persist to local storage
-    localStorage.setItem(THEME_STORAGE_KEY, theme);
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch (error) {
+      console.error("Failed to save theme to localStorage:", error);
+    }
   }, [theme]);
 
   const setTheme = (themeId: string) => {

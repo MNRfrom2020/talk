@@ -1,7 +1,6 @@
 
-"use client";
 
-import Image from "next/image";
+
 import { ListMusic } from "lucide-react";
 
 import type { Playlist, Podcast } from "@/lib/types";
@@ -12,23 +11,24 @@ interface PlaylistCoverProps {
 }
 
 export default function PlaylistCover({ playlist, podcasts }: PlaylistCoverProps) {
+  const audioCount = playlist.audioCount ?? podcasts.length;
+  
   // 1. If the playlist has its own cover, use it.
-  if (playlist.cover) {
+  // Check both cover and coverArt (API returns coverArt)
+  if (playlist.cover || playlist.coverArt) {
     return (
       <div className="h-full w-full">
-        <Image
-          src={playlist.cover}
+        <img
+          src={playlist.cover || playlist.coverArt}
           alt={playlist.name}
-          fill
-          className="rounded-md object-cover"
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          className="w-full h-full object-cover rounded-md object-cover"
         />
       </div>
     );
   }
 
-  // 2. If the playlist is empty and has no cover, show default icon.
-  if (podcasts.length === 0) {
+  // 2. If the playlist is empty (no audios), show default icon.
+  if (audioCount === 0) {
     return (
       <div className="flex h-full w-full items-center justify-center rounded-md bg-secondary">
         <ListMusic className="h-16 w-16 text-muted-foreground" />
@@ -36,38 +36,46 @@ export default function PlaylistCover({ playlist, podcasts }: PlaylistCoverProps
     );
   }
 
-  // 3. If no cover, and less than 4 podcasts, show the first podcast's cover.
-  if (podcasts.length < 4) {
-    const coverArt = podcasts[0].coverArt;
-    const coverArtHint = podcasts[0].coverArtHint;
+  // 3. If no cover, but we have podcasts loaded, use them for display
+  if (podcasts.length > 0) {
+    // 3a. Less than 4 podcasts: show first podcast's cover
+    if (podcasts.length < 4) {
+      const coverArt = podcasts[0].coverArt;
+      const coverArtHint = podcasts[0].coverArtHint;
+      return (
+        <div className="h-full w-full">
+          <img
+            src={coverArt}
+            alt={playlist.name}
+            className="w-full h-full object-cover rounded-md object-cover"
+            data-ai-hint={coverArtHint}
+          />
+        </div>
+      );
+    }
+
+    // 3b. 4 or more podcasts: show 4-grid with random selection
     return (
-      <div className="h-full w-full">
-        <Image
-          src={coverArt}
-          alt={playlist.name}
-          fill
-          className="rounded-md object-cover"
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          data-ai-hint={coverArtHint}
-        />
+      <div className="grid h-full w-full grid-cols-2 grid-rows-2 gap-0 overflow-hidden rounded-md">
+        {podcasts.slice(0, 4).map((p, index) => (
+          <div key={`${p.id}-${index}`} className="relative h-full w-full">
+            <img
+              src={p.coverArt}
+              alt={p.title}
+              className="w-full h-full object-cover object-cover"
+            />
+          </div>
+        ))}
       </div>
     );
   }
 
-  // 4. If no cover, and 4 or more podcasts, create a grid.
+  // 4. Fallback: Playlist has audios but they're not loaded in context yet
+  // Show default icon with audio count
   return (
-    <div className="grid h-full w-full grid-cols-2 grid-rows-2 gap-0 overflow-hidden rounded-md">
-      {podcasts.slice(0, 4).map((p, index) => (
-        <div key={`${p.id}-${index}`} className="relative h-full w-full">
-            <Image
-                src={p.coverArt}
-                alt={p.title}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 17vw"
-            />
-        </div>
-      ))}
+    <div className="flex h-full w-full flex-col items-center justify-center rounded-md bg-secondary">
+      <ListMusic className="h-12 w-12 text-muted-foreground" />
+      <span className="mt-2 text-xs text-muted-foreground">{audioCount} audios</span>
     </div>
   );
 }

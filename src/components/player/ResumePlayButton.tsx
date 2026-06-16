@@ -1,5 +1,4 @@
 
-"use client";
 
 import { usePlayer } from "@/context/PlayerContext";
 import { Button } from "@/components/ui/button";

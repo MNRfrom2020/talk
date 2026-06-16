@@ -1,4 +1,4 @@
-import podcastsData from "./audio.json";
+const podcastsData: any = [];
 import type { Podcast } from "@/lib/types";
 
 // This file is now deprecated as we are fetching from the database.

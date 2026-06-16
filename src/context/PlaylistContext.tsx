@@ -1,5 +1,4 @@
 
-"use client";
 
 import type { Playlist, Podcast } from "@/lib/types";
 import React, {
@@ -10,13 +9,17 @@ import React, {
   useState,
 } from "react";
 import { useUser } from "./UserContext";
-import { supabase } from "@/lib/supabase";
-import { saveUserPlaylist, deletePlaylist as deletePlaylistAction } from "@/lib/actions";
+import { apiClient } from "@/lib/api-client";
 
 
 const PLAYLIST_STORAGE_KEY = "podcast_playlists_guest";
 const FAVORITES_PLAYLIST_NAME = "Favorites";
 const GUEST_FAVORITES_PLAYLIST_ID = "favorites-guest";
+
+const hasSuperUserRole = (role?: string | string[]) => {
+  const userRoles = Array.isArray(role) ? role : [role || ""];
+  return userRoles.some((item) => item.toLowerCase().trim() === "super user");
+};
 
 
 interface PlaylistContextType {
@@ -57,124 +60,204 @@ export const PlaylistProvider = ({
   children: React.ReactNode;
 }) => {
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
-  const { user, toggleFavoritePlaylist: toggleFavoritePlaylistInUser } = useUser();
+  const { user, loading: userLoading, toggleFavoritePlaylist: toggleFavoritePlaylistInUser } = useUser();
   const [FAVORITES_PLAYLIST_ID, setFavoritesPlaylistId] = useState<string | undefined>();
+  const needsCloudSync = !user.isGuest && !!user.uid && hasSuperUserRole(user.role);
 
   useEffect(() => {
     const loadPlaylists = async () => {
-      const { data: predefinedPlaylistsDb, error: predefinedError } = await supabase
-        .from('playlists')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (predefinedError) {
-        console.error("Failed to fetch predefined playlists:", predefinedError);
-      }
+      // Helper function to update state and cache to storage
+      const updateAndCachePlaylists = (newPlaylists: Playlist[], favId?: string) => {
+        setPlaylists(newPlaylists);
+        if (favId) setFavoritesPlaylistId(favId);
+        // Cache All playlists for offline recovery
+        localStorage.setItem("podcast_playlists_all_offline_cache", JSON.stringify(newPlaylists));
+      };
 
-      let predefinedPlaylists: Playlist[] = (predefinedPlaylistsDb || []).map(p => ({
-        ...p,
-        id: String(p.id),
-        isPredefined: true,
-      }));
+      try {
+        const predefinedPlaylistsDb = await apiClient.get('playlists.php', { action: 'list' });
 
-
-      if (user.isGuest) {
-        try {
-          const storedPlaylists = localStorage.getItem(PLAYLIST_STORAGE_KEY);
-          const guestPlaylists = storedPlaylists ? JSON.parse(storedPlaylists) : [];
-          
-          const guestFavoriteIds = guestPlaylists
-            .filter((p: { isFavorite?: boolean }) => p.isFavorite)
-            .map((p: { id: string }) => p.id);
-          
-          predefinedPlaylists = predefinedPlaylists.map(p => ({
-            ...p,
-            isFavorite: guestFavoriteIds.includes(p.id),
-          }));
-
-          let userOnlyPlaylists = guestPlaylists.filter((p: Playlist) => !predefinedPlaylists.some(pre => pre.id === p.id));
-          
-          let favoritesPlaylist = userOnlyPlaylists.find((p: Playlist) => p.name === FAVORITES_PLAYLIST_NAME);
-          if (!favoritesPlaylist) {
-            favoritesPlaylist = { id: GUEST_FAVORITES_PLAYLIST_ID, name: FAVORITES_PLAYLIST_NAME, podcast_ids: [], isPredefined: false, isFavorite: false, created_at: new Date().toISOString(), cover: null };
-            userOnlyPlaylists.unshift(favoritesPlaylist);
-          }
-          setFavoritesPlaylistId(favoritesPlaylist.id);
-
-          setPlaylists([...predefinedPlaylists, ...userOnlyPlaylists]);
-
-        } catch (error) {
-          console.error("Failed to load guest playlists from localStorage", error);
-          setPlaylists(predefinedPlaylists);
-        }
-      } else {
-        // --- LOGGED-IN USER ---
-        predefinedPlaylists = predefinedPlaylists.map(p => ({
+        let predefinedPlaylists: Playlist[] = (predefinedPlaylistsDb || []).map((p: any) => ({
           ...p,
-          isFavorite: user.playlists_ids?.includes(p.id),
+          id: String(p.id),
+          isPredefined: p.isPredefined !== undefined ? !!p.isPredefined : true,
         }));
 
-        if (!user.uid) {
-          setPlaylists(predefinedPlaylists);
-          return;
-        }
 
-        const { data: userPlaylistsDb, error } = await supabase
-          .from('user_playlists')
-          .select('*')
-          .eq('user_uid', user.uid);
-        
-        if (error) {
-          console.error("Failed to fetch user playlists:", error);
-          setPlaylists(predefinedPlaylists);
-          return;
-        }
-        
-        const userPlaylists = (userPlaylistsDb || []).map(p => ({...p, id: String(p.id)}));
-        
-        let favPlaylist = userPlaylists.find(p => p.name === FAVORITES_PLAYLIST_NAME);
-        if (favPlaylist) {
-            setFavoritesPlaylistId(favPlaylist.id);
-        } else {
-          // If for some reason a logged in user doesn't have a favorites playlist, create one.
-           const { data: newPlaylist, error: createError } = await supabase
-            .from('user_playlists')
-            .insert({ user_uid: user.uid, name: FAVORITES_PLAYLIST_NAME, podcast_ids: [] })
-            .select()
-            .single();
+        if (user.isGuest) {
+          try {
+            const storedPlaylists = localStorage.getItem(PLAYLIST_STORAGE_KEY);
+            const guestPlaylists = storedPlaylists ? JSON.parse(storedPlaylists) : [];
 
-            if (createError) {
-              console.error("Could not create favorites playlist for user:", createError);
-            } else if (newPlaylist) {
-              const createdPlaylist = {...newPlaylist, id: String(newPlaylist.id)};
-              userPlaylists.push(createdPlaylist);
-              setFavoritesPlaylistId(createdPlaylist.id);
+            const guestFavoriteIds = guestPlaylists
+              .filter((p: { isFavorite?: boolean }) => p.isFavorite)
+              .map((p: { id: string }) => p.id);
+
+            predefinedPlaylists = predefinedPlaylists.map(p => ({
+              ...p,
+              isFavorite: guestFavoriteIds.includes(p.id),
+            }));
+
+            let userOnlyPlaylists = guestPlaylists.filter((p: Playlist) => !predefinedPlaylists.some(pre => pre.id === p.id));
+
+            let favoritesPlaylist = userOnlyPlaylists.find((p: Playlist) => p.name === FAVORITES_PLAYLIST_NAME);
+            if (!favoritesPlaylist) {
+              favoritesPlaylist = { id: GUEST_FAVORITES_PLAYLIST_ID, name: FAVORITES_PLAYLIST_NAME, podcast_ids: [], isPredefined: false, isFavorite: false, created_at: new Date().toISOString(), cover: null };
+              userOnlyPlaylists.unshift(favoritesPlaylist);
             }
+
+            updateAndCachePlaylists([...predefinedPlaylists, ...userOnlyPlaylists], favoritesPlaylist.id);
+
+          } catch (error) {
+            console.error("Failed to load guest playlists from localStorage", error);
+            updateAndCachePlaylists(predefinedPlaylists);
+          }
+        } else {
+          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          // 🏠 LOCAL USERS (Normal MNR users): Use generic keys, no cloud sync
+          // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          if (!needsCloudSync) {
+            try {
+              const storedPlaylists = localStorage.getItem(PLAYLIST_STORAGE_KEY);
+              const guestPlaylists = storedPlaylists ? JSON.parse(storedPlaylists) : [];
+
+              const guestFavoriteIds = guestPlaylists
+                .filter((p: { isFavorite?: boolean }) => p.isFavorite)
+                .map((p: { id: string }) => p.id);
+
+              predefinedPlaylists = predefinedPlaylists.map(p => ({
+                ...p,
+                isFavorite: guestFavoriteIds.includes(p.id),
+              }));
+
+              let userOnlyPlaylists = guestPlaylists.filter((p: Playlist) => !predefinedPlaylists.some(pre => pre.id === p.id));
+
+              let favoritesPlaylist = userOnlyPlaylists.find((p: Playlist) => p.name === FAVORITES_PLAYLIST_NAME);
+              if (!favoritesPlaylist) {
+                favoritesPlaylist = { id: GUEST_FAVORITES_PLAYLIST_ID, name: FAVORITES_PLAYLIST_NAME, podcast_ids: [], isPredefined: false, isFavorite: false, created_at: new Date().toISOString(), cover: null };
+                userOnlyPlaylists.unshift(favoritesPlaylist);
+              }
+
+              updateAndCachePlaylists([...predefinedPlaylists, ...userOnlyPlaylists], favoritesPlaylist.id);
+            } catch (error) {
+              console.error("Failed to load local playlists", error);
+              updateAndCachePlaylists(predefinedPlaylists);
+            }
+          } else {
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            // ☁️ SUPER USERS: Use cloud sync with UUID
+            // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+          try {
+             // 1. Fetch Cloud Playlists (user-created)
+             const userPlaylistsDb = await apiClient.get('playlists.php', { action: 'list', user_uid: user.uid });
+             const cloudPlaylists: Playlist[] = (userPlaylistsDb || []).map((p: any) => ({
+              ...p,
+              id: String(p.id),
+              isPredefined: false,
+             }));
+
+
+             // 2. Fetch Favorite Data for predefined playlists
+             let favoritePlaylistIds: string[] = [];
+             try {
+                const favoritesData = await apiClient.get('actions.php', { action: 'get_user_favorites', uid: user.uid });
+                favoritePlaylistIds = favoritesData?.playlist_ids || [];
+             } catch (err) {
+             }
+
+             // 3. Apply favorite status to predefined playlists
+             predefinedPlaylists = predefinedPlaylists.map(p => ({
+              ...p,
+              isFavorite: favoritePlaylistIds.includes(p.id),
+             }));
+
+
+             // 4. Find or Create "Favorites" playlist
+             let favPlaylist = cloudPlaylists.find((p: any) => p.name === FAVORITES_PLAYLIST_NAME);
+             if (favPlaylist) {
+               updateAndCachePlaylists([...predefinedPlaylists, ...cloudPlaylists], favPlaylist.id);
+             } else {
+               if (user.isExpired) {
+                   // If expired, just mock it locally so UI works
+                   favPlaylist = { id: Date.now().toString(), name: FAVORITES_PLAYLIST_NAME, podcast_ids: [], isPredefined: false, isFavorite: false, created_at: new Date().toISOString(), cover: null };
+                   updateAndCachePlaylists([...predefinedPlaylists, ...cloudPlaylists, favPlaylist], favPlaylist.id);
+               } else {
+                   // Create on Cloud
+                   await apiClient.post('actions.php?action=save_user_playlist', {
+                       user_uid: user.uid, role: user.role, name: FAVORITES_PLAYLIST_NAME, podcast_ids: []
+                   });
+                   const refreshed = await apiClient.get('playlists.php', { action: 'list', user_uid: user.uid });
+                   const updatedUserPlaylists = (refreshed || []).map((p: any) => ({...p, id: String(p.id)}));
+                   const newFav = updatedUserPlaylists.find((p: any) => p.name === FAVORITES_PLAYLIST_NAME);
+                   updateAndCachePlaylists([...predefinedPlaylists, ...updatedUserPlaylists], newFav ? newFav.id : undefined);
+               }
+             }
+          } catch (e) {
+             updateAndCachePlaylists(predefinedPlaylists);
+          }
+          }
         }
-        
-        setPlaylists([...predefinedPlaylists, ...userPlaylists]);
+      } catch (err) {
+          console.error("Error fetching predefined playlists from API (assuming offline):", err);
+          
+          // Attempt to load from all-in-one offline cache
+          const offlineCache = localStorage.getItem("podcast_playlists_all_offline_cache");
+          if (offlineCache) {
+             try {
+                const parsed = JSON.parse(offlineCache);
+                const favPlaylist = parsed.find((p: Playlist) => p.name === FAVORITES_PLAYLIST_NAME);
+                setPlaylists(parsed);
+                if(favPlaylist) setFavoritesPlaylistId(favPlaylist.id);
+             } catch(e) {}
+          }
       }
     };
 
-    if (!user.loading) {
+    if (!userLoading) {
        loadPlaylists();
     }
-  }, [user]);
+  }, [user, userLoading]);
+
+  const persistGenericPlaylists = useCallback((updatedPlaylists: Playlist[]) => {
+    try {
+      const nonPredefinedPlaylists = updatedPlaylists.filter((p) => !p.isPredefined);
+      const predefinedFavorites = updatedPlaylists
+        .filter((p) => p.isPredefined && p.isFavorite)
+        .map((p) => ({ id: p.id, isFavorite: true }));
+
+      const dataToSave = [...nonPredefinedPlaylists, ...predefinedFavorites];
+
+      localStorage.setItem(PLAYLIST_STORAGE_KEY, JSON.stringify(dataToSave));
+      localStorage.setItem(
+        "podcast_playlists_all_offline_cache",
+        JSON.stringify(updatedPlaylists),
+      );
+    } catch (error) {
+      console.error("Failed to save local playlists to localStorage", error);
+    }
+
+    setPlaylists(updatedPlaylists);
+  }, []);
 
   const savePlaylistsForGuest = (updatedPlaylists: Playlist[]) => {
+      persistGenericPlaylists(updatedPlaylists);
+  };
+
+  const savePlaylistsForUser = (updatedPlaylists: Playlist[]) => {
+    if (needsCloudSync && user.uid) {
       try {
-        const guestPlaylists = updatedPlaylists.filter(p => !p.isPredefined);
-        const predefinedFavorites = updatedPlaylists
-          .filter(p => p.isPredefined && p.isFavorite)
-          .map(p => ({ id: p.id, isFavorite: true }));
-        
-        const dataToSave = [...guestPlaylists, ...predefinedFavorites];
-        
-        localStorage.setItem(PLAYLIST_STORAGE_KEY, JSON.stringify(dataToSave));
+        const userSpecificKey = `podcast_playlists_${user.uid}`;
+        const allPlaylists = updatedPlaylists.filter(p => !p.isPredefined || p.isFavorite);
+        localStorage.setItem(userSpecificKey, JSON.stringify(allPlaylists));
       } catch (error) {
-        console.error("Failed to save guest playlists to localStorage", error);
+        console.error("Failed to save user playlists to localStorage", error);
       }
-      setPlaylists(updatedPlaylists);
+    } else {
+      savePlaylistsForGuest(updatedPlaylists);
+      return;
+    }
+    setPlaylists(updatedPlaylists);
   };
 
   const createPlaylist = useCallback(
@@ -194,63 +277,71 @@ export const PlaylistProvider = ({
         const updatedPlaylists = [...playlists, newPlaylist];
         savePlaylistsForGuest(updatedPlaylists);
       } else {
-         if (!user.uid) return;
-         const result = await saveUserPlaylist({
-            name,
-            podcast_ids: podcastIds,
-            user_uid: user.uid,
-            cover: cover,
-         });
-
-        if (result.message && !result.errors) {
-            const { data: newPlaylist, error } = await supabase.from('user_playlists').select().eq('name', name).eq('user_uid', user.uid).order('created_at', { ascending: false }).limit(1).single();
-            if (newPlaylist && !error) {
-                 const createdPlaylist = {...newPlaylist, id: String(newPlaylist.id)};
-                 setPlaylists(prev => [...prev, createdPlaylist]);
-            }
-        } else {
-             console.error("Error creating playlist:", result.message);
-        }
+         const newPlaylist: Playlist = {
+          id: Date.now().toString(),
+          name,
+          podcast_ids: podcastIds,
+          isPredefined: false,
+          isFavorite: false,
+          created_at: new Date().toISOString(),
+          cover: cover,
+        };
+         const updatedPlaylists = [...playlists, newPlaylist];
+         savePlaylistsForUser(updatedPlaylists);
       }
     },
     [playlists, user],
   );
 
- const updatePlaylist = useCallback(
+  const updatePlaylist = useCallback(
     async (playlistId: string, data: { name?: string; cover?: string | null }) => {
       const playlistToUpdate = playlists.find((p) => p.id === playlistId);
       if (!playlistToUpdate || playlistToUpdate.isPredefined) {
         throw new Error("Cannot update this playlist.");
       }
 
-      const updatedData = { ...playlistToUpdate, ...data };
+      const normalizedData = {
+        ...data,
+        name: data.name?.trim() || playlistToUpdate.name,
+        cover: data.cover === "" ? null : (data.cover ?? playlistToUpdate.cover),
+      };
+      const updatedData = { ...playlistToUpdate, ...normalizedData };
+      const updatedPlaylists = playlists.map((p) =>
+        p.id === playlistId ? updatedData : p
+      );
 
       if (user.isGuest) {
-        const updatedPlaylists = playlists.map((p) =>
-          p.id === playlistId ? updatedData : p
-        );
-        savePlaylistsForGuest(updatedPlaylists);
-      } else {
-        if (!user.uid) throw new Error("User not logged in.");
-
-        const result = await saveUserPlaylist({
-          id: playlistId,
-          user_uid: user.uid,
-          name: data.name,
-          cover: data.cover,
-        });
-
-        if (result.errors) {
-          throw new Error(result.message || "Could not update playlist.");
+        // Guest: save to generic localStorage
+        persistGenericPlaylists(updatedPlaylists);
+      } else if (needsCloudSync) {
+        // Super User: update state immediately, then sync to cloud
+        if (!user.uid) {
+          throw new Error("User not logged in.");
         }
-        
-        // Optimistically update the state
-        setPlaylists((prev) =>
-          prev.map((p) => (p.id === playlistId ? updatedData : p))
-        );
+
+        setPlaylists(updatedPlaylists);
+
+        try {
+          await apiClient.post("actions.php?action=save_user_playlist", {
+            id: playlistId,
+            user_uid: user.uid,
+            role: user.role,
+            name: normalizedData.name,
+            cover: normalizedData.cover,
+          });
+        } catch (error) {
+          // Revert on cloud sync failure
+          setPlaylists(playlists);
+          throw error;
+        }
+      } else {
+        // Local/DB user (non-super-user, logged in): save to localStorage only
+        // Update state immediately and persist to the same storage key that
+        // loadPlaylists reads from for local users.
+        persistGenericPlaylists(updatedPlaylists);
       }
     },
-    [playlists, user]
+    [playlists, user, needsCloudSync, persistGenericPlaylists]
   );
 
   const deletePlaylist = useCallback(
@@ -264,12 +355,8 @@ export const PlaylistProvider = ({
         );
         savePlaylistsForGuest(updatedPlaylists);
       } else {
-        const result = await deletePlaylistAction(playlistId, true); // Always a user playlist
-        if (result.message && !result.message.includes("Error")) {
-            setPlaylists(prev => prev.filter(p => p.id !== playlistId));
-        } else {
-            console.error("Error deleting playlist:", result.message);
-        }
+        const updatedPlaylists = playlists.filter(p => p.id !== playlistId);
+        savePlaylistsForUser(updatedPlaylists);
       }
     },
     [playlists, user],
@@ -288,24 +375,14 @@ export const PlaylistProvider = ({
 
   const addPodcastToUserPlaylist = async (playlistId: string, podcastId: string) => {
       const playlist = playlists.find((p) => p.id === playlistId);
-      if (!playlist || !user.uid || playlist.podcast_ids.includes(podcastId)) {
+      if (!playlist || playlist.podcast_ids.includes(podcastId)) {
         throw new Error("Cannot add to this playlist.");
       }
-      
-      const newPodcastIds = [...playlist.podcast_ids, podcastId];
-      
-      const result = await saveUserPlaylist({
-        id: playlist.id,
-        user_uid: user.uid,
-        podcast_ids: newPodcastIds,
-        name: playlist.name, // Pass name to satisfy validation
-      });
 
-      if (result.errors) {
-          throw new Error(result.message || "Could not add podcast to playlist.");
-      }
-      
-      setPlaylists(prev => prev.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p));
+      const newPodcastIds = [...playlist.podcast_ids, podcastId];
+
+      const updatedPlaylists = playlists.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p);
+      savePlaylistsForUser(updatedPlaylists);
   };
 
   const removePodcastFromGuestPlaylist = (playlistId: string, podcastId: string) => {
@@ -321,24 +398,14 @@ export const PlaylistProvider = ({
 
   const removePodcastFromUserPlaylist = async (playlistId: string, podcastId: string) => {
     const playlist = playlists.find((p) => p.id === playlistId);
-    if (!playlist || !user.uid) {
+    if (!playlist) {
         return Promise.reject(new Error("Playlist not found or user not authorized."));
     }
-    
+
     const newPodcastIds = playlist.podcast_ids.filter((id) => id !== podcastId);
 
-    const result = await saveUserPlaylist({
-      id: playlist.id,
-      user_uid: user.uid,
-      podcast_ids: newPodcastIds,
-      name: playlist.name, // Pass name to satisfy validation
-    });
-    
-    if (result.errors) {
-        throw new Error(result.message || "Could not remove podcast from playlist.");
-    }
-    
-    setPlaylists(prev => prev.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p));
+    const updatedPlaylists = playlists.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p);
+    savePlaylistsForUser(updatedPlaylists);
 };
 
 
@@ -364,17 +431,24 @@ export const PlaylistProvider = ({
     async (playlistId: string) => {
        const playlist = playlists.find(p => p.id === playlistId);
        if (!playlist || !playlist.isPredefined) return;
-       
+
        if (user.isGuest) {
           const updatedPlaylist = { ...playlist, isFavorite: !playlist.isFavorite };
           const updatedPlaylists = playlists.map(p => p.id === playlistId ? updatedPlaylist : p);
           savePlaylistsForGuest(updatedPlaylists);
        } else {
-          if(!user.uid) return;
-          toggleFavoritePlaylistInUser(playlistId);
+          const updatedPlaylist = { ...playlist, isFavorite: !playlist.isFavorite };
+          const updatedPlaylists = playlists.map(p => p.id === playlistId ? updatedPlaylist : p);
+          savePlaylistsForUser(updatedPlaylists);
+
+          if (needsCloudSync && !user.isExpired) {
+             toggleFavoritePlaylistInUser(playlistId).catch(err => {
+               console.error('Failed to sync favorite to database:', err);
+             });
+          }
        }
     },
-    [playlists, user, toggleFavoritePlaylistInUser]
+    [playlists, user, toggleFavoritePlaylistInUser, needsCloudSync]
   );
 
   const isFavoritePodcast = useCallback(
@@ -403,13 +477,12 @@ export const PlaylistProvider = ({
             } else {
                if (isAlreadyFavorite) {
                 await removePodcastFromUserPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
-              } else {
+               } else {
                 await addPodcastToUserPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
-              }
+               }
             }
           } catch(error) {
             console.error("Failed to toggle favorite podcast", error)
-            // Here you could add a toast to inform the user that the action failed.
           }
       } else {
         console.error("Favorites playlist ID not found");

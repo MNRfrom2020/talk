@@ -1,7 +1,6 @@
 
-"use client";
 
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import { User, Shuffle, Info } from "lucide-react";
 import { Button } from "../ui/button";
 import { useUser } from "@/context/UserContext";
@@ -44,8 +43,7 @@ export default function MobileHeader() {
   return (
     <div className="fixed left-0 right-0 top-0 z-40 p-2 md:hidden">
       <header className="flex items-center justify-between rounded-full bg-secondary px-2 py-1">
-        <Link
-          href="/"
+        <Link to="/"
           className="flex items-center gap-2 rounded-full bg-transparent px-3 py-2"
         >
           <svg
@@ -88,7 +86,7 @@ export default function MobileHeader() {
           </Button>
           <span className="text-muted-foreground">।</span>
            {user.isLoggedIn ? (
-              <Link href="/profile" passHref>
+              <Link to="/profile" >
                 {profileButtonContent}
               </Link>
             ) : (

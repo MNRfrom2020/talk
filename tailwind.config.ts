@@ -5,13 +5,14 @@ export default {
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/admin/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
       fontFamily: {
-        body: ["'Solaiman Lipi'", "sans-serif"],
-        headline: ["'Solaiman Lipi'", "sans-serif"],
+        body: ["'Kalpurush'", "sans-serif"],
+        headline: ["'Kalpurush'", "sans-serif"],
         code: ["monospace"],
       },
       colors: {

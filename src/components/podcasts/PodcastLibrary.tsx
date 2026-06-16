@@ -1,4 +1,3 @@
-"use client";
 
 import { usePodcast } from "@/context/PodcastContext";
 import PodcastCard from "./PodcastCard";
@@ -8,6 +7,7 @@ import type { Podcast } from "@/lib/types";
 import { usePlaylist } from "@/context/PlaylistContext";
 import PlaylistCard from "../playlists/PlaylistCard";
 import CategorySection from "./CategorySection";
+import ForYouSection from "./ForYouSection";
 import { Loader2 } from "lucide-react";
 import { Button } from "../ui/button";
 
@@ -47,21 +47,21 @@ const Loader = () => (
   </div>
 );
 
-type Section =
-  | { type: "category"; name: string; podcasts: Podcast[] }
-  | { type: "artist"; name: string; podcasts: Podcast[] };
+type SectionDefinition =
+  | { type: "category"; name: string }
+  | { type: "artist"; name: string };
 
 export default function PodcastLibrary({
   showTitle = true,
 }: {
   showTitle?: boolean;
 }) {
-  const { podcasts } = usePodcast();
+  const { podcasts, metadata } = usePodcast();
   const { playlists } = usePlaylist();
   const [visibleSections, setVisibleSections] = useState(
     INITIAL_VISIBLE_SECTIONS,
   );
-  const [shuffledSections, setShuffledSections] = useState<Section[]>([]);
+  const [shuffledSections, setShuffledSections] = useState<SectionDefinition[]>([]);
   const sectionLoaderRef = useRef<HTMLDivElement>(null);
   const [isSectionLoading, setIsSectionLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
@@ -71,72 +71,36 @@ export default function PodcastLibrary({
   const [isPlaylistsExpanded, setIsPlaylistsExpanded] = useState(false);
   const [isPlaylistLoading, setIsPlaylistLoading] = useState(false);
   const playlistLoaderRef = useRef<HTMLDivElement>(null);
-  
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
   const predefinedPlaylists = useMemo(() => {
-    return [...playlists.filter((p) => p.isPredefined)].sort((a, b) => {
+    // 🎯 Filter: Only show playlists that have cover art OR at least 1 audio
+    // This ensures playlists with cover art show even if they're empty
+    // And playlists with audios show even if cover art is missing
+    return [...playlists.filter((p) => p.isPredefined && ((p.audioCount || 0) > 0 || p.coverArt))].sort((a, b) => {
         const dateA = new Date(a.created_at).getTime();
         const dateB = new Date(b.created_at).getTime();
         return dateB - dateA;
     });
   }, [playlists]);
 
-  const quranCategory = useMemo(() => {
-    const categoryMap = new Map<string, Podcast[]>();
-    podcasts.forEach((podcast) => {
-      podcast.categories.forEach((category) => {
-        if (!categoryMap.has(category)) {
-          categoryMap.set(category, []);
-        }
-        categoryMap.get(category)?.push(podcast);
-      });
-    });
-    const quranPodcasts = categoryMap.get("Quran");
-    return quranPodcasts ? { name: "Quran", podcasts: quranPodcasts } : null;
-  }, [podcasts]);
-  
   useEffect(() => {
-     // Prepare categories
-    const categoryMap = new Map<string, Podcast[]>();
-    podcasts.forEach((podcast) => {
-      podcast.categories.forEach((category) => {
-        if (!categoryMap.has(category)) {
-          categoryMap.set(category, []);
-        }
-        categoryMap.get(category)!.push(podcast);
-      });
-    });
-    const categorySections: Section[] = Array.from(categoryMap.entries())
-        .filter(([key]) => key !== "Quran" && key !== "Nasheed") // Exclude Quran and Nasheed categories
-        .map(([name, podcasts]) => ({ type: "category", name, podcasts }));
-    
-     // Prepare artists
-    const artistsToExclude = [
-      "Dr Muhammad Ibrahim", "Mahmud Huzaifa", "Mazharul Islam",
-      "Moeen Uddin", "Usaid Zahid Siddique", "MercifulServant",
-    ];
-    const artistMap = new Map<string, Podcast[]>();
-    podcasts.forEach(p => {
-        p.artist.forEach(artist => {
-            if (!artistsToExclude.includes(artist)) {
-                if (!artistMap.has(artist)) {
-                    artistMap.set(artist, []);
-                }
-                artistMap.get(artist)!.push(p);
-            }
-        });
-    });
-    const artistSections: Section[] = Array.from(artistMap.entries())
-        .map(([name, podcasts]) => ({ type: "artist", name, podcasts }));
+    if (!metadata) return;
 
-    // Combine and shuffle
-    const combinedSections = [...categorySections, ...artistSections];
-    setShuffledSections(shuffleArray(combinedSections));
-  }, [podcasts]);
+    // 🎯 Filter out Quran & Nasheed to avoid duplicates (Quran has fixed section, Nasheed is reserved)
+    const filteredCategories = metadata.categories.filter(
+      name => name !== 'Quran' && name !== 'Nasheed'
+    );
+
+    const categorySections: SectionDefinition[] = filteredCategories.map(name => ({ type: "category", name }));
+    const artistSections: SectionDefinition[] = metadata.artists.map(name => ({ type: "artist", name }));
+
+    const combined = [...categorySections, ...artistSections];
+    setShuffledSections(shuffleArray(combined));
+  }, [metadata]);
 
 
   const displayedSections = useMemo(() => {
@@ -153,7 +117,7 @@ export default function PodcastLibrary({
         (prev) => prev + SECTION_INCREMENT,
       );
       setIsSectionLoading(false);
-    }, 500); // Simulate network delay
+    }, 500); 
   }, [isSectionLoading]);
 
   useEffect(() => {
@@ -212,7 +176,7 @@ export default function PodcastLibrary({
     setTimeout(() => {
       setVisiblePlaylistsCount(prev => Math.min(prev + itemsPerRow, predefinedPlaylists.length));
       setIsPlaylistLoading(false);
-    }, 500); // Simulate network delay
+    }, 500); 
   }, [isPlaylistLoading, itemsPerRow, predefinedPlaylists.length]);
 
   useEffect(() => {
@@ -260,8 +224,14 @@ export default function PodcastLibrary({
             Browse All
           </h1>
         )}
-        <CategorySection title="Recently Added" podcasts={podcasts} />
+        
+        {/* Fixed Section 1: Recently Added */}
+        <CategorySection title="Recently Added" podcasts={podcasts} type="recent" />
 
+        {/* Fixed Section 2: For You (Personalized Suggestions) */}
+        <ForYouSection />
+
+        {/* Fixed Section 3: Playlists */}
         {predefinedPlaylists.length > 0 && (
           <section>
             <div className="flex items-center justify-between mb-4">
@@ -284,19 +254,16 @@ export default function PodcastLibrary({
           </section>
         )}
 
-        {quranCategory && (
-           <CategorySection
-            key={quranCategory.name}
-            title={quranCategory.name}
-            podcasts={quranCategory.podcasts}
-          />
-        )}
+        {/* Fixed Section 4: Quran */}
+        <CategorySection title="Quran" type="quran" name="Quran" />
 
+        {/* Shuffled Dynamic Sections (Lazy Loaded) */}
         {displayedSections.map((section) => (
           <CategorySection
             key={`${section.type}-${section.name}`}
             title={section.name}
-            podcasts={section.podcasts}
+            type={section.type}
+            name={section.name}
           />
         ))}
 

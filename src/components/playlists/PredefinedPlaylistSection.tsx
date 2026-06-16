@@ -1,5 +1,4 @@
 
-"use client";
 
 import * as React from "react";
 import { usePlaylist } from "@/context/PlaylistContext";
@@ -23,7 +22,15 @@ export default function PredefinedPlaylistSection() {
   const [isExpanded, setIsExpanded] = React.useState(false);
   const [rowLimit, setRowLimit] = React.useState(getRowLimit());
 
-  const favoritePlaylists = playlists.filter((p) => p.isFavorite);
+  // 🔍 Debug: Log all playlists to see what we're working with
+
+
+  // 🔧 Fix: Filter out corrupted playlists and only show valid favorites
+  const favoritePlaylists = playlists.filter((p) => 
+    p.isFavorite && p.name !== undefined && p.name !== null
+  );
+  
+
 
   React.useEffect(() => {
     const handleResize = () => {

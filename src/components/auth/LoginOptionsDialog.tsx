@@ -1,8 +1,4 @@
-
-"use client";
-
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,15 +9,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ProfileDialog } from "./ProfileDialog";
-import { User, LogIn } from "lucide-react";
+import { User } from "lucide-react";
+import { startMnrIdLogin } from "@/lib/mnr-auth";
+import { Separator } from "@/components/ui/separator";
 
 export function LoginOptionsDialog({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
-  const router = useRouter();
 
-  const handleProperLogin = () => {
+  const handleMnrIdLogin = () => {
     setOpen(false);
-    router.push("/login");
+    startMnrIdLogin();
   };
 
   return (
@@ -29,26 +26,38 @@ export function LoginOptionsDialog({ children }: { children: React.ReactNode }) 
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-xs">
         <DialogHeader>
-          <DialogTitle className="text-center">Choose Login Method</DialogTitle>
+          <DialogTitle className="text-center">লগইন করুন</DialogTitle>
           <DialogDescription className="text-center">
-            Log in with your account or continue as a guest.
+            আপনার পছন্দের পদ্ধতিতে লগইন করুন।
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-4 py-4">
+        <div className="flex flex-col gap-3 py-4">
+          {/* MNR ID (Primary) */}
+          <Button
+            onClick={handleMnrIdLogin}
+            className="w-full justify-start gap-3 bg-primary hover:bg-primary/90"
+          >
+            {/* MNR ID Logo Mark */}
+            <span className="flex h-5 w-5 items-center justify-center rounded-full overflow-hidden">
+              <img src="/mnr.svg" alt="MNR" className="h-full w-full object-contain" />
+            </span>
+            Continue with MNR ID
+          </Button>
+
+          {/* Or Divider */}
+          <div className="relative flex items-center gap-2">
+            <Separator className="flex-1" />
+            <span className="text-xs text-muted-foreground">অথবা</span>
+            <Separator className="flex-1" />
+          </div>
+
+          {/* Guest */}
           <ProfileDialog>
-            <Button className="w-full justify-start">
+            <Button variant="outline" className="w-full justify-start border-muted-foreground/20">
               <User className="mr-2 h-4 w-4" />
-              Log in as Guest
+              গেস্ট হিসেবে চালিয়ে যান
             </Button>
           </ProfileDialog>
-          <Button
-            onClick={handleProperLogin}
-            variant="outline"
-            className="w-full justify-start"
-          >
-            <LogIn className="mr-2 h-4 w-4" />
-            Proper Login
-          </Button>
         </div>
       </DialogContent>
     </Dialog>

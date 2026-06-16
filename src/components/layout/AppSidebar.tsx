@@ -1,7 +1,6 @@
 
-"use client";
 
-import { usePathname } from "next/navigation";
+import { useLocation } from "react-router-dom";
 import {
   Grid,
   Home,
@@ -12,7 +11,7 @@ import {
   Info,
   MicVocal,
 } from "lucide-react";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
@@ -32,6 +31,7 @@ import { usePodcast } from "@/context/PodcastContext";
 import { DisclaimerDialog } from "./DisclaimerDialog";
 import { Button } from "../ui/button";
 import { LoginOptionsDialog } from "../auth/LoginOptionsDialog";
+import RoleBadge from "../RoleBadge";
 
 function UserAvatar({ className }: { className?: string }) {
   const { user } = useUser();
@@ -44,7 +44,7 @@ function UserAvatar({ className }: { className?: string }) {
 }
 
 export default function AppSidebar() {
-  const pathname = usePathname();
+  const { pathname } = useLocation();
   const { user } = useUser();
   const { playRandom } = usePlayer();
   const { podcasts } = usePodcast();
@@ -59,6 +59,7 @@ export default function AppSidebar() {
     >
       <UserAvatar />
       <span className="truncate">{user.name}</span>
+      <RoleBadge roles={user.role || []} />
     </div>
   );
 
@@ -99,10 +100,10 @@ export default function AppSidebar() {
         <SidebarGroup>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton href="/" isActive={pathname === "/"}>
+              <SidebarMenuButton asChild isActive={pathname === "/"}><Link to="/">
                 <Home />
                 Home
-              </SidebarMenuButton>
+              </Link></SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SearchDialog>
@@ -119,33 +120,30 @@ export default function AppSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                href="/categories"
+              <SidebarMenuButton asChild
                 isActive={pathname.startsWith("/categories")}
-              >
+              ><Link to="/categories">
                 <Grid />
                 Categories
-              </SidebarMenuButton>
+              </Link></SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                href="/artists"
+              <SidebarMenuButton asChild
                 isActive={pathname.startsWith("/artists")}
-              >
+              ><Link to="/artists">
                 <MicVocal />
                 Artists
-              </SidebarMenuButton>
+              </Link></SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>
-              <SidebarMenuButton
-                href="/library"
+              <SidebarMenuButton asChild
                 isActive={
                   pathname === "/library" || pathname.startsWith("/playlists")
                 }
-              >
+              ><Link to="/library">
                 <Library />
                 Your Library
-              </SidebarMenuButton>
+              </Link></SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
@@ -163,7 +161,7 @@ export default function AppSidebar() {
             </Button>
           </DisclaimerDialog>
           {user.isLoggedIn ? (
-            <Link href="/profile" passHref>
+            <Link to="/profile" >
               {loggedInProfileButton}
             </Link>
           ) : (
