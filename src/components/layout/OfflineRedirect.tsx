@@ -14,7 +14,7 @@ export default function OfflineRedirect() {
         title: "You are offline",
         description: "Redirecting to your downloads...",
       });
-      if (location.pathname !== "/downloads") {
+      if (location.pathname !== "/downloads" && !location.pathname.startsWith("/playlists/")) {
         navigate("/downloads");
       }
     };
@@ -30,7 +30,7 @@ export default function OfflineRedirect() {
     window.addEventListener("online", handleOnline);
 
     // Initial check
-    if (!navigator.onLine && location.pathname !== "/downloads" && location.pathname !== "/login") {
+    if (!navigator.onLine && location.pathname !== "/downloads" && location.pathname !== "/login" && !location.pathname.startsWith("/playlists/")) {
       navigate("/downloads");
     }
 

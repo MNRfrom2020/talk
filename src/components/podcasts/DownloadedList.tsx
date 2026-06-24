@@ -17,8 +17,23 @@ export default function DownloadedList() {
         const downloadedPodcastIds = new Set(downloadedPodcastIdsArray); // Array to Set
 
         // Get all playlists to check which podcasts belong to downloaded playlists
-        const playlistsResponse = await fetch("/api/playlists.php?action=list");
-        const playlists = await playlistsResponse.json();
+        let playlists: any[] = [];
+        try {
+          const playlistsResponse = await fetch("/api/playlists.php?action=list");
+          if (playlistsResponse.ok) {
+            playlists = await playlistsResponse.json();
+          }
+        } catch (fetchError) {
+          console.warn("Offline: loading playlists from cache in DownloadedList", fetchError);
+          const cachedPlaylists = localStorage.getItem("podcast_playlists_all_offline_cache");
+          if (cachedPlaylists) {
+            try {
+              playlists = JSON.parse(cachedPlaylists);
+            } catch (e) {
+              console.error("Failed to parse cached playlists", e);
+            }
+          }
+        }
         
         // Find fully downloaded playlists
         const fullyDownloadedPlaylistIds = new Set<string>();

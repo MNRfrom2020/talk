@@ -13,15 +13,14 @@ interface PlaylistCoverProps {
 export default function PlaylistCover({ playlist, podcasts }: PlaylistCoverProps) {
   const audioCount = playlist.audioCount ?? podcasts.length;
   
-  // 1. If the playlist has its own cover, use it.
-  // Check both cover and coverArt (API returns coverArt)
-  if (playlist.cover || playlist.coverArt) {
+  const coverUrl = playlist.cover || playlist.coverArt || (playlist as any).cover_art;
+  if (coverUrl) {
     return (
       <div className="h-full w-full">
         <img
-          src={playlist.cover || playlist.coverArt}
+          src={coverUrl}
           alt={playlist.name}
-          className="w-full h-full object-cover rounded-md object-cover"
+          className="w-full h-full object-cover rounded-md"
         />
       </div>
     );

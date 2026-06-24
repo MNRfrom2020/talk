@@ -88,9 +88,9 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
     if (audioCount > 0 && allPlaylistPodcasts.length === 0) {
       // Check if all podcasts are already in context
       const contextPodcasts = getPodcastsForPlaylist(playlist.id, podcasts);
-      if (contextPodcasts.length === audioCount || contextPodcasts.length > 0) {
+      if (contextPodcasts.length === audioCount) {
         setAllPlaylistPodcasts(contextPodcasts);
-      } else if (audioCount > 4 && playlistFetchTarget) {
+      } else if (playlistFetchTarget) {
         // Need to fetch all podcasts (not just first 4)
         fetchPodcasts({
           action: "list",
@@ -98,9 +98,6 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
           limit: audioCount,
           offset: 0
         }).then(setAllPlaylistPodcasts);
-      } else {
-        // If audioCount <= 4, the first fetch already got all
-        setAllPlaylistPodcasts(playlistPodcasts);
       }
     }
   }, [playlist.id, audioCount, playlistFetchTarget, podcasts, playlistPodcasts]);
@@ -164,6 +161,37 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
       title: "Starting Download",
       description: `Downloading ${allPlaylistPodcasts.length} audios for "${playlist.name}".`,
     });
+
+    // Cache playlist cover art offline as Base64 in localStorage cache
+    const coverUrl = playlist.cover || playlist.coverArt || (playlist as any).cover_art;
+    if (coverUrl && !coverUrl.startsWith("data:")) {
+      try {
+        const coverResponse = await fetch(coverUrl);
+        if (coverResponse.ok) {
+          const coverBlob = await coverResponse.blob();
+          const base64Cover = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(coverBlob);
+          });
+          
+          // Update the cache in localStorage
+          const cached = localStorage.getItem("podcast_playlists_all_offline_cache");
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            const updated = parsed.map((p: any) => {
+              if (String(p.id) === String(playlist.id)) {
+                return { ...p, cover: base64Cover, coverArt: base64Cover, cover_art: base64Cover };
+              }
+              return p;
+            });
+            localStorage.setItem("podcast_playlists_all_offline_cache", JSON.stringify(updated));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to cache playlist cover art offline:", err);
+      }
+    }
 
     const downloadedPodcastIds = await getDownloadedPodcastIds();
     let downloadedCount = 0;

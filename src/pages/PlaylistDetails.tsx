@@ -22,7 +22,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { usePlayer } from "@/context/PlayerContext";
 import { useUser } from "@/context/UserContext";
-import { getDownloadedPodcastIds, saveAudio, deleteAudios } from "@/lib/idb";
+import { getDownloadedPodcastIds, saveAudio, deleteAudios, getDownloadedPodcasts } from "@/lib/idb";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -89,6 +89,21 @@ const PlaylistPage = () => {
             setPlaylist(data);
           }
         })
+        .catch((err) => {
+          console.warn("Offline: failed to fetch playlist from API, checking local cache", err);
+          const cached = localStorage.getItem("podcast_playlists_all_offline_cache");
+          if (cached) {
+            try {
+              const playlists = JSON.parse(cached);
+              const found = playlists.find((p: any) => String(p.id) === String(playlistId));
+              if (found) {
+                setPlaylist(found);
+              }
+            } catch (e) {
+              console.error("Failed to parse cached playlists", e);
+            }
+          }
+        })
         .finally(() => setIsPlaylistLoading(false));
     }
   }, [contextPlaylist, playlistId]);
@@ -142,7 +157,17 @@ const PlaylistPage = () => {
       }
       setPodcasts(prev => offsetToFetch === 0 ? data : [...prev, ...data]);
     } catch (error) {
-      console.error("Error fetching podcasts:", error);
+      console.error("Error fetching podcasts, attempting offline fallback:", error);
+      try {
+        const downloaded = await getDownloadedPodcasts();
+        const idsArray = playlist.podcast_ids || playlist.podcastIds || [];
+        const playlistIds = new Set(idsArray.map(String));
+        const filtered = downloaded.filter(p => playlistIds.has(String(p.id)));
+        setPodcasts(filtered);
+        setHasMore(false);
+      } catch (innerError) {
+        console.error("Failed to load downloaded podcasts for playlist:", innerError);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -197,10 +222,12 @@ const PlaylistPage = () => {
         result.sort((a, b) => b.title.localeCompare(a.title));
         break;
       case "newest":
-        result.reverse();
+        // Database is already newest first, so keep it as is
         break;
       case "oldest":
       default:
+        // Reverse to show oldest first
+        result.reverse();
         break;
     }
     return result;
@@ -260,6 +287,37 @@ const PlaylistPage = () => {
       title: "Starting Download",
       description: `Downloading ${podcastsInPlaylist.length} audios. This may take a while.`,
     });
+
+    // Cache playlist cover art offline as Base64 in localStorage cache
+    const coverUrl = playlist.cover || playlist.coverArt || (playlist as any).cover_art;
+    if (coverUrl && !coverUrl.startsWith("data:")) {
+      try {
+        const coverResponse = await fetch(coverUrl);
+        if (coverResponse.ok) {
+          const coverBlob = await coverResponse.blob();
+          const base64Cover = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(coverBlob);
+          });
+          
+          // Update the cache in localStorage
+          const cached = localStorage.getItem("podcast_playlists_all_offline_cache");
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            const updated = parsed.map((p: any) => {
+              if (String(p.id) === String(playlist.id)) {
+                return { ...p, cover: base64Cover, coverArt: base64Cover, cover_art: base64Cover };
+              }
+              return p;
+            });
+            localStorage.setItem("podcast_playlists_all_offline_cache", JSON.stringify(updated));
+          }
+        }
+      } catch (err) {
+        console.error("Failed to cache playlist cover art offline:", err);
+      }
+    }
 
     let downloadedCount = 0;
     for (const podcast of podcastsInPlaylist) {

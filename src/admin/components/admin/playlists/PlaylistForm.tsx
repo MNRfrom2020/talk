@@ -25,8 +25,9 @@ import { Checkbox } from "@admin/components/ui/checkbox";
 const PlaylistFormSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1, "Name is required"),
-  podcast_ids: z.array(z.string()).min(0, "Select at least one podcast").optional(),
-  cover: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  description: z.string().optional().or(z.literal("")),
+  podcast_ids: z.array(z.string()).optional(),
+  cover_art: z.string().optional().or(z.literal("")),
   created_at: z.string().optional(),
 });
 
@@ -66,7 +67,7 @@ export default function PlaylistForm({
       podcast_ids: Array.isArray(playlist?.podcast_ids)
         ? playlist.podcast_ids
         : [],
-      cover_art: playlist?.coverArt || "",
+      cover_art: playlist?.cover_art || playlist?.coverArt || "",
       created_at: getFormattedDate(playlist?.created_at),
     },
   });

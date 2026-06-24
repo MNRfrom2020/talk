@@ -142,6 +142,7 @@ interface DataTableProps<TData, TValue> {
   data: TData[];
   podcasts: Podcast[];
   pageCount: number;
+  onRefresh?: () => void;
 }
 
 export function PlaylistsDataTable<TData extends Playlist, TValue>({
@@ -149,6 +150,7 @@ export function PlaylistsDataTable<TData extends Playlist, TValue>({
   data,
   podcasts,
   pageCount,
+  onRefresh,
 }: DataTableProps<TData, TValue>) {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -296,7 +298,10 @@ export function PlaylistsDataTable<TData extends Playlist, TValue>({
             <PlaylistForm
               playlist={selectedPlaylist}
               allPodcasts={podcasts}
-              onClose={() => setIsFormOpen(false)}
+              onClose={() => {
+                setIsFormOpen(false);
+                if (onRefresh) onRefresh();
+              }}
             />
           </ScrollArea>
         </DialogContent>

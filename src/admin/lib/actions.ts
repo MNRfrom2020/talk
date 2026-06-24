@@ -121,7 +121,7 @@ const PlaylistFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   description: z.string().optional().or(z.literal("")),
   podcast_ids: z.array(z.string()).optional(),
-  cover_art: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  cover_art: z.string().optional().or(z.literal("")),
   created_at: z.string().optional(),
 });
 

@@ -15,22 +15,23 @@ export default function PlaylistsPage() {
   const [podcasts, setPodcasts] = useState<Podcast[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function fetchData() {
-      setLoading(true);
-      try {
-        const [playlistData, podcastData] = await Promise.all([
-          getPaginatedPlaylists(currentPage, ITEMS_PER_PAGE),
-          getPodcasts()
-        ]);
-        setData(playlistData);
-        setPodcasts(podcastData);
-      } catch (error) {
-        console.error("Failed to fetch playlists", error);
-      } finally {
-        setLoading(false);
-      }
+  async function fetchData() {
+    setLoading(true);
+    try {
+      const [playlistData, podcastData] = await Promise.all([
+        getPaginatedPlaylists(currentPage, ITEMS_PER_PAGE),
+        getPodcasts()
+      ]);
+      setData(playlistData);
+      setPodcasts(podcastData);
+    } catch (error) {
+      console.error("Failed to fetch playlists", error);
+    } finally {
+      setLoading(false);
     }
+  }
+
+  useEffect(() => {
     fetchData();
   }, [currentPage]);
 
@@ -50,6 +51,7 @@ export default function PlaylistsPage() {
         data={data.playlists}
         podcasts={podcasts}
         pageCount={totalPages}
+        onRefresh={fetchData}
       />
     </main>
   );

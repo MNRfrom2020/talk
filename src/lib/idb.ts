@@ -44,11 +44,38 @@ const getDb = () => {
   return dbPromise;
 };
 
+async function fetchAsBase64(url: string): Promise<string | null> {
+  if (!url) return null;
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.error("Failed to fetch image as base64", error);
+    return null;
+  }
+}
+
 export async function saveAudio(podcast: Podcast, blob: Blob) {
   const db = getDb();
   if (!db) return;
   const dbInstance = await db;
-  return dbInstance.put(STORE_NAME, { id: podcast.id, podcast, blob });
+  
+  // Try to fetch cover art and save it offline inside the podcast metadata
+  let updatedPodcast = { ...podcast };
+  if (podcast.coverArt && !podcast.coverArt.startsWith('data:')) {
+    const base64Cover = await fetchAsBase64(podcast.coverArt);
+    if (base64Cover) {
+      updatedPodcast.coverArt = base64Cover;
+    }
+  }
+
+  return dbInstance.put(STORE_NAME, { id: podcast.id, podcast: updatedPodcast, blob });
 }
 
 export async function getAudio(podcastId: string): Promise<Blob | null> {
