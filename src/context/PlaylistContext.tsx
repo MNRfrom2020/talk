@@ -21,6 +21,13 @@ const hasSuperUserRole = (role?: string | string[]) => {
   return userRoles.some((item) => item.toLowerCase().trim() === "super user");
 };
 
+// Matches backend verifyUserRole: ['super user', 'subscriber', 'contributor']
+const hasCloudSyncRole = (role?: string | string[]) => {
+  const allowedRoles = ['super user', 'subscriber', 'contributor'];
+  const userRoles = Array.isArray(role) ? role : [role || ""];
+  return userRoles.some((item) => allowedRoles.includes(item.toLowerCase().trim()));
+};
+
 
 interface PlaylistContextType {
   playlists: Playlist[];
@@ -62,7 +69,8 @@ export const PlaylistProvider = ({
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const { user, loading: userLoading, toggleFavoritePlaylist: toggleFavoritePlaylistInUser } = useUser();
   const [FAVORITES_PLAYLIST_ID, setFavoritesPlaylistId] = useState<string | undefined>();
-  const needsCloudSync = !user.isGuest && !!user.uid && hasSuperUserRole(user.role);
+  // All syncing roles (super user, subscriber, contributor) can save to the cloud
+  const needsCloudSync = !user.isGuest && !!user.uid && hasCloudSyncRole(user.role);
 
   useEffect(() => {
     const loadPlaylists = async () => {
@@ -277,17 +285,47 @@ export const PlaylistProvider = ({
         const updatedPlaylists = [...playlists, newPlaylist];
         savePlaylistsForGuest(updatedPlaylists);
       } else {
-         const newPlaylist: Playlist = {
-          id: Date.now().toString(),
-          name,
-          podcast_ids: podcastIds,
-          isPredefined: false,
-          isFavorite: false,
-          created_at: new Date().toISOString(),
-          cover: cover,
-        };
-         const updatedPlaylists = [...playlists, newPlaylist];
-         savePlaylistsForUser(updatedPlaylists);
+        if (needsCloudSync && user.uid && !user.isExpired) {
+          try {
+            const response = await apiClient.post('actions.php?action=save_user_playlist', {
+              user_uid: user.uid,
+              role: user.role,
+              name: name,
+              podcast_ids: podcastIds,
+              cover: cover
+            });
+
+            const newId = response?.id || Date.now().toString();
+
+            const newPlaylist: Playlist = {
+              id: newId,
+              name,
+              podcast_ids: podcastIds,
+              isPredefined: false,
+              isFavorite: false,
+              created_at: new Date().toISOString(),
+              cover: cover,
+            };
+            const updatedPlaylists = [...playlists, newPlaylist];
+            savePlaylistsForUser(updatedPlaylists);
+          } catch (error) {
+            console.error("Failed to create user playlist on cloud:", error);
+            // Optionally, we could show a toast or fallback, but failing loudly is better for sync
+          }
+        } else {
+           // Local-only / non-syncing user fallback
+           const newPlaylist: Playlist = {
+            id: Date.now().toString(),
+            name,
+            podcast_ids: podcastIds,
+            isPredefined: false,
+            isFavorite: false,
+            created_at: new Date().toISOString(),
+            cover: cover,
+          };
+           const updatedPlaylists = [...playlists, newPlaylist];
+           savePlaylistsForUser(updatedPlaylists);
+        }
       }
     },
     [playlists, user],
@@ -380,9 +418,29 @@ export const PlaylistProvider = ({
       }
 
       const newPodcastIds = [...playlist.podcast_ids, podcastId];
-
       const updatedPlaylists = playlists.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p);
-      savePlaylistsForUser(updatedPlaylists);
+
+      // Optimistic UI update
+      setPlaylists(updatedPlaylists);
+
+      // Cloud sync
+      if (needsCloudSync && user.uid && !user.isExpired) {
+        try {
+          await apiClient.post('actions.php?action=save_user_playlist', {
+            id: playlistId,
+            user_uid: user.uid,
+            role: user.role,
+            podcast_ids: newPodcastIds,
+          });
+        } catch (err) {
+          // Revert on failure
+          console.error('Failed to sync playlist add to DB:', err);
+          setPlaylists(playlists);
+          throw err;
+        }
+      } else {
+        savePlaylistsForUser(updatedPlaylists);
+      }
   };
 
   const removePodcastFromGuestPlaylist = (playlistId: string, podcastId: string) => {
@@ -403,10 +461,30 @@ export const PlaylistProvider = ({
     }
 
     const newPodcastIds = playlist.podcast_ids.filter((id) => id !== podcastId);
-
     const updatedPlaylists = playlists.map(p => p.id === playlistId ? {...p, podcast_ids: newPodcastIds} : p);
-    savePlaylistsForUser(updatedPlaylists);
-};
+
+    // Optimistic UI update
+    setPlaylists(updatedPlaylists);
+
+    // Cloud sync
+    if (needsCloudSync && user.uid && !user.isExpired) {
+      try {
+        await apiClient.post('actions.php?action=save_user_playlist', {
+          id: playlistId,
+          user_uid: user.uid,
+          role: user.role,
+          podcast_ids: newPodcastIds,
+        });
+      } catch (err) {
+        // Revert on failure
+        console.error('Failed to sync playlist remove to DB:', err);
+        setPlaylists(playlists);
+        throw err;
+      }
+    } else {
+      savePlaylistsForUser(updatedPlaylists);
+    }
+  };
 
 
   const getPodcastsForPlaylist = useCallback(
@@ -433,17 +511,22 @@ export const PlaylistProvider = ({
        if (!playlist || !playlist.isPredefined) return;
 
        if (user.isGuest) {
+          // Guest: local only
           const updatedPlaylist = { ...playlist, isFavorite: !playlist.isFavorite };
           const updatedPlaylists = playlists.map(p => p.id === playlistId ? updatedPlaylist : p);
           savePlaylistsForGuest(updatedPlaylists);
        } else {
+          // Optimistic UI update immediately
           const updatedPlaylist = { ...playlist, isFavorite: !playlist.isFavorite };
           const updatedPlaylists = playlists.map(p => p.id === playlistId ? updatedPlaylist : p);
           savePlaylistsForUser(updatedPlaylists);
 
+          // Cloud sync for all allowed roles (super user, subscriber, contributor)
           if (needsCloudSync && !user.isExpired) {
              toggleFavoritePlaylistInUser(playlistId).catch(err => {
                console.error('Failed to sync favorite to database:', err);
+               // Revert optimistic update on failure
+               setPlaylists(playlists);
              });
           }
        }
@@ -465,30 +548,66 @@ export const PlaylistProvider = ({
 
   const toggleFavoritePodcast = useCallback(
     async (podcastId: string) => {
-      if (FAVORITES_PLAYLIST_ID) {
-          const isAlreadyFavorite = isFavoritePodcast(podcastId);
-          try {
-            if (user.isGuest) {
-               if (isAlreadyFavorite) {
-                removePodcastFromGuestPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
-              } else {
-                addPodcastToGuestPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
-              }
-            } else {
-               if (isAlreadyFavorite) {
-                await removePodcastFromUserPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
-               } else {
-                await addPodcastToUserPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
-               }
-            }
-          } catch(error) {
-            console.error("Failed to toggle favorite podcast", error)
-          }
-      } else {
+      if (!FAVORITES_PLAYLIST_ID) {
         console.error("Favorites playlist ID not found");
+        return;
+      }
+
+      const isAlreadyFavorite = isFavoritePodcast(podcastId);
+
+      // ── Optimistic UI update ──
+      const favPlaylist = playlists.find(p => p.id === FAVORITES_PLAYLIST_ID);
+      if (favPlaylist) {
+        const newIds = isAlreadyFavorite
+          ? favPlaylist.podcast_ids.filter(id => id !== podcastId)
+          : [...favPlaylist.podcast_ids, podcastId];
+        setPlaylists(prev => prev.map(p =>
+          p.id === FAVORITES_PLAYLIST_ID ? { ...p, podcast_ids: newIds } : p
+        ));
+      }
+
+      try {
+        if (user.isGuest) {
+          // Guest: local only
+          if (isAlreadyFavorite) {
+            removePodcastFromGuestPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
+          } else {
+            addPodcastToGuestPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
+          }
+        } else {
+          if (needsCloudSync && user.uid && !user.isExpired) {
+            // ── Atomic DB toggle via new endpoint ──
+            await apiClient.post('actions.php?action=toggle_favorite_podcast', {
+              uid: user.uid,
+              podcast_id: podcastId,
+            });
+            // Sync local state too
+            if (isAlreadyFavorite) {
+              removePodcastFromGuestPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
+            } else {
+              addPodcastToGuestPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
+            }
+          } else {
+            // Local-only logged-in user (no sync role)
+            if (isAlreadyFavorite) {
+              removePodcastFromGuestPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
+            } else {
+              addPodcastToGuestPlaylist(FAVORITES_PLAYLIST_ID, podcastId);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Failed to toggle favorite podcast", error);
+        // Revert optimistic update on failure
+        if (favPlaylist) {
+          setPlaylists(prev => prev.map(p =>
+            p.id === FAVORITES_PLAYLIST_ID ? favPlaylist : p
+          ));
+        }
       }
     },
-    [FAVORITES_PLAYLIST_ID, isFavoritePodcast, user.isGuest, addPodcastToGuestPlaylist, removePodcastFromGuestPlaylist, addPodcastToUserPlaylist, removePodcastFromUserPlaylist],
+    [FAVORITES_PLAYLIST_ID, isFavoritePodcast, playlists, user, needsCloudSync,
+     addPodcastToGuestPlaylist, removePodcastFromGuestPlaylist],
   );
 
 

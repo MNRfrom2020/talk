@@ -11,10 +11,8 @@ import type { MnrUser } from "@/lib/mnr-auth";
 
 const USER_STORAGE_KEY = "user_profile";
 
-const hasSuperUserRole = (role?: string | string[]) => {
-  const userRoles = Array.isArray(role) ? role : [role || ""];
-  return userRoles.some((item) => item.toLowerCase().trim() === "super user");
-};
+
+
 
 export interface User extends Partial<DbUser> {
   name: string;
@@ -88,6 +86,12 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   // 🔒 Check if user's subscription/role has expired
+  const hasAllowedSyncRole = useCallback((role?: string | string[]): boolean => {
+    const allowedRoles = ['super user', 'subscriber', 'contributor'];
+    const userRoles = Array.isArray(role) ? role : [role || ''];
+    return userRoles.some(r => allowedRoles.includes(r.toLowerCase().trim()));
+  }, []);
+
   const checkAndHandleExpiry = useCallback((userData: User): boolean => {
     const rolesThatExpire = ['subscriber', 'contributor'];
     const userRoles = Array.isArray(userData.role) ? userData.role : [userData.role || ''];
@@ -126,7 +130,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
           }
 
           storedUser.isExpired = checkAndHandleExpiry(storedUser);
-          storedUser.needsCloudSync = hasSuperUserRole(storedUser.role);
+          storedUser.needsCloudSync = hasAllowedSyncRole(storedUser.role);
 
           if (storedUser.authSource === "mnr_id" && !storedUser.needsCloudSync) {
             storedUser.uid = undefined;
@@ -134,6 +138,20 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
           if (!storedUser.isGuest && storedUser.uid) {
             if (storedUser.authSource === "mnr_id") {
+              // ✅ FIX: MNR ID users — always fetch fresh favorites from DB
+              // so playlists_ids is never stale from localStorage.
+              if (storedUser.needsCloudSync && !storedUser.isExpired) {
+                try {
+                  const favData = await apiClient.get('actions.php', {
+                    action: 'get_user_favorites',
+                    uid: storedUser.uid,
+                  });
+                  storedUser.playlists_ids = favData?.playlist_ids || storedUser.playlists_ids || [];
+                } catch (err) {
+                  // Network error — keep localStorage value as fallback
+                  console.warn('Could not fetch fresh favorites, using cached value:', err);
+                }
+              }
               setUser(storedUser);
               setLoading(false);
               return;
@@ -204,15 +222,25 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
   const loginWithMnrId = async (mnrUser: MnrUser) => {
     try {
-      const userRoles = Array.isArray(mnrUser.role) ? mnrUser.role : [mnrUser.role || ''];
-      const isSuperUser = hasSuperUserRole(mnrUser.role);
+      const canSync = hasAllowedSyncRole(mnrUser.role);
 
+      // ✅ FIX: Fetch existing favorites from DB on login
+      // so we don't start with playlists_ids: [] and overwrite the DB.
+      let existingFavorites: string[] = [];
+      if (canSync && mnrUser.id) {
+        try {
+          const favData = await apiClient.get('actions.php', {
+            action: 'get_user_favorites',
+            uid: mnrUser.id,
+          });
+          existingFavorites = favData?.playlist_ids || [];
+        } catch (err) {
+          console.warn('Could not fetch favorites on login, starting with empty list:', err);
+        }
+      }
 
-      // 🔐 Save authenticated user state
-      // Super users get UUID for cloud sync
-      // Normal users stay local-only with generic keys (no UUID, no cloud sync)
       const loggedInUser: User = {
-        uid: isSuperUser ? mnrUser.id : undefined, // Only super users need UUID
+        uid: canSync ? mnrUser.id : undefined,
         name: mnrUser.name,
         avatar: mnrUser.avatar,
         email: mnrUser.email,
@@ -220,11 +248,11 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         isLoggedIn: true,
         isGuest: false,
         role: mnrUser.role,
-        playlists_ids: [],
+        playlists_ids: existingFavorites,  // DB'র আসল data দিয়ে শুরু
         authSource: 'mnr_id',
         expired_at: mnrUser.expired_at || null,
         isExpired: false,
-        needsCloudSync: isSuperUser,
+        needsCloudSync: canSync,
       };
 
       loggedInUser.isExpired = checkAndHandleExpiry(loggedInUser);
@@ -248,8 +276,13 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const toggleFavoritePlaylist = async (playlistId: string) => {
-    if (user.isGuest || !user.uid || !hasSuperUserRole(user.role)) return;
+    // Allow all cloud-syncing roles: super user, subscriber, contributor
+    const allowedRoles = ['super user', 'subscriber', 'contributor'];
+    const userRoles = Array.isArray(user.role) ? user.role : [user.role || ''];
+    const canSync = userRoles.some(r => allowedRoles.includes(r.toLowerCase().trim()));
+    if (user.isGuest || !user.uid || !canSync) return;
 
+    // ── Optimistic UI update ──
     const currentFavorites = user.playlists_ids || [];
     const isFavorite = currentFavorites.includes(playlistId);
     const newFavorites = isFavorite
@@ -257,17 +290,21 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       : [...currentFavorites, playlistId];
 
     setUser(prevUser => ({ ...prevUser, playlists_ids: newFavorites }));
-    
-    // ✅ Save to cloud database
+
+    // ── Send the full updated array to the already-deployed save_user endpoint ──
     try {
-      await apiClient.post('actions.php?action=save_user', { 
-        uid: user.uid, 
-        playlists_ids: newFavorites 
+      await apiClient.post('actions.php?action=save_user', {
+        uid: user.uid,
+        playlists_ids: newFavorites,
       });
     } catch (err) {
-      console.error('Failed to sync favorite playlists to cloud:', err);
+      // Revert optimistic update on failure
+      console.error('Failed to sync favorite playlist to cloud:', err);
+      setUser(prevUser => ({ ...prevUser, playlists_ids: currentFavorites }));
     }
   };
+
+
 
   const value = {
     user: {

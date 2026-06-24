@@ -522,7 +522,137 @@ switch ($action) {
         }
         break;
 
-    // Save user's favorite playlists (replaces old save_user that used users table)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Toggle a single playlist ID inside the uuid[] column.
+    // Uses PostgreSQL array functions — no overwrite, no race condition.
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    case 'toggle_favorite_playlist':
+        $uid         = $data['uid']         ?? null;
+        $playlist_id = $data['playlist_id'] ?? null;
+
+        if (!$uid || !$playlist_id) {
+            sendResponse(['error' => 'Missing uid or playlist_id'], 400);
+        }
+
+        try {
+            // ── Step 1: fetch the current array (one row or none) ──
+            $fetchSql  = "SELECT podcast_ids FROM favorite_playlists WHERE user_id = ?";
+            $fetchStmt = $pdo->prepare($fetchSql);
+            $fetchStmt->execute([$uid]);
+            $row = $fetchStmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($row === false) {
+                // ── Step 2a: No row yet — INSERT with the single ID ──
+                $insertSql  = "INSERT INTO favorite_playlists (user_id, podcast_ids, updated_at)
+                               VALUES (?, ?::uuid[], NOW())";
+                $insertStmt = $pdo->prepare($insertSql);
+                $insertStmt->execute([$uid, '{' . $playlist_id . '}']);
+                sendResponse(['message' => 'Favorited', 'action' => 'added']);
+
+            } else {
+                // ── Step 2b: Row exists — check if ID is already present ──
+                // parsePgArray() is defined at the bottom of this file.
+                $currentIds = parsePgArray($row['podcast_ids'] ?? '{}');
+                $alreadyIn  = in_array($playlist_id, $currentIds, true);
+
+                if ($alreadyIn) {
+                    // ── Toggle OFF: remove with PostgreSQL array_remove() ──
+                    $updateSql  = "UPDATE favorite_playlists
+                                   SET    podcast_ids = array_remove(podcast_ids, ?::uuid),
+                                          updated_at  = NOW()
+                                   WHERE  user_id = ?";
+                    $updateStmt = $pdo->prepare($updateSql);
+                    $updateStmt->execute([$playlist_id, $uid]);
+                    sendResponse(['message' => 'Unfavorited', 'action' => 'removed']);
+
+                } else {
+                    // ── Toggle ON: append with PostgreSQL array_append() ──
+                    $updateSql  = "UPDATE favorite_playlists
+                                   SET    podcast_ids = array_append(podcast_ids, ?::uuid),
+                                          updated_at  = NOW()
+                                   WHERE  user_id = ?";
+                    $updateStmt = $pdo->prepare($updateSql);
+                    $updateStmt->execute([$playlist_id, $uid]);
+                    sendResponse(['message' => 'Favorited', 'action' => 'added']);
+                }
+            }
+        } catch (\PDOException $e) {
+            error_log("Error in toggle_favorite_playlist: " . $e->getMessage());
+            sendResponse(['error' => 'Database error: ' . $e->getMessage()], 500);
+        }
+        break;
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Toggle a single podcast ID inside the 'Favorites' user_playlist.
+    // Finds the row: user_id = ? AND name = 'Favorites'
+    // Uses array_append / array_remove — atomic, no overwrite risk.
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    case 'toggle_favorite_podcast':
+        $uid        = $data['uid']        ?? null;
+        $podcast_id = $data['podcast_id'] ?? null;
+
+        if (!$uid || !$podcast_id) {
+            sendResponse(['error' => 'Missing uid or podcast_id'], 400);
+        }
+
+        try {
+            // ── Step 1: Fetch the current Favorites row ──
+            $fetchSql  = "SELECT id, podcast_ids FROM user_playlists
+                          WHERE user_id = ? AND name = 'Favorites'
+                          LIMIT 1";
+            $fetchStmt = $pdo->prepare($fetchSql);
+            $fetchStmt->execute([$uid]);
+            $row = $fetchStmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($row === false) {
+                // ── Step 2a: No Favorites row yet — create it with the podcast ──
+                $newId = sprintf(
+                    '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+                    mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+                    mt_rand(0, 0xffff),
+                    mt_rand(0, 0x0fff) | 0x4000,
+                    mt_rand(0, 0x3fff) | 0x8000,
+                    mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+                );
+                $insertSql  = "INSERT INTO user_playlists (id, user_id, name, podcast_ids, created_at)
+                               VALUES (?, ?, 'Favorites', ?::uuid[], NOW())";
+                $insertStmt = $pdo->prepare($insertSql);
+                $insertStmt->execute([$newId, $uid, '{' . $podcast_id . '}']);
+                sendResponse(['message' => 'Favorited (created Favorites playlist)', 'action' => 'added']);
+
+            } else {
+                // ── Step 2b: Row exists — check if podcast is already in array ──
+                $currentIds = parsePgArray($row['podcast_ids'] ?? '{}');
+                $alreadyIn  = in_array($podcast_id, $currentIds, true);
+                $rowId      = $row['id'];
+
+                if ($alreadyIn) {
+                    // ── Toggle OFF: remove with array_remove() ──
+                    $updateSql  = "UPDATE user_playlists
+                                   SET    podcast_ids = array_remove(podcast_ids, ?::uuid)
+                                   WHERE  id = ?";
+                    $updateStmt = $pdo->prepare($updateSql);
+                    $updateStmt->execute([$podcast_id, $rowId]);
+                    sendResponse(['message' => 'Unfavorited', 'action' => 'removed']);
+
+                } else {
+                    // ── Toggle ON: append with array_append() ──
+                    $updateSql  = "UPDATE user_playlists
+                                   SET    podcast_ids = array_append(podcast_ids, ?::uuid)
+                                   WHERE  id = ?";
+                    $updateStmt = $pdo->prepare($updateSql);
+                    $updateStmt->execute([$podcast_id, $rowId]);
+                    sendResponse(['message' => 'Favorited', 'action' => 'added']);
+                }
+            }
+        } catch (\PDOException $e) {
+            error_log("Error in toggle_favorite_podcast: " . $e->getMessage());
+            sendResponse(['error' => 'Database error: ' . $e->getMessage()], 500);
+        }
+        break;
+
+
+
     case 'save_user':
         $uid = $data['uid'] ?? null;
         $playlists_ids = $data['playlists_ids'] ?? null;

@@ -1,5 +1,3 @@
-
-
 import type { Podcast } from "@/lib/types";
 import React, {
   createContext,
@@ -14,6 +12,7 @@ import { useUser } from "./UserContext";
 import { apiClient } from "@/lib/api-client";
 import { getListeningActivity } from "@/lib/data";
 import { getAudio } from "@/lib/idb";
+import { upsertListeningHistory } from "@/lib/actions";
 
 
 const HISTORY_STORAGE_KEY = "podcast_history";
@@ -341,20 +340,41 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     });
   }, 5000);
 
-  const updateListeningHistoryDuration = useThrottle((trackId: string, currentTime: number) => {
-    // Only track locally, no cloud sync
-  }, 5000); // Update every 5 seconds
+  const updateListeningHistoryDuration = useThrottle(
+    (trackId: string, currentTime: number) => {
+      // Only sync if user is logged in with a syncable role
+      if (!user.uid || !user.needsCloudSync || user.isGuest) return;
+
+      upsertListeningHistory({
+        user_uid: user.uid,
+        podcast_id: trackId,
+        duration: Math.round(currentTime),
+        role: user.role,
+      });
+    },
+    30000, // Throttle: fire at most once every 30 seconds during playback
+  );
 
   const pause = useCallback(() => {
     if (playPromiseController.current) {
       playPromiseController.current.abort();
     }
     if (audioRef.current && currentTrack) {
-        savePlaybackProgress(currentTrack.id, audioRef.current.currentTime, audioRef.current.duration);
+      const currentTime = audioRef.current.currentTime;
+      savePlaybackProgress(currentTrack.id, currentTime, audioRef.current.duration);
+      // Immediately sync to DB on pause (don't wait for throttle)
+      if (user.uid && user.needsCloudSync && !user.isGuest) {
+        upsertListeningHistory({
+          user_uid: user.uid,
+          podcast_id: currentTrack.id,
+          duration: Math.round(currentTime),
+          role: user.role,
+        });
+      }
     }
     audioRef.current?.pause();
     setIsPlaying(false);
-  }, [currentTrack, savePlaybackProgress]);
+  }, [currentTrack, savePlaybackProgress, user]);
 
   const setAudioSource = useCallback(
     async (
@@ -668,10 +688,19 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
   }, [currentPlaylist, podcasts, play, findCurrentTrackIndex, repeatMode]);
 
   const handleTrackEnd = useCallback(() => {
-     if (currentTrack && audioRef.current) {
-        savePlaybackProgress(currentTrack.id, audioRef.current.duration, audioRef.current.duration);
-     }
-    
+    if (currentTrack && audioRef.current) {
+      const finalTime = audioRef.current.duration;
+      savePlaybackProgress(currentTrack.id, finalTime, finalTime);
+      // Sync final progress to DB on track end
+      if (user.uid && user.needsCloudSync && !user.isGuest) {
+        upsertListeningHistory({
+          user_uid: user.uid,
+          podcast_id: currentTrack.id,
+          duration: Math.round(finalTime),
+          role: user.role,
+        });
+      }
+    }
     // Check if we should stop when current track ends
     if (sleepTimer.stopWhenCurrentTrackEnds) {
       pause();
@@ -699,7 +728,7 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
     } else {
       nextTrack();
     }
-  }, [currentTrack, sleepTimer, queue, currentPlaylist, repeatMode, pause, nextTrack, play, savePlaybackProgress]);
+  }, [currentTrack, sleepTimer, queue, currentPlaylist, repeatMode, pause, nextTrack, play, savePlaybackProgress, user]);
 
   const playRandom = useCallback((podcastsToShuffle: Podcast[]) => {
     if (podcastsToShuffle.length === 0) return;

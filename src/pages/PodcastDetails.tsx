@@ -1,7 +1,7 @@
 
 
 import { AnimatePresence } from "framer-motion";
-import { useParams, useSearchParams } from "react-router-dom";
+import { useParams, useSearchParams, useNavigate } from "react-router-dom";
 import * as React from "react";
 import { Play } from "lucide-react";
 
@@ -28,7 +28,8 @@ const PodcastPage = () => {
 
   const [searchParams] = useSearchParams();
   const isEmbedView = searchParams.get("embed") === "true";
-  
+  const navigate = useNavigate();
+
   const relatedPodcasts = React.useMemo(() => {
     if (!podcast) return [];
     
@@ -116,11 +117,22 @@ const PodcastPage = () => {
             <p className="text-base text-muted-foreground">{artistText}</p>
           </div>
            <Button
-              onClick={() => play(podcast.id, allPodcasts, { expand: true })}
+              asChild
               className="mt-8 h-12 rounded-full px-8 text-lg"
             >
-              <Play className="mr-2 h-5 w-5 fill-current" />
-              Play
+              <a 
+                href={window.location.origin} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                onClick={() => {
+                  // We don't prevent default, so the new tab opens.
+                  // We just trigger the local play action.
+                  play(podcast.id, allPodcasts, { expand: true });
+                }}
+              >
+                <Play className="mr-2 h-5 w-5 fill-current" />
+                Play
+              </a>
             </Button>
         </div>
         <AnimatePresence>

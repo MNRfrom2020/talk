@@ -17,30 +17,37 @@ export async function upsertListeningHistory(payload: {
     user_uid: string;
     podcast_id: string;
     duration?: number;
-    role?: string | string[]; // Add role for verification
+    role?: string | string[];
 }) {
+    // Guard: user_uid must be present
+    if (!payload.user_uid) {
+        console.warn('[Cloud Sync] Skipped: user_uid is missing.');
+        return { message: 'Skipped: user_uid is missing.' };
+    }
+
+    // Must match backend's verifyUserRole: ['super user', 'subscriber', 'contributor']
+    const allowedRoles = ['super user', 'subscriber', 'contributor'];
+    const userRoles = Array.isArray(payload.role) ? payload.role : [payload.role || ''];
+    const normalizedUserRoles = userRoles.map(r => r.toLowerCase().trim());
+    const hasAllowedRole = normalizedUserRoles.some(role => allowedRoles.includes(role));
+
+    if (!hasAllowedRole) {
+        console.warn('[Cloud Sync] Skipped: role not in allowed list.', normalizedUserRoles);
+        return { message: 'Locally saved only (role not allowed for cloud sync)' };
+    }
+
     try {
-        // Check if role allows cloud sync (case-insensitive only, no space normalization)
-        const allowedRoles = ['super user'];
-        const userRoles = Array.isArray(payload.role) ? payload.role : [payload.role || ''];
-        const normalizedUserRoles = userRoles.map(r => r.toLowerCase().trim());
-        const hasAllowedRole = normalizedUserRoles.some(role => allowedRoles.includes(role));
-
-        if (!hasAllowedRole) {
-            return { message: 'Locally saved only (role not allowed for cloud sync)' };
-        }
-
         const dataToUpsert = {
             user_uid: payload.user_uid,
             podcast_id: payload.podcast_id,
-            role: payload.role, // Pass role for verification
+            role: payload.role,
             duration: payload.duration ? Math.round(payload.duration) : 0,
             last_played_at: getBstDate().toISOString(),
         };
 
-
-
+        console.log('[Cloud Sync] Sending listening history:', dataToUpsert);
         const result = await apiClient.post("actions.php?action=upsert_listening_history", dataToUpsert);
+        console.log('[Cloud Sync] Response:', result);
         return { message: result.message || "Successfully updated listening history." };
     } catch (error: any) {
         console.error('❌ [Cloud Sync] Failed to update listening history:', error.message);
