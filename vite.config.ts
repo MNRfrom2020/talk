@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => {
         includeAssets: ["favicon.png", "mnr.svg"],
         manifest: {
           name: env.VITE_APP_TITLE || "Talk - Audio Streaming",
-          short_name: env.VITE_APP_HEADER || "Talk",
+          short_name: env.VITE_APP_TITLE || "Talk",
           description: env.VITE_APP_DESCRIPTION || "Your favorite audio content, offline and online.",
           theme_color: "#000000",
           icons: [
