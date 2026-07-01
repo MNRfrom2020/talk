@@ -37,7 +37,7 @@ import ResumePlayButton from "@/components/player/ResumePlayButton";
 import { usePodcast } from "@/context/PodcastContext";
 import { usePlaylist } from "@/context/PlaylistContext";
 import { apiClient } from "@/lib/api-client";
-import DraggablePlaylistGrid from "@/components/playlists/DraggablePlaylistGrid";
+import PlaylistAudioGrid from "@/components/playlists/PlaylistAudioGrid";
 
 const PODCASTS_PER_PAGE = 20;
 
@@ -488,7 +488,7 @@ const PlaylistPage = () => {
                 {podcastsInPlaylist.length > 0 ? (
                   <>
                     {sortOrder === "custom" && !isPredefined ? (
-                      <DraggablePlaylistGrid
+                      <PlaylistAudioGrid
                         podcasts={podcastsInPlaylist}
                         playlistId={playlist.id}
                         onRemove={

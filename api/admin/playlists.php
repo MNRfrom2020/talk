@@ -18,7 +18,6 @@ try {
                 if ($playlist) {
                     $itemStmt = $pdo->prepare("
                         SELECT pi.podcast_id FROM admin_playlist_items pi
-                        JOIN podcasts p ON p.id = pi.podcast_id AND p.created_at <= NOW()
                         WHERE pi.playlist_id = ?::uuid
                         ORDER BY pi.sort_order ASC
                     ");
@@ -44,7 +43,6 @@ try {
             foreach ($playlists as &$playlist) {
                 $itemStmt = $pdo->prepare("
                     SELECT pi.podcast_id FROM admin_playlist_items pi
-                    JOIN podcasts p ON p.id = pi.podcast_id AND p.created_at <= NOW()
                     WHERE pi.playlist_id = ?::uuid
                     ORDER BY pi.sort_order ASC
                 ");
@@ -58,6 +56,33 @@ try {
 
         case 'POST':
             $input = json_decode(file_get_contents('php://input'), true);
+            $postAction = $input['action'] ?? null;
+
+            // ━━━ Reorder action ━━━
+            if ($postAction === 'reorder') {
+                $playlist_id = $input['playlist_id'] ?? null;
+                $podcast_ids = $input['podcast_ids'] ?? [];
+
+                if (!$playlist_id) {
+                    sendResponse(["error" => "Missing playlist_id"], 400);
+                }
+
+                $pdo->beginTransaction();
+                $pdo->prepare("DELETE FROM admin_playlist_items WHERE playlist_id = ?::uuid")->execute([$playlist_id]);
+
+                if (!empty($podcast_ids)) {
+                    $itemStmt = $pdo->prepare("INSERT INTO admin_playlist_items (playlist_id, podcast_id, sort_order) VALUES (?::uuid, ?, ?)");
+                    foreach ($podcast_ids as $index => $pid) {
+                        $itemStmt->execute([$playlist_id, $pid, $index + 1]);
+                    }
+                }
+
+                $pdo->commit();
+                sendResponse(["message" => "Playlist reordered successfully", "count" => count($podcast_ids)]);
+                break;
+            }
+
+            // ━━━ Create action (default) ━━━
             $name = trim($input['name'] ?? '');
             $description = $input['description'] ?? '';
             $cover_art = $input['cover_art'] ?? '';

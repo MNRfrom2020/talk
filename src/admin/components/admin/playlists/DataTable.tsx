@@ -8,7 +8,7 @@ import {
   getSortedRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, ChevronUp, ChevronDown, Pencil } from "lucide-react";
 
 import { Button } from "@admin/components/ui/button";
 import {
@@ -29,8 +29,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@admin/components/ui/sheet";
-import AudioCard from "../audios/AudioCard";
 import AudioForm from "../audios/AudioForm";
+import { api } from "@admin/lib/api";
+import { useToast } from "@admin/hooks/use-toast";
 
 const ITEMS_PER_PAGE = 20;
 
@@ -82,21 +83,37 @@ const PlaylistDetailSheet = ({
   playlist,
   allPodcasts,
   onEdit,
+  onReorderComplete,
 }: {
   playlist: Playlist;
   allPodcasts: Podcast[];
   onEdit: (podcast: Podcast) => void;
+  onReorderComplete?: () => void;
 }) => {
   const [currentPage, setCurrentPage] = React.useState(1);
+  const { toast } = useToast();
 
-  const podcastsInPlaylist = React.useMemo(() => {
-    const podcastMap = new Map(allPodcasts.map((p) => [p.id, p]));
-    return (
-      playlist.podcast_ids
-        ?.map((id) => podcastMap.get(id))
-        .filter((p): p is Podcast => !!p) || []
-    );
-  }, [playlist, allPodcasts]);
+  const podcastMap = React.useMemo(
+    () => new Map(allPodcasts.map((p) => [p.id, p])),
+    [allPodcasts],
+  );
+
+  const [orderedIds, setOrderedIds] = React.useState<string[]>(
+    () => playlist.podcast_ids ?? [],
+  );
+
+  React.useEffect(() => {
+    setOrderedIds(playlist.podcast_ids ?? []);
+    setCurrentPage(1);
+  }, [playlist.id]);
+
+  const podcastsInPlaylist = React.useMemo(
+    () =>
+      orderedIds
+        .map((id) => podcastMap.get(id))
+        .filter((p): p is Podcast => !!p),
+    [orderedIds, podcastMap],
+  );
 
   const totalPages = Math.ceil(podcastsInPlaylist.length / ITEMS_PER_PAGE);
 
@@ -112,6 +129,39 @@ const PlaylistDetailSheet = ({
     }
   };
 
+  const saveOrder = (newIds: string[]) => {
+    api
+      .post("/playlists.php", {
+        action: "reorder",
+        playlist_id: playlist.id,
+        podcast_ids: newIds,
+      })
+      .then(() => {
+        toast({ title: "Order saved" });
+        if (onReorderComplete) onReorderComplete();
+      })
+      .catch((err) => {
+        console.error("Failed to save reorder:", err);
+        toast({ variant: "destructive", title: "Failed to save order" });
+        setOrderedIds(playlist.podcast_ids ?? []);
+      });
+  };
+
+  const moveItem = (index: number, direction: "up" | "down") => {
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= currentPodcasts.length) return;
+
+    // Map page-local index to global index in orderedIds
+    const globalSource = (currentPage - 1) * ITEMS_PER_PAGE + index;
+    const globalTarget = (currentPage - 1) * ITEMS_PER_PAGE + targetIndex;
+
+    const newIds = Array.from(orderedIds);
+    [newIds[globalSource], newIds[globalTarget]] = [newIds[globalTarget], newIds[globalSource]];
+
+    setOrderedIds(newIds);
+    saveOrder(newIds);
+  };
+
   return (
     <SheetContent className="sm:max-w-xl md:max-w-2xl">
       <SheetHeader>
@@ -121,10 +171,90 @@ const PlaylistDetailSheet = ({
       </SheetHeader>
       <div className="flex h-full flex-col">
         <ScrollArea className="flex-1 pr-6">
-          <div className="grid grid-cols-1 gap-4 py-4 md:grid-cols-2">
-            {currentPodcasts.map((podcast) => (
-              <AudioCard key={podcast.id} podcast={podcast} onEdit={onEdit} />
-            ))}
+          <div className="flex flex-col gap-2 py-4 md:gap-3">
+            {currentPodcasts.map((podcast, index) => {
+              const uploadedAt = podcast.created_at
+                ? new Date(podcast.created_at).toLocaleDateString()
+                : null;
+              return (
+                <div
+                  key={podcast.id}
+                  className="flex items-stretch gap-3 rounded-lg border bg-card p-3 shadow-sm transition-colors hover:bg-secondary/50 md:gap-4 md:p-4"
+                >
+                  {/* Left: Cover art + text */}
+                  <div className="flex flex-1 items-center gap-3 md:gap-4">
+                    <img
+                      src={podcast.coverArt}
+                      alt={podcast.title}
+                      className="h-14 w-14 flex-shrink-0 rounded-md object-cover md:h-16 md:w-16"
+                    />
+                    <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                      <h3 className="font-semibold leading-tight line-clamp-2">
+                        {podcast.title}
+                      </h3>
+                      <p className="text-sm text-muted-foreground line-clamp-1">
+                        {Array.isArray(podcast.artist)
+                          ? podcast.artist.join(", ")
+                          : podcast.artist}
+                      </p>
+                      {uploadedAt && (
+                        <p className="text-xs text-muted-foreground">
+                          {uploadedAt}
+                        </p>
+                      )}
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {podcast.categories?.slice(0, 3).map((category) => (
+                          <span
+                            key={category}
+                            className="inline-block rounded-full bg-secondary px-2 py-0.5 text-xs text-secondary-foreground"
+                          >
+                            {category}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: Button column */}
+                  <div className="flex flex-col items-end justify-between gap-1">
+                    {/* Top: Move Up / Move Down */}
+                    <div className="flex flex-col gap-0.5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        disabled={index === 0}
+                        onClick={() => moveItem(index, "up")}
+                        aria-label="Move up"
+                      >
+                        <ChevronUp className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        disabled={index === currentPodcasts.length - 1}
+                        onClick={() => moveItem(index, "down")}
+                        aria-label="Move down"
+                      >
+                        <ChevronDown className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    {/* Bottom: Edit button */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => onEdit(podcast)}
+                      aria-label="Edit audio"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </ScrollArea>
         <Pagination

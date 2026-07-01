@@ -12,13 +12,13 @@ import { useUser } from "./UserContext";
 import { apiClient } from "@/lib/api-client";
 import { getListeningActivity } from "@/lib/data";
 import { getAudio } from "@/lib/idb";
+import { getAllProgress, saveProgress } from "@/lib/audioProgressDB";
 import { upsertListeningHistory } from "@/lib/actions";
 
 
 const HISTORY_STORAGE_KEY = "podcast_history";
 const LISTENING_LOG_KEY = "listening_log";
 const PLAYER_VOLUME_KEY = "player_volume";
-const PLAYBACK_PROGRESS_KEY = "playback_progress";
 const PODCAST_DURATIONS_KEY = "podcast_durations";
 const LAST_PLAYED_STORAGE_KEY = "last_played_podcast";
 
@@ -243,9 +243,10 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
             if (audioRef.current) audioRef.current.volume = parsedVolume;
           }
         }
-        const storedProgress = localStorage.getItem(PLAYBACK_PROGRESS_KEY);
-        if (storedProgress) {
-            setPlaybackProgress(JSON.parse(storedProgress));
+        // Load playback progress from IndexedDB (with 1-month expiry)
+        const storedProgress = await getAllProgress();
+        if (Object.keys(storedProgress).length > 0) {
+            setPlaybackProgress(storedProgress);
         }
         const storedDurations = localStorage.getItem(PODCAST_DURATIONS_KEY);
         if (storedDurations) {
@@ -330,14 +331,12 @@ export const PlayerProvider = ({ children }: { children: React.ReactNode }) => {
       } else {
         newProgress[trackId] = currentTime;
       }
-      
-      try {
-          localStorage.setItem(PLAYBACK_PROGRESS_KEY, JSON.stringify(newProgress));
-      } catch (e) {
-          console.error("Failed to save playback progress", e);
-      }
       return newProgress;
     });
+    // Persist to IndexedDB (10-second reset + expiry handled inside saveProgress)
+    saveProgress(trackId, currentTime, duration).catch((e) =>
+      console.error("Failed to save progress to IndexedDB", e),
+    );
   }, 5000);
 
   const updateListeningHistoryDuration = useThrottle(

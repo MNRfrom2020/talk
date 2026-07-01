@@ -55,6 +55,7 @@ next-env.d.ts
 
 # env files (allow .env.example)
 .env*
+.env.local*
 !.env.example
 
 # firebase
