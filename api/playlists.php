@@ -18,14 +18,19 @@ switch ($action) {
                     up.created_at,
                     up.cover_art,
                     COALESCE(
-                        (SELECT json_agg(pi.podcast_id ORDER BY pi.sort_order ASC)
-                         FROM playlist_items pi
-                         JOIN podcasts p ON p.id = pi.podcast_id AND p.created_at <= NOW()
-                         WHERE pi.playlist_id = up.id),
+                        (SELECT json_agg(pi_sub.podcast_id ORDER BY pi_sub.sort_order ASC)
+                         FROM playlist_items pi_sub
+                         JOIN podcasts p_sub ON p_sub.id = pi_sub.podcast_id AND p_sub.created_at <= NOW()
+                         WHERE pi_sub.playlist_id = up.id),
                         '[]'::json
                     ) AS podcast_ids
                 FROM user_playlists up
                 WHERE up.user_id = ?
+                  AND EXISTS (
+                      SELECT 1 FROM playlist_items pi_sub2
+                      JOIN podcasts p_sub2 ON p_sub2.id = pi_sub2.podcast_id AND p_sub2.created_at <= NOW()
+                      WHERE pi_sub2.playlist_id = up.id
+                  )
                 ORDER BY up.created_at DESC
             ";
             $stmt = $pdo->prepare($sql);
@@ -40,17 +45,17 @@ switch ($action) {
                     pl.cover_art,
                     pl.created_at,
                     COALESCE(
-                        (SELECT json_agg(api.podcast_id ORDER BY api.sort_order ASC)
-                         FROM admin_playlist_items api
-                         JOIN podcasts p ON p.id = api.podcast_id AND p.created_at <= NOW()
-                         WHERE api.playlist_id = pl.id),
+                        (SELECT json_agg(api_sub.podcast_id ORDER BY api_sub.sort_order ASC)
+                         FROM admin_playlist_items api_sub
+                         JOIN podcasts p_sub ON p_sub.id = api_sub.podcast_id AND p_sub.created_at <= NOW()
+                         WHERE api_sub.playlist_id = pl.id),
                         '[]'::json
                     ) AS podcast_ids
                 FROM playlists pl
                 WHERE EXISTS (
-                    SELECT 1 FROM admin_playlist_items api
-                    JOIN podcasts p ON p.id = api.podcast_id AND p.created_at <= NOW()
-                    WHERE api.playlist_id = pl.id
+                    SELECT 1 FROM admin_playlist_items api_sub2
+                    JOIN podcasts p_sub2 ON p_sub2.id = api_sub2.podcast_id AND p_sub2.created_at <= NOW()
+                    WHERE api_sub2.playlist_id = pl.id
                 )
                 ORDER BY pl.created_at DESC
             ";
