@@ -19,7 +19,9 @@ switch ($action) {
                     up.cover_art,
                     COALESCE(
                         (SELECT json_agg(pi.podcast_id ORDER BY pi.sort_order ASC)
-                         FROM playlist_items pi WHERE pi.playlist_id = up.id),
+                         FROM playlist_items pi
+                         JOIN podcasts p ON p.id = pi.podcast_id AND p.created_at <= NOW()
+                         WHERE pi.playlist_id = up.id),
                         '[]'::json
                     ) AS podcast_ids
                 FROM user_playlists up
@@ -39,10 +41,17 @@ switch ($action) {
                     pl.created_at,
                     COALESCE(
                         (SELECT json_agg(api.podcast_id ORDER BY api.sort_order ASC)
-                         FROM admin_playlist_items api WHERE api.playlist_id = pl.id),
+                         FROM admin_playlist_items api
+                         JOIN podcasts p ON p.id = api.podcast_id AND p.created_at <= NOW()
+                         WHERE api.playlist_id = pl.id),
                         '[]'::json
                     ) AS podcast_ids
                 FROM playlists pl
+                WHERE EXISTS (
+                    SELECT 1 FROM admin_playlist_items api
+                    JOIN podcasts p ON p.id = api.podcast_id AND p.created_at <= NOW()
+                    WHERE api.playlist_id = pl.id
+                )
                 ORDER BY pl.created_at DESC
             ";
             $stmt = $pdo->prepare($sql);
@@ -81,7 +90,10 @@ switch ($action) {
 
         if ($playlist) {
             $itemStmt = $pdo->prepare("
-                SELECT podcast_id FROM admin_playlist_items WHERE playlist_id = ?::uuid ORDER BY sort_order ASC
+                SELECT pi.podcast_id FROM admin_playlist_items pi
+                JOIN podcasts p ON p.id = pi.podcast_id AND p.created_at <= NOW()
+                WHERE pi.playlist_id = ?::uuid
+                ORDER BY pi.sort_order ASC
             ");
             $itemStmt->execute([$id]);
             $parsedIds = $itemStmt->fetchAll(PDO::FETCH_COLUMN);
@@ -115,7 +127,7 @@ switch ($action) {
                 COALESCE(json_agg(DISTINCT a.name) FILTER (WHERE a.name IS NOT NULL), '[]'::json) AS artist,
                 COALESCE(json_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '[]'::json) AS categories
             FROM admin_playlist_items api
-            JOIN podcasts p ON p.id = api.podcast_id
+            JOIN podcasts p ON p.id = api.podcast_id AND p.created_at <= NOW()
             LEFT JOIN podcast_artists pa ON p.id = pa.podcast_id
             LEFT JOIN artists a ON pa.artist_uuid = a.uuid
             LEFT JOIN podcast_categories pc ON p.id = pc.podcast_id

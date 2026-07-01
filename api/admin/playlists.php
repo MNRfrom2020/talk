@@ -16,7 +16,12 @@ try {
                 $stmt->execute([$_GET['id']]);
                 $playlist = $stmt->fetch();
                 if ($playlist) {
-                    $itemStmt = $pdo->prepare("SELECT podcast_id FROM admin_playlist_items WHERE playlist_id = ?::uuid ORDER BY sort_order ASC");
+                    $itemStmt = $pdo->prepare("
+                        SELECT pi.podcast_id FROM admin_playlist_items pi
+                        JOIN podcasts p ON p.id = pi.podcast_id AND p.created_at <= NOW()
+                        WHERE pi.playlist_id = ?::uuid
+                        ORDER BY pi.sort_order ASC
+                    ");
                     $itemStmt->execute([$_GET['id']]);
                     $playlist['podcast_ids'] = $itemStmt->fetchAll(PDO::FETCH_COLUMN);
                     sendResponse($playlist);
@@ -37,7 +42,12 @@ try {
             $playlists = $stmt->fetchAll();
 
             foreach ($playlists as &$playlist) {
-                $itemStmt = $pdo->prepare("SELECT podcast_id FROM admin_playlist_items WHERE playlist_id = ?::uuid ORDER BY sort_order ASC");
+                $itemStmt = $pdo->prepare("
+                    SELECT pi.podcast_id FROM admin_playlist_items pi
+                    JOIN podcasts p ON p.id = pi.podcast_id AND p.created_at <= NOW()
+                    WHERE pi.playlist_id = ?::uuid
+                    ORDER BY pi.sort_order ASC
+                ");
                 $itemStmt->execute([$playlist['id']]);
                 $playlist['podcast_ids'] = $itemStmt->fetchAll(PDO::FETCH_COLUMN);
             }
