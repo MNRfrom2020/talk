@@ -9,14 +9,16 @@ try {
         case 'GET':
             if (isset($_GET['id'])) {
                 $stmt = $pdo->prepare("
-                    SELECT id, name, description, cover_art, podcast_ids, created_at
+                    SELECT id, name, description, cover_art, created_at
                     FROM playlists
                     WHERE id = ?::uuid
                 ");
                 $stmt->execute([$_GET['id']]);
                 $playlist = $stmt->fetch();
                 if ($playlist) {
-                    $playlist['podcast_ids'] = parsePgArray($playlist['podcast_ids']);
+                    $itemStmt = $pdo->prepare("SELECT podcast_id FROM admin_playlist_items WHERE playlist_id = ?::uuid ORDER BY sort_order ASC");
+                    $itemStmt->execute([$_GET['id']]);
+                    $playlist['podcast_ids'] = $itemStmt->fetchAll(PDO::FETCH_COLUMN);
                     sendResponse($playlist);
                 }
                 sendResponse(["error" => "Playlist not found"], 404);
@@ -26,7 +28,7 @@ try {
             $offset = isset($_GET['offset']) ? (int)$_GET['offset'] : 0;
 
             $stmt = $pdo->prepare("
-                SELECT id, name, description, cover_art, podcast_ids, created_at
+                SELECT id, name, description, cover_art, created_at
                 FROM playlists
                 ORDER BY created_at DESC
                 LIMIT ? OFFSET ?
@@ -35,7 +37,9 @@ try {
             $playlists = $stmt->fetchAll();
 
             foreach ($playlists as &$playlist) {
-                $playlist['podcast_ids'] = parsePgArray($playlist['podcast_ids']);
+                $itemStmt = $pdo->prepare("SELECT podcast_id FROM admin_playlist_items WHERE playlist_id = ?::uuid ORDER BY sort_order ASC");
+                $itemStmt->execute([$playlist['id']]);
+                $playlist['podcast_ids'] = $itemStmt->fetchAll(PDO::FETCH_COLUMN);
             }
 
             $total = $pdo->query("SELECT count(*) FROM playlists")->fetchColumn();
@@ -44,19 +48,36 @@ try {
 
         case 'POST':
             $input = json_decode(file_get_contents('php://input'), true);
+            $name = trim($input['name'] ?? '');
+            $description = $input['description'] ?? '';
+            $cover_art = $input['cover_art'] ?? '';
+            $podcast_ids = $input['podcast_ids'] ?? [];
+            $created_at = $input['created_at'] ?? date('c');
+
+            $pdo->beginTransaction();
 
             $stmt = $pdo->prepare("
-                INSERT INTO playlists (name, description, cover_art, podcast_ids, created_at)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO playlists (name, description, cover_art, created_at)
+                VALUES (?, ?, ?, ?)
             ");
-            $stmt->execute([
-                trim($input['name'] ?? ''),
-                $input['description'] ?? '',
-                $input['cover_art'] ?? '',
-                formatPgArray($input['podcast_ids'] ?? []),
-                $input['created_at'] ?? date('c'),
-            ]);
+            $stmt->execute([$name, $description, $cover_art, $created_at]);
+            $newId = $pdo->lastInsertId() ?: null;
 
+            // If driver doesn't support lastInsertId, fetch it
+            if (!$newId) {
+                $idStmt = $pdo->prepare("SELECT id FROM playlists WHERE name = ? ORDER BY created_at DESC LIMIT 1");
+                $idStmt->execute([$name]);
+                $newId = $idStmt->fetchColumn();
+            }
+
+            if (!empty($podcast_ids) && $newId) {
+                $itemStmt = $pdo->prepare("INSERT INTO admin_playlist_items (playlist_id, podcast_id, sort_order) VALUES (?, ?, ?)");
+                foreach ($podcast_ids as $index => $pid) {
+                    $itemStmt->execute([$newId, $pid, $index + 1]);
+                }
+            }
+
+            $pdo->commit();
             sendResponse(["message" => "Playlist created successfully"]);
             break;
 
@@ -82,24 +103,35 @@ try {
                 $fields[] = "cover_art = ?";
                 $values[] = $input['cover_art'] ?? '';
             }
-            if (array_key_exists('podcast_ids', $input)) {
-                $fields[] = "podcast_ids = ?";
-                $values[] = formatPgArray($input['podcast_ids'] ?? []);
-            }
             if (array_key_exists('created_at', $input)) {
                 $fields[] = "created_at = ?";
                 $values[] = $input['created_at'];
             }
 
-            if (empty($fields)) {
-                sendResponse(["error" => "No fields to update"], 400);
+            if (!empty($fields)) {
+                $sql = "UPDATE playlists SET " . implode(", ", $fields) . " WHERE id = ?::uuid";
+                $values[] = $id;
+                $stmt = $pdo->prepare($sql);
+                $stmt->execute($values);
             }
 
-            $sql = "UPDATE playlists SET " . implode(", ", $fields) . " WHERE id = ?::uuid";
-            $values[] = $id;
+            // If podcast_ids provided, replace all items in junction table
+            if (array_key_exists('podcast_ids', $input)) {
+                $podcast_ids = $input['podcast_ids'] ?? [];
+                
+                $pdo->beginTransaction();
+                $pdo->prepare("DELETE FROM admin_playlist_items WHERE playlist_id = ?::uuid")->execute([$id]);
+                
+                if (!empty($podcast_ids)) {
+                    $itemStmt = $pdo->prepare("INSERT INTO admin_playlist_items (playlist_id, podcast_id, sort_order) VALUES (?::uuid, ?, ?)");
+                    foreach ($podcast_ids as $index => $pid) {
+                        $itemStmt->execute([$id, $pid, $index + 1]);
+                    }
+                }
+                
+                $pdo->commit();
+            }
 
-            $stmt = $pdo->prepare($sql);
-            $stmt->execute($values);
             sendResponse(["message" => "Playlist updated successfully"]);
             break;
 
@@ -109,6 +141,7 @@ try {
                 sendResponse(["error" => "Missing ID"], 400);
             }
 
+            // Junction items will cascade delete via ON DELETE CASCADE
             $stmt = $pdo->prepare("DELETE FROM playlists WHERE id = ?::uuid");
             $stmt->execute([$id]);
             sendResponse(["message" => "Playlist deleted successfully"]);
@@ -118,6 +151,7 @@ try {
             sendResponse(["error" => "Method Not Allowed"], 405);
     }
 } catch (PDOException $e) {
+    if ($pdo->inTransaction()) $pdo->rollBack();
     handleSqlError($e, "Playlist operation failed");
 }
 ?>

@@ -3,6 +3,7 @@ import { Card, CardContent } from "@admin/components/ui/card";
 import { Badge } from "@admin/components/ui/badge";
 import { CellActions } from "./columns";
 import type { Podcast } from "@admin/lib/types";
+import { format } from "date-fns";
 
 interface AudioCardProps {
   podcast: Podcast;
@@ -10,6 +11,10 @@ interface AudioCardProps {
 }
 
 export default function AudioCard({ podcast, onEdit }: AudioCardProps) {
+  const uploadedAt = podcast.created_at
+    ? format(new Date(podcast.created_at), "MMM d, yyyy 'at' h:mm a")
+    : null;
+
   return (
     <Card>
       <CardContent className="flex items-start gap-4 p-4">
@@ -30,6 +35,11 @@ export default function AudioCard({ podcast, onEdit }: AudioCardProps) {
           <p className="text-sm text-muted-foreground line-clamp-1">
             {podcast.artist.join(", ")}
           </p>
+          {uploadedAt && (
+            <p className="text-xs text-muted-foreground">
+              Uploaded {uploadedAt}
+            </p>
+          )}
           <div className="flex flex-wrap gap-1 pt-1">
             {podcast.categories.slice(0, 3).map((category) => (
               <Badge key={category} variant="secondary">

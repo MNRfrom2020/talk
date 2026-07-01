@@ -124,36 +124,17 @@ const PlaylistPage = () => {
     try {
       let data: any[];
       
-      // 🎯 All playlists: Load 20 at a time (pagination)
-      if (playlist.isPredefined || playlist.is_predefined) {
-        // Use podcasts.php with playlist_id filter for pagination
-        data = await fetchPodcasts({
-          action: "list",
-          playlist_id: playlist.id,
-          limit: PODCASTS_PER_PAGE,
-          offset: offsetToFetch,
-        });
-        
-        if (data.length < PODCASTS_PER_PAGE) {
-          setHasMore(false);
-        }
-      } else {
-        // User-created playlists: Use comma-separated IDs
-        const podcastIds = playlist.podcast_ids?.join(",") || "";
-        if (!podcastIds) {
-          setHasMore(false);
-          setIsLoading(false);
-          return;
-        }
-        data = await fetchPodcasts({
-          action: "list",
-          playlist_id: podcastIds,
-          limit: PODCASTS_PER_PAGE,
-          offset: offsetToFetch,
-        });
-        if (data.length < PODCASTS_PER_PAGE) {
-          setHasMore(false);
-        }
+      // All playlists now use the same path: pass the playlist UUID directly.
+      // podcasts.php JOINs against both admin_playlist_items and playlist_items.
+      data = await fetchPodcasts({
+        action: "list",
+        playlist_id: playlist.id,
+        limit: PODCASTS_PER_PAGE,
+        offset: offsetToFetch,
+      });
+      
+      if (data.length < PODCASTS_PER_PAGE) {
+        setHasMore(false);
       }
       setPodcasts(prev => offsetToFetch === 0 ? data : [...prev, ...data]);
     } catch (error) {

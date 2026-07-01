@@ -7,13 +7,10 @@ $pdo = getDbConnection();
 $action = $_GET['action'] ?? null;
 if (!$action) sendResponse(['error' => 'Action missing'], 400);
 
-// GET requests don't have JSON body
 $json = $_SERVER['REQUEST_METHOD'] === 'POST' ? file_get_contents('php://input') : '';
 $data = $json ? json_decode($json, true) : [];
 
-// 🔐 Security Function: Verify user role from request data
 function verifyUserRole($request_data, $allowed_roles) {
-    // Role comes from frontend, not from database
     $user_role = $request_data['role'] ?? null;
     
     if (!$user_role) {
@@ -21,11 +18,9 @@ function verifyUserRole($request_data, $allowed_roles) {
         sendResponse(['error' => 'Role not provided'], 400);
     }
 
-    // Debug logging
     error_log("verifyUserRole: Original role = " . json_encode($user_role));
     error_log("verifyUserRole: Allowed roles = " . json_encode($allowed_roles));
 
-    // Handle both string and array roles - check if ANY role matches
     $roles_array = is_array($user_role) ? $user_role : [$user_role];
     $matched = false;
     
@@ -54,6 +49,25 @@ function verifyUserRole($request_data, $allowed_roles) {
     return true;
 }
 
+// Helper: Insert podcast items into playlist_items for a user playlist
+function insertPlaylistItems($pdo, $playlistId, $podcastIds) {
+    if (empty($podcastIds)) return;
+    
+    $itemSql = "INSERT INTO playlist_items (playlist_id, podcast_id, sort_order) VALUES (?, ?, ?)";
+    $itemStmt = $pdo->prepare($itemSql);
+    
+    foreach ($podcastIds as $index => $podcastId) {
+        $itemStmt->execute([$playlistId, $podcastId, $index + 1]);
+    }
+}
+
+// Helper: Get podcast_ids from playlist_items for a user playlist
+function getUserPlaylistPodcastIds($pdo, $playlistId) {
+    $stmt = $pdo->prepare("SELECT podcast_id FROM playlist_items WHERE playlist_id = ? ORDER BY sort_order ASC");
+    $stmt->execute([$playlistId]);
+    return $stmt->fetchAll(PDO::FETCH_COLUMN);
+}
+
 switch ($action) {
     case 'upsert_listening_history':
         if (!isset($data['user_uid'], $data['podcast_id'])) {
@@ -61,11 +75,8 @@ switch ($action) {
         }
 
         try {
-            // 🔐 Security Validation - Verify user role from request
             verifyUserRole($data, ['super user', 'subscriber', 'contributor']);
 
-            // First try with ON CONFLICT (requires unique constraint)
-            // If constraint doesn't exist, fall back to manual check
             try {
                 $sql = "
                     INSERT INTO listening_history (user_id, podcast_id, listened_at, progress_seconds)
@@ -83,18 +94,15 @@ switch ($action) {
                     $data['duration'] ?? null
                 ]);
             } catch (\PDOException $e) {
-                // If ON CONFLICT fails (no unique constraint), use manual upsert
                 if (strpos($e->getMessage(), '42P10') !== false || strpos($e->getMessage(), 'unique') !== false) {
                     error_log("ON CONFLICT failed, using manual upsert: " . $e->getMessage());
                     
-                    // Check if record exists
                     $checkSql = "SELECT id FROM listening_history WHERE user_id = ? AND podcast_id = ?";
                     $checkStmt = $pdo->prepare($checkSql);
                     $checkStmt->execute([$data['user_uid'], $data['podcast_id']]);
                     $existing = $checkStmt->fetch();
                     
                     if ($existing) {
-                        // Update existing record
                         $updateSql = "
                             UPDATE listening_history 
                             SET listened_at = ?, progress_seconds = COALESCE(?, progress_seconds)
@@ -108,7 +116,6 @@ switch ($action) {
                             $data['podcast_id']
                         ]);
                     } else {
-                        // Insert new record
                         $insertSql = "
                             INSERT INTO listening_history (user_id, podcast_id, listened_at, progress_seconds)
                             VALUES (?, ?, ?, ?)
@@ -122,7 +129,6 @@ switch ($action) {
                         ]);
                     }
                 } else {
-                    // Re-throw if it's a different error
                     throw $e;
                 }
             }
@@ -133,13 +139,11 @@ switch ($action) {
         }
         break;
 
-    // নতুন: ব্যাচে লিসেনিং হিস্ট্রি আপসার্ট করা (দ্রুত সিঙ্কের জন্য)
     case 'upsert_listening_history_batch':
         if (!isset($data['user_uid'], $data['history']) || !is_array($data['history'])) {
             sendResponse(['error' => 'Missing required fields'], 400);
         }
 
-        // 🔐 Security Validation - Verify user role from request
         verifyUserRole($data, ['super user', 'subscriber', 'contributor']);
 
         $user_uid = $data['user_uid'];
@@ -149,10 +153,8 @@ switch ($action) {
             sendResponse(['message' => 'No history to sync']);
         }
 
-        // Build batch insert query
         $values = [];
         $params = [];
-        $update_sets = [];
 
         foreach ($history as $index => $item) {
             $values[] = "(?, ?, ?, ?)";
@@ -176,13 +178,11 @@ switch ($action) {
             $stmt->execute($params);
             sendResponse(['message' => 'Listening history batch updated', 'count' => count($history)]);
         } catch (\PDOException $e) {
-            // If ON CONFLICT fails, fallback to individual upserts
             if (strpos($e->getMessage(), '42P10') !== false || strpos($e->getMessage(), 'unique') !== false) {
                 error_log("Batch ON CONFLICT failed, using individual upserts: " . $e->getMessage());
                 $successCount = 0;
                 foreach ($history as $item) {
                     try {
-                        // Check if exists
                         $checkSql = "SELECT id FROM listening_history WHERE user_id = ? AND podcast_id = ?";
                         $checkStmt = $pdo->prepare($checkSql);
                         $checkStmt->execute([$user_uid, $item['podcast_id']]);
@@ -219,13 +219,14 @@ switch ($action) {
         }
         break;
 
-    // নতুন যোগ করা হলো: Server-Side Merging API
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Server-Side Merging API
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     case 'merge_initial_data':
         if (!isset($data['user_uid'])) {
             sendResponse(['error' => 'Missing user_uid'], 400);
         }
 
-        // 🔐 Security Validation - Verify user role from request
         verifyUserRole($data, ['super user', 'subscriber', 'contributor']);
 
         $user_uid = $data['user_uid'];
@@ -235,10 +236,9 @@ switch ($action) {
 
         $results = ['history_merged' => 0, 'playlists_merged' => 0, 'favorites_merged' => 0, 'errors' => []];
 
-        // 1. Merge History (Batch Upsert Logic)
+        // 1. Merge History
         if (!empty($history) && is_array($history)) {
             $successCount = 0;
-            // Instead of complex batch SQL, simple loop with ON CONFLICT (fallback to manual) for stability during migrations.
             foreach ($history as $item) {
                 try {
                     $pid = $item['podcast_id'] ?? $item['id'] ?? null;
@@ -276,7 +276,7 @@ switch ($action) {
             $results['history_merged'] = $successCount;
         }
 
-        // 2. Merge Playlists (Merge or Insert)
+        // 2. Merge Playlists (using junction table)
         if (!empty($playlists) && is_array($playlists)) {
             $successCount = 0;
             foreach ($playlists as $pl) {
@@ -285,26 +285,26 @@ switch ($action) {
                     if (!$name) continue;
 
                     $raw_pids = $pl['podcast_ids'] ?? [];
-                    // Ensure valid pg array string
-                    $pg_ids = "{" . implode(',', $raw_pids) . "}";
 
-                    $stmt = $pdo->prepare("SELECT id, podcast_ids FROM user_playlists WHERE user_id = ? AND name = ?");
+                    $stmt = $pdo->prepare("SELECT id FROM user_playlists WHERE user_id = ? AND name = ?");
                     $stmt->execute([$user_uid, $name]);
                     $existing = $stmt->fetch();
 
                     if ($existing) {
-                        $existing_ids = parsePgArray($existing['podcast_ids']);
-                        $new_ids = array_unique(array_merge($existing_ids, $raw_pids));
-                        $merged_pg_ids = "{" . implode(',', $new_ids) . "}";
-
-                        $updateStmt = $pdo->prepare("UPDATE user_playlists SET podcast_ids = ? WHERE id = ?");
-                        $updateStmt->execute([$merged_pg_ids, $existing['id']]);
+                        $existing_ids = getUserPlaylistPodcastIds($pdo, $existing['id']);
+                        $new_ids = array_values(array_unique(array_merge($existing_ids, $raw_pids)));
+                        
+                        // Delete existing items and re-insert with updated order
+                        $pdo->prepare("DELETE FROM playlist_items WHERE playlist_id = ?")->execute([$existing['id']]);
+                        insertPlaylistItems($pdo, $existing['id'], $new_ids);
                     } else {
                         $newId = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x', mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0x0fff) | 0x4000, mt_rand(0, 0x3fff) | 0x8000, mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff));
                         $cover_art = $pl['coverArt'] ?? $pl['cover'] ?? null;
                         
-                        $insertStmt = $pdo->prepare("INSERT INTO user_playlists (id, user_id, name, podcast_ids, cover_art, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
-                        $insertStmt->execute([$newId, $user_uid, $name, $pg_ids, $cover_art]);
+                        $insertStmt = $pdo->prepare("INSERT INTO user_playlists (id, user_id, name, cover_art, created_at) VALUES (?, ?, ?, ?, NOW())");
+                        $insertStmt->execute([$newId, $user_uid, $name, $cover_art]);
+                        
+                        insertPlaylistItems($pdo, $newId, $raw_pids);
                     }
                     $successCount++;
                 } catch (\Exception $e) {
@@ -314,17 +314,15 @@ switch ($action) {
             $results['playlists_merged'] = $successCount;
         }
 
-        // 3. Merge Favorite Predefined Playlists
+        // 3. Merge Favorite Predefined Playlists (favorite_playlists table — not migrated)
         if (!empty($favorite_playlist_ids) && is_array($favorite_playlist_ids)) {
             try {
-                // Get existing from favorite_playlists table
                 $stmt = $pdo->prepare("SELECT podcast_ids FROM favorite_playlists WHERE user_id = ?");
                 $stmt->execute([$user_uid]);
                 $favRec = $stmt->fetch();
                 
                 $existing_fav_ids = [];
                 if ($favRec && !empty($favRec['podcast_ids'])) {
-                    // It's a PG array string like {id1,id2}
                     $existing_fav_ids = parsePgArray($favRec['podcast_ids']);
                 }
                 
@@ -350,8 +348,9 @@ switch ($action) {
         sendResponse(['message' => 'Data merged successfully', 'results' => $results]);
         break;
 
-    // নতুন যোগ করা হলো: ইউজারের প্লেলিস্ট সেভ করার জন্য
-
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Save / Create User Playlist (using junction table)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     case 'save_user_playlist':
         error_log("=== save_user_playlist endpoint reached ===");
         
@@ -369,16 +368,14 @@ switch ($action) {
         }
 
         try {
-            // 🔐 Security Validation - Verify user role from request
             error_log("save_user_playlist: Verifying user role...");
             verifyUserRole($data, ['super user', 'subscriber', 'contributor']);
             error_log("save_user_playlist: Role verification passed");
 
-            // If ID is provided, this is an UPDATE operation (edit playlist)
             if ($id) {
+                // UPDATE operation (edit playlist metadata)
                 error_log("save_user_playlist: UPDATE operation for playlist id=$id");
                 
-                // Build dynamic update query based on provided fields
                 $updateFields = [];
                 $params = [];
                 
@@ -386,48 +383,46 @@ switch ($action) {
                     $updateFields[] = "name = ?";
                     $params[] = $name;
                 }
-                if ($podcast_ids !== null) {
-                    $pg_ids = is_array($podcast_ids) ? "{" . implode(',', $podcast_ids) . "}" : $podcast_ids;
-                    $updateFields[] = "podcast_ids = ?";
-                    $params[] = $pg_ids;
-                }
                 if ($cover_art !== null) {
                     $updateFields[] = "cover_art = ?";
                     $params[] = $cover_art;
                 }
                 
-                if (empty($updateFields)) {
-                    error_log("save_user_playlist: No fields to update");
-                    sendResponse(['message' => 'No changes to update', 'id' => $id]);
+                if (!empty($updateFields)) {
+                    $params[] = $id;
+                    $sql = "UPDATE user_playlists SET " . implode(', ', $updateFields) . " WHERE id = ? AND user_id = ?";
+                    $params[] = $user_uid;
+                    
+                    error_log("save_user_playlist: Update SQL: $sql with params: " . json_encode($params));
+                    
+                    $stmt = $pdo->prepare($sql);
+                    if (!$stmt) {
+                        throw new Exception("Prepare failed: " . json_encode($pdo->errorInfo()));
+                    }
+                    
+                    $executed = $stmt->execute($params);
+                    if (!$executed) {
+                        throw new Exception("Execute failed: " . json_encode($stmt->errorInfo()));
+                    }
+                    
+                    $affectedRows = $stmt->rowCount();
+                    if ($affectedRows === 0) {
+                        error_log("save_user_playlist: No rows updated (playlist not found or unauthorized)");
+                        sendResponse(['error' => 'Playlist not found or unauthorized'], 404);
+                    }
+                }
+
+                // If podcast_ids provided, replace all items in the junction table
+                if ($podcast_ids !== null && is_array($podcast_ids)) {
+                    $pdo->prepare("DELETE FROM playlist_items WHERE playlist_id = ?")->execute([$id]);
+                    insertPlaylistItems($pdo, $id, $podcast_ids);
                 }
                 
-                $params[] = $id; // WHERE clause parameter
-                $sql = "UPDATE user_playlists SET " . implode(', ', $updateFields) . " WHERE id = ? AND user_id = ?";
-                $params[] = $user_uid; // Security: ensure user owns this playlist
-                
-                error_log("save_user_playlist: Update SQL: $sql with params: " . json_encode($params));
-                
-                $stmt = $pdo->prepare($sql);
-                if (!$stmt) {
-                    throw new Exception("Prepare failed: " . json_encode($pdo->errorInfo()));
-                }
-                
-                $executed = $stmt->execute($params);
-                if (!$executed) {
-                    throw new Exception("Execute failed: " . json_encode($stmt->errorInfo()));
-                }
-                
-                $affectedRows = $stmt->rowCount();
-                if ($affectedRows === 0) {
-                    error_log("save_user_playlist: No rows updated (playlist not found or unauthorized)");
-                    sendResponse(['error' => 'Playlist not found or unauthorized'], 404);
-                }
-                
-                error_log("save_user_playlist: Playlist updated successfully, id=$id, rows_affected=$affectedRows");
+                error_log("save_user_playlist: Playlist updated successfully, id=$id");
                 sendResponse(['message' => 'Playlist updated', 'id' => $id]);
                 
             } else {
-                // No ID provided - this is a CREATE or MERGE operation
+                // CREATE or MERGE operation
                 error_log("save_user_playlist: CREATE/MERGE operation");
                 
                 if (!$name) {
@@ -437,61 +432,33 @@ switch ($action) {
                 
                 $podcast_ids_array = $podcast_ids ?? [];
 
-                // 🔄 Merge Logic Check - Prevent duplicate playlists
-                $stmt = $pdo->prepare("SELECT id, podcast_ids FROM user_playlists WHERE user_id = ? AND name = ?");
-                if (!$stmt) {
-                    throw new Exception("Prepare failed: " . json_encode($pdo->errorInfo()));
-                }
-                
-                $executed = $stmt->execute([$user_uid, $name]);
-                if (!$executed) {
-                    throw new Exception("Execute failed: " . json_encode($stmt->errorInfo()));
-                }
-                
+                $stmt = $pdo->prepare("SELECT id FROM user_playlists WHERE user_id = ? AND name = ?");
+                $stmt->execute([$user_uid, $name]);
                 $existing = $stmt->fetch();
                 error_log("save_user_playlist: Existing playlist check: " . json_encode($existing));
 
                 if ($existing) {
-                    // ✅ MERGE: Combine podcast_ids (no duplicates)
-                    $existing_ids = parsePgArray($existing['podcast_ids']);
-                    $new_ids = array_unique(array_merge($existing_ids, $podcast_ids_array));
-                    $pg_ids = "{" . implode(',', $new_ids) . "}";
-                    error_log("save_user_playlist: Merging playlists. Existing: " . json_encode($existing_ids) . ", New: " . json_encode($new_ids));
-
-                    $updateStmt = $pdo->prepare("
-                        UPDATE user_playlists
-                        SET podcast_ids = ?
-                        WHERE id = ?
-                    ");
-                    if (!$updateStmt) {
-                        throw new Exception("Update prepare failed: " . json_encode($pdo->errorInfo()));
-                    }
+                    // MERGE: Combine podcast_ids (no duplicates) via junction table
+                    $existing_ids = getUserPlaylistPodcastIds($pdo, $existing['id']);
+                    $new_ids = array_values(array_unique(array_merge($existing_ids, $podcast_ids_array)));
                     
-                    $updateExecuted = $updateStmt->execute([$pg_ids, $existing['id']]);
-                    if (!$updateExecuted) {
-                        throw new Exception("Update execute failed: " . json_encode($updateStmt->errorInfo()));
-                    }
+                    $pdo->prepare("DELETE FROM playlist_items WHERE playlist_id = ?")->execute([$existing['id']]);
+                    insertPlaylistItems($pdo, $existing['id'], $new_ids);
                     
                     error_log("save_user_playlist: Playlist merged successfully, id=" . $existing['id']);
                     sendResponse(['message' => 'Playlist merged', 'id' => $existing['id']]);
                 } else {
                     // Insert new playlist
                     $newId = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x', mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0x0fff) | 0x4000, mt_rand(0, 0x3fff) | 0x8000, mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff));
-                    $pg_ids = "{" . implode(',', $podcast_ids_array) . "}";
                     error_log("save_user_playlist: Inserting new playlist, id=$newId");
 
                     $insertStmt = $pdo->prepare("
-                        INSERT INTO user_playlists (id, user_id, name, podcast_ids, created_at)
-                        VALUES (?, ?, ?, ?, NOW())
+                        INSERT INTO user_playlists (id, user_id, name, created_at)
+                        VALUES (?, ?, ?, NOW())
                     ");
-                    if (!$insertStmt) {
-                        throw new Exception("Insert prepare failed: " . json_encode($pdo->errorInfo()));
-                    }
+                    $insertStmt->execute([$newId, $user_uid, $name]);
                     
-                    $insertExecuted = $insertStmt->execute([$newId, $user_uid, $name, $pg_ids]);
-                    if (!$insertExecuted) {
-                        throw new Exception("Insert execute failed: " . json_encode($insertStmt->errorInfo()));
-                    }
+                    insertPlaylistItems($pdo, $newId, $podcast_ids_array);
                     
                     error_log("save_user_playlist: Playlist inserted successfully, id=$newId");
                     sendResponse(['message' => 'User playlist saved', 'id' => $newId]);
@@ -523,8 +490,123 @@ switch ($action) {
         break;
 
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // Toggle a single playlist ID inside the uuid[] column.
-    // Uses PostgreSQL array functions — no overwrite, no race condition.
+    // Add a single podcast to a user playlist (junction table)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    case 'add_to_user_playlist':
+        $user_uid = $data['user_uid'] ?? null;
+        $playlist_id = $data['playlist_id'] ?? null;
+        $podcast_id = $data['podcast_id'] ?? null;
+
+        if (!$user_uid || !$playlist_id || !$podcast_id) {
+            sendResponse(['error' => 'Missing user_uid, playlist_id, or podcast_id'], 400);
+        }
+
+        try {
+            verifyUserRole($data, ['super user', 'subscriber', 'contributor']);
+
+            // Verify ownership
+            $check = $pdo->prepare("SELECT id FROM user_playlists WHERE id = ? AND user_id = ?");
+            $check->execute([$playlist_id, $user_uid]);
+            if (!$check->fetch()) {
+                sendResponse(['error' => 'Playlist not found or unauthorized'], 404);
+            }
+
+            // Check if already exists
+            $existsStmt = $pdo->prepare("SELECT id FROM playlist_items WHERE playlist_id = ? AND podcast_id = ?");
+            $existsStmt->execute([$playlist_id, $podcast_id]);
+            if ($existsStmt->fetch()) {
+                sendResponse(['message' => 'Podcast already in playlist', 'action' => 'already_exists']);
+            }
+
+            // Get max sort_order and append
+            $maxStmt = $pdo->prepare("SELECT COALESCE(MAX(sort_order), 0) + 1 FROM playlist_items WHERE playlist_id = ?");
+            $maxStmt->execute([$playlist_id]);
+            $nextOrder = $maxStmt->fetchColumn();
+
+            $insertStmt = $pdo->prepare("INSERT INTO playlist_items (playlist_id, podcast_id, sort_order) VALUES (?, ?, ?)");
+            $insertStmt->execute([$playlist_id, $podcast_id, $nextOrder]);
+
+            sendResponse(['message' => 'Podcast added to playlist', 'action' => 'added', 'sort_order' => $nextOrder]);
+        } catch (\PDOException $e) {
+            error_log("Error in add_to_user_playlist: " . $e->getMessage());
+            sendResponse(['error' => 'Database error: ' . $e->getMessage()], 500);
+        }
+        break;
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Remove a single podcast from a user playlist (junction table)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    case 'remove_from_user_playlist':
+        $user_uid = $data['user_uid'] ?? null;
+        $playlist_id = $data['playlist_id'] ?? null;
+        $podcast_id = $data['podcast_id'] ?? null;
+
+        if (!$user_uid || !$playlist_id || !$podcast_id) {
+            sendResponse(['error' => 'Missing user_uid, playlist_id, or podcast_id'], 400);
+        }
+
+        try {
+            verifyUserRole($data, ['super user', 'subscriber', 'contributor']);
+
+            // Verify ownership
+            $check = $pdo->prepare("SELECT id FROM user_playlists WHERE id = ? AND user_id = ?");
+            $check->execute([$playlist_id, $user_uid]);
+            if (!$check->fetch()) {
+                sendResponse(['error' => 'Playlist not found or unauthorized'], 404);
+            }
+
+            $deleteStmt = $pdo->prepare("DELETE FROM playlist_items WHERE playlist_id = ? AND podcast_id = ?");
+            $deleteStmt->execute([$playlist_id, $podcast_id]);
+
+            sendResponse(['message' => 'Podcast removed from playlist', 'action' => 'removed']);
+        } catch (\PDOException $e) {
+            error_log("Error in remove_from_user_playlist: " . $e->getMessage());
+            sendResponse(['error' => 'Database error: ' . $e->getMessage()], 500);
+        }
+        break;
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Reorder a user playlist (transaction: delete all + bulk insert)
+    // Expects: { user_uid, playlist_id, podcast_ids: [ordered ids...] }
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    case 'reorder_user_playlist':
+        $user_uid = $data['user_uid'] ?? null;
+        $playlist_id = $data['playlist_id'] ?? null;
+        $podcast_ids = $data['podcast_ids'] ?? [];
+
+        if (!$user_uid || !$playlist_id) {
+            sendResponse(['error' => 'Missing user_uid or playlist_id'], 400);
+        }
+
+        try {
+            verifyUserRole($data, ['super user', 'subscriber', 'contributor']);
+
+            // Verify ownership
+            $check = $pdo->prepare("SELECT id FROM user_playlists WHERE id = ? AND user_id = ?");
+            $check->execute([$playlist_id, $user_uid]);
+            if (!$check->fetch()) {
+                sendResponse(['error' => 'Playlist not found or unauthorized'], 404);
+            }
+
+            $pdo->beginTransaction();
+
+            // Delete all existing items
+            $pdo->prepare("DELETE FROM playlist_items WHERE playlist_id = ?")->execute([$playlist_id]);
+
+            // Insert with new sort_order
+            insertPlaylistItems($pdo, $playlist_id, $podcast_ids);
+
+            $pdo->commit();
+            sendResponse(['message' => 'Playlist reordered successfully', 'count' => count($podcast_ids)]);
+        } catch (\Exception $e) {
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            error_log("Error in reorder_user_playlist: " . $e->getMessage());
+            sendResponse(['error' => 'Database error: ' . $e->getMessage()], 500);
+        }
+        break;
+
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Toggle a single playlist ID inside favorite_playlists (NOT migrated, stays as uuid[])
     // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     case 'toggle_favorite_playlist':
         $uid         = $data['uid']         ?? null;
@@ -535,14 +617,12 @@ switch ($action) {
         }
 
         try {
-            // ── Step 1: fetch the current array (one row or none) ──
             $fetchSql  = "SELECT podcast_ids FROM favorite_playlists WHERE user_id = ?";
             $fetchStmt = $pdo->prepare($fetchSql);
             $fetchStmt->execute([$uid]);
             $row = $fetchStmt->fetch(PDO::FETCH_ASSOC);
 
             if ($row === false) {
-                // ── Step 2a: No row yet — INSERT with the single ID ──
                 $insertSql  = "INSERT INTO favorite_playlists (user_id, podcast_ids, updated_at)
                                VALUES (?, ?::uuid[], NOW())";
                 $insertStmt = $pdo->prepare($insertSql);
@@ -550,13 +630,10 @@ switch ($action) {
                 sendResponse(['message' => 'Favorited', 'action' => 'added']);
 
             } else {
-                // ── Step 2b: Row exists — check if ID is already present ──
-                // parsePgArray() is defined at the bottom of this file.
                 $currentIds = parsePgArray($row['podcast_ids'] ?? '{}');
                 $alreadyIn  = in_array($playlist_id, $currentIds, true);
 
                 if ($alreadyIn) {
-                    // ── Toggle OFF: remove with PostgreSQL array_remove() ──
                     $updateSql  = "UPDATE favorite_playlists
                                    SET    podcast_ids = array_remove(podcast_ids, ?::uuid),
                                           updated_at  = NOW()
@@ -566,7 +643,6 @@ switch ($action) {
                     sendResponse(['message' => 'Unfavorited', 'action' => 'removed']);
 
                 } else {
-                    // ── Toggle ON: append with PostgreSQL array_append() ──
                     $updateSql  = "UPDATE favorite_playlists
                                    SET    podcast_ids = array_append(podcast_ids, ?::uuid),
                                           updated_at  = NOW()
@@ -582,11 +658,9 @@ switch ($action) {
         }
         break;
 
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-    // Toggle a single podcast ID inside the 'Favorites' user_playlist.
-    // Finds the row: user_id = ? AND name = 'Favorites'
-    // Uses array_append / array_remove — atomic, no overwrite risk.
-    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Toggle a single podcast in the 'Favorites' user_playlist (uses playlist_items)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     case 'toggle_favorite_podcast':
         $uid        = $data['uid']        ?? null;
         $podcast_id = $data['podcast_id'] ?? null;
@@ -596,16 +670,14 @@ switch ($action) {
         }
 
         try {
-            // ── Step 1: Fetch the current Favorites row ──
-            $fetchSql  = "SELECT id, podcast_ids FROM user_playlists
-                          WHERE user_id = ? AND name = 'Favorites'
-                          LIMIT 1";
+            // Step 1: Find or create "Favorites" playlist
+            $fetchSql  = "SELECT id FROM user_playlists WHERE user_id = ? AND name = 'Favorites' LIMIT 1";
             $fetchStmt = $pdo->prepare($fetchSql);
             $fetchStmt->execute([$uid]);
             $row = $fetchStmt->fetch(PDO::FETCH_ASSOC);
 
             if ($row === false) {
-                // ── Step 2a: No Favorites row yet — create it with the podcast ──
+                // No Favorites playlist yet — create it with this podcast
                 $newId = sprintf(
                     '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
                     mt_rand(0, 0xffff), mt_rand(0, 0xffff),
@@ -614,34 +686,35 @@ switch ($action) {
                     mt_rand(0, 0x3fff) | 0x8000,
                     mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
                 );
-                $insertSql  = "INSERT INTO user_playlists (id, user_id, name, podcast_ids, created_at)
-                               VALUES (?, ?, 'Favorites', ?::uuid[], NOW())";
-                $insertStmt = $pdo->prepare($insertSql);
-                $insertStmt->execute([$newId, $uid, '{' . $podcast_id . '}']);
+                $insertPlaylist = $pdo->prepare("INSERT INTO user_playlists (id, user_id, name, created_at) VALUES (?, ?, 'Favorites', NOW())");
+                $insertPlaylist->execute([$newId, $uid]);
+                
+                $insertItem = $pdo->prepare("INSERT INTO playlist_items (playlist_id, podcast_id, sort_order) VALUES (?, ?, 1)");
+                $insertItem->execute([$newId, $podcast_id]);
+                
                 sendResponse(['message' => 'Favorited (created Favorites playlist)', 'action' => 'added']);
 
             } else {
-                // ── Step 2b: Row exists — check if podcast is already in array ──
-                $currentIds = parsePgArray($row['podcast_ids'] ?? '{}');
-                $alreadyIn  = in_array($podcast_id, $currentIds, true);
-                $rowId      = $row['id'];
+                $rowId = $row['id'];
+                
+                // Check if podcast is already in playlist_items
+                $checkItem = $pdo->prepare("SELECT id FROM playlist_items WHERE playlist_id = ? AND podcast_id = ?");
+                $checkItem->execute([$rowId, $podcast_id]);
+                $alreadyIn = $checkItem->fetch() !== false;
 
                 if ($alreadyIn) {
-                    // ── Toggle OFF: remove with array_remove() ──
-                    $updateSql  = "UPDATE user_playlists
-                                   SET    podcast_ids = array_remove(podcast_ids, ?::uuid)
-                                   WHERE  id = ?";
-                    $updateStmt = $pdo->prepare($updateSql);
-                    $updateStmt->execute([$podcast_id, $rowId]);
+                    // Toggle OFF: remove
+                    $deleteStmt = $pdo->prepare("DELETE FROM playlist_items WHERE playlist_id = ? AND podcast_id = ?");
+                    $deleteStmt->execute([$rowId, $podcast_id]);
                     sendResponse(['message' => 'Unfavorited', 'action' => 'removed']);
-
                 } else {
-                    // ── Toggle ON: append with array_append() ──
-                    $updateSql  = "UPDATE user_playlists
-                                   SET    podcast_ids = array_append(podcast_ids, ?::uuid)
-                                   WHERE  id = ?";
-                    $updateStmt = $pdo->prepare($updateSql);
-                    $updateStmt->execute([$podcast_id, $rowId]);
+                    // Toggle ON: append
+                    $maxStmt = $pdo->prepare("SELECT COALESCE(MAX(sort_order), 0) + 1 FROM playlist_items WHERE playlist_id = ?");
+                    $maxStmt->execute([$rowId]);
+                    $nextOrder = $maxStmt->fetchColumn();
+                    
+                    $insertItem = $pdo->prepare("INSERT INTO playlist_items (playlist_id, podcast_id, sort_order) VALUES (?, ?, ?)");
+                    $insertItem->execute([$rowId, $podcast_id, $nextOrder]);
                     sendResponse(['message' => 'Favorited', 'action' => 'added']);
                 }
             }
@@ -651,8 +724,9 @@ switch ($action) {
         }
         break;
 
-
-
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Save favorite playlists (favorite_playlists table — NOT migrated, stays as uuid[])
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     case 'save_user':
         $uid = $data['uid'] ?? null;
         $playlists_ids = $data['playlists_ids'] ?? null;
@@ -662,7 +736,6 @@ switch ($action) {
         }
         
         try {
-            // Save to favorite_playlists table (upsert)
             $pg_ids = '{' . implode(',', $playlists_ids) . '}';
             
             $sql = "
@@ -677,11 +750,9 @@ switch ($action) {
             $stmt->execute([$uid, $pg_ids]);
             sendResponse(['message' => 'Favorite playlists updated']);
         } catch (\PDOException $e) {
-            // Fallback if ON CONFLICT fails (no unique constraint on user_id)
             if (strpos($e->getMessage(), '42P10') !== false || strpos($e->getMessage(), 'unique') !== false) {
                 error_log("ON CONFLICT failed for favorite_playlists, using manual upsert: " . $e->getMessage());
                 
-                // Check if record exists
                 $checkSql = "SELECT user_id FROM favorite_playlists WHERE user_id = ?";
                 $checkStmt = $pdo->prepare($checkSql);
                 $checkStmt->execute([$uid]);
@@ -706,9 +777,10 @@ switch ($action) {
         }
         break;
 
-    // Get user's favorite playlist IDs
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    // Get user's favorite playlist IDs (favorite_playlists — NOT migrated)
+    // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     case 'get_user_favorites':
-        // Simple test to verify endpoint is reachable
         error_log("=== get_user_favorites endpoint reached ===");
         
         $uid = $_GET['uid'] ?? null;
@@ -720,19 +792,16 @@ switch ($action) {
         error_log("get_user_favorites: Loading favorites for user $uid");
         
         try {
-            // Verify database connection
             if (!$pdo) {
                 throw new Exception("Database connection is null");
             }
             
-            // Simple test query to verify DB works
             $testStmt = $pdo->query("SELECT 1 as test");
             if (!$testStmt) {
                 throw new Exception("Database connection test failed");
             }
             error_log("get_user_favorites: Database connection OK");
             
-            // Main query
             $sql = "SELECT podcast_ids FROM favorite_playlists WHERE user_id = ? LIMIT 1";
             error_log("get_user_favorites: Preparing query");
             
@@ -798,13 +867,14 @@ switch ($action) {
         }
         break;
 
-    // ... (বাকি আগের case 'save_podcast', 'delete_record' ঠিক আগের মতোই থাকবে)
     case 'delete_record':
         $table = $data['table'] ?? null;
         $id = $data['id'] ?? null;
         if (!$table || !$id) sendResponse(['error' => 'Table and ID required'], 400);
         $allowedTables = ['podcasts', 'playlists', 'user_playlists'];
         if (!in_array($table, $allowedTables)) sendResponse(['error' => 'Invalid table'], 403);
+        
+        // If deleting a playlist, junction items cascade via ON DELETE CASCADE
         $stmt = $pdo->prepare("DELETE FROM $table WHERE id = ?");
         $stmt->execute([$id]);
         sendResponse(['message' => 'Record deleted']);
@@ -814,7 +884,6 @@ switch ($action) {
         sendResponse(['error' => 'Invalid action'], 400);
 }
 
-// Helper function to parse PostgreSQL array format
 function parsePgArray($pgArray) {
     if (is_array($pgArray)) return $pgArray;
     if (!$pgArray || $pgArray === '{}') return [];

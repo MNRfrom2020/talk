@@ -8,18 +8,20 @@ $action = $_GET['action'] ?? 'list';
 
 switch ($action) {
     case 'list':
-        // Check if user_uid is provided - if so, fetch user playlists
         $userUid = $_GET['user_uid'] ?? null;
         
         if ($userUid) {
-            // Fetch user-created playlists from user_playlists table
             $sql = "
                 SELECT
                     up.id,
                     up.name,
-                    up.podcast_ids,
                     up.created_at,
-                    COALESCE(array_length(up.podcast_ids, 1), 0) AS audio_count
+                    up.cover_art,
+                    COALESCE(
+                        (SELECT json_agg(pi.podcast_id ORDER BY pi.sort_order ASC)
+                         FROM playlist_items pi WHERE pi.playlist_id = up.id),
+                        '[]'::json
+                    ) AS podcast_ids
                 FROM user_playlists up
                 WHERE up.user_id = ?
                 ORDER BY up.created_at DESC
@@ -28,16 +30,18 @@ switch ($action) {
             $stmt->execute([$userUid]);
             $playlists = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } else {
-            // Fetch predefined playlists from playlists table
             $sql = "
                 SELECT
                     pl.id,
                     pl.name,
                     pl.description,
                     pl.cover_art,
-                    pl.podcast_ids,
                     pl.created_at,
-                    COALESCE(array_length(pl.podcast_ids, 1), 0) AS audio_count
+                    COALESCE(
+                        (SELECT json_agg(api.podcast_id ORDER BY api.sort_order ASC)
+                         FROM admin_playlist_items api WHERE api.playlist_id = pl.id),
+                        '[]'::json
+                    ) AS podcast_ids
                 FROM playlists pl
                 ORDER BY pl.created_at DESC
             ";
@@ -47,16 +51,14 @@ switch ($action) {
         }
 
         foreach ($playlists as &$p) {
-            $parsedIds = parsePgArray($p['podcast_ids']);
-            $audioCount = (int)$p['audio_count'];
-            $isPredefined = !$userUid; // If user_uid provided, these are user playlists
+            $parsedIds = json_decode($p['podcast_ids'], true) ?? [];
+            $audioCount = count($parsedIds);
+            $isPredefined = !$userUid;
 
-            // ডাটাবেসের অরিজিনাল snake_case (সেফটির জন্য রাখলাম)
             $p['podcast_ids'] = $parsedIds;
             $p['is_predefined'] = $isPredefined;
             $p['audio_count'] = $audioCount;
 
-            // 🚀 ম্যাজিক ফিক্স: React-এর জন্য camelCase যুক্ত করে দিলাম!
             $p['podcastIds'] = $parsedIds;
             $p['coverArt'] = $p['cover_art'] ?? null;
             $p['createdAt'] = $p['created_at'];
@@ -71,18 +73,22 @@ switch ($action) {
         $id = $_GET['id'] ?? null;
         if (!$id) sendResponse(['error' => 'ID missing'], 400);
 
-        $stmt = $pdo->prepare("SELECT id, name, description, cover_art, podcast_ids, created_at FROM playlists WHERE id = ?::uuid");
+        $stmt = $pdo->prepare("
+            SELECT id, name, description, cover_art, created_at FROM playlists WHERE id = ?::uuid
+        ");
         $stmt->execute([$id]);
         $playlist = $stmt->fetch(PDO::FETCH_ASSOC);
 
         if ($playlist) {
-            $parsedIds = parsePgArray($playlist['podcast_ids']);
+            $itemStmt = $pdo->prepare("
+                SELECT podcast_id FROM admin_playlist_items WHERE playlist_id = ?::uuid ORDER BY sort_order ASC
+            ");
+            $itemStmt->execute([$id]);
+            $parsedIds = $itemStmt->fetchAll(PDO::FETCH_COLUMN);
             
-            // ডাটাবেসের অরিজিনাল snake_case
             $playlist['podcast_ids'] = $parsedIds;
             $playlist['is_predefined'] = true;
             
-            // 🚀 ম্যাজিক ফিক্স: React-এর জন্য camelCase
             $playlist['podcastIds'] = $parsedIds;
             $playlist['coverArt'] = $playlist['cover_art'];
             $playlist['createdAt'] = $playlist['created_at'];
@@ -108,16 +114,15 @@ switch ($action) {
                 p.created_at,
                 COALESCE(json_agg(DISTINCT a.name) FILTER (WHERE a.name IS NOT NULL), '[]'::json) AS artist,
                 COALESCE(json_agg(DISTINCT c.name) FILTER (WHERE c.name IS NOT NULL), '[]'::json) AS categories
-            FROM playlists pl
-            CROSS JOIN unnest(pl.podcast_ids) AS unnested_id
-            JOIN podcasts p ON p.id = unnested_id
+            FROM admin_playlist_items api
+            JOIN podcasts p ON p.id = api.podcast_id
             LEFT JOIN podcast_artists pa ON p.id = pa.podcast_id
             LEFT JOIN artists a ON pa.artist_uuid = a.uuid
             LEFT JOIN podcast_categories pc ON p.id = pc.podcast_id
             LEFT JOIN categories c ON pc.category_uuid = c.uuid
-            WHERE pl.id = ?::uuid
+            WHERE api.playlist_id = ?::uuid
             GROUP BY p.id
-            ORDER BY p.created_at DESC
+            ORDER BY api.sort_order ASC
         ";
 
         $stmt = $pdo->prepare($sql);
@@ -128,7 +133,6 @@ switch ($action) {
             $p['artist'] = json_decode($p['artist'], true);
             $p['categories'] = json_decode($p['categories'], true);
             
-            // পডকাস্টের ক্ষেত্রেও camelCase যুক্ত করে দিচ্ছি
             $p['coverArt'] = $p['cover_art'];
             $p['coverArtHint'] = $p['cover_art_hint'];
             $p['audioUrl'] = $p['audio_url'];
@@ -146,27 +150,34 @@ switch ($action) {
             sendResponse(['error' => 'Missing data'], 400);
         }
 
-        $id = $data['id'] ?? uniqid('pl_'); 
+        $id = $data['id'] ?? uniqid('pl_');
         $description = $data['description'] ?? null;
-        // ফ্রন্টএন্ড থেকে cover বা coverArt যেভাবেই আসুক, আমরা cover_art এ সেভ করব
         $cover_art = $data['cover_art'] ?? ($data['coverArt'] ?? ($data['cover'] ?? null));
         $podcast_ids = $data['podcast_ids'] ?? ($data['podcastIds'] ?? []);
-        
-        $pg_podcast_ids = "{" . implode(',', $podcast_ids) . "}";
 
-        $stmt = $pdo->prepare("INSERT INTO playlists (id, name, description, cover_art, podcast_ids, created_at) VALUES (?, ?, ?, ?, ?, NOW())");
-        $stmt->execute([$id, $data['name'], $description, $cover_art, $pg_podcast_ids]);
+        try {
+            $pdo->beginTransaction();
 
-        sendResponse(['id' => $id, 'message' => 'Playlist created successfully']);
+            $stmt = $pdo->prepare("INSERT INTO playlists (id, name, description, cover_art, created_at) VALUES (?, ?, ?, ?, NOW())");
+            $stmt->execute([$id, $data['name'], $description, $cover_art]);
+
+            if (!empty($podcast_ids)) {
+                $itemSql = "INSERT INTO admin_playlist_items (playlist_id, podcast_id, sort_order) VALUES (?, ?, ?)";
+                $itemStmt = $pdo->prepare($itemSql);
+                foreach ($podcast_ids as $index => $podcastId) {
+                    $itemStmt->execute([$id, $podcastId, $index + 1]);
+                }
+            }
+
+            $pdo->commit();
+            sendResponse(['id' => $id, 'message' => 'Playlist created successfully']);
+        } catch (\Exception $e) {
+            $pdo->rollBack();
+            sendResponse(['error' => 'Failed to create playlist: ' . $e->getMessage()], 500);
+        }
         break;
 
     default:
         sendResponse(['error' => 'Invalid action'], 400);
-}
-
-function parsePgArray($pgArray) {
-    if (is_array($pgArray)) return $pgArray;
-    if (!$pgArray || $pgArray === '{}') return [];
-    return explode(',', trim($pgArray, '{}'));
 }
 ?>

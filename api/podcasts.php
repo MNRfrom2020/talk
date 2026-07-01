@@ -36,13 +36,16 @@ switch ($action) {
         }
 
         if (!empty($playlist_id)) {
-            // যদি কমা-সেপারেটেড আইডি আসে (লোকাল প্লেলিস্ট থেকে)
+            // Comma-separated IDs (from local playlists)
             if (strpos($playlist_id, ',') !== false || !preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $playlist_id)) {
                 $whereConditions[] = "p.id = ANY( string_to_array(?, ',')::uuid[] )";
                 $params[] = $playlist_id;
             } else {
-                // যদি সিঙ্গেল প্লেলিস্ট আইডি আসে (এখানে ::uuid যুক্ত করা হয়েছে)
-                $whereConditions[] = "(p.id IN (SELECT unnest(podcast_ids) FROM playlists WHERE id = ?::uuid) OR p.id = ?::uuid)";
+                // Single playlist ID — use junction tables
+                $whereConditions[] = "(
+                    p.id IN (SELECT podcast_id FROM admin_playlist_items WHERE playlist_id = ?::uuid)
+                    OR p.id IN (SELECT podcast_id FROM playlist_items WHERE playlist_id = ?::uuid)
+                )";
                 $params[] = $playlist_id;
                 $params[] = $playlist_id;
             }

@@ -38,6 +38,7 @@ interface PlaylistContextType {
   removePodcastFromGuestPlaylist: (playlistId: string, podcastId: string) => void;
   addPodcastToUserPlaylist: (playlistId: string, podcastId: string) => Promise<void>;
   removePodcastFromUserPlaylist: (playlistId: string, podcastId: string) => Promise<void>;
+  reorderUserPlaylist: (playlistId: string, orderedPodcastIds: string[]) => Promise<void>;
   getPodcastsForPlaylist: (
     playlistId: string,
     allPodcasts: Podcast[],
@@ -423,14 +424,14 @@ export const PlaylistProvider = ({
       // Optimistic UI update
       setPlaylists(updatedPlaylists);
 
-      // Cloud sync
+      // Cloud sync — use granular add endpoint
       if (needsCloudSync && user.uid && !user.isExpired) {
         try {
-          await apiClient.post('actions.php?action=save_user_playlist', {
-            id: playlistId,
+          await apiClient.post('actions.php?action=add_to_user_playlist', {
             user_uid: user.uid,
             role: user.role,
-            podcast_ids: newPodcastIds,
+            playlist_id: playlistId,
+            podcast_id: podcastId,
           });
         } catch (err) {
           // Revert on failure
@@ -466,14 +467,14 @@ export const PlaylistProvider = ({
     // Optimistic UI update
     setPlaylists(updatedPlaylists);
 
-    // Cloud sync
+    // Cloud sync — use granular remove endpoint
     if (needsCloudSync && user.uid && !user.isExpired) {
       try {
-        await apiClient.post('actions.php?action=save_user_playlist', {
-          id: playlistId,
+        await apiClient.post('actions.php?action=remove_from_user_playlist', {
           user_uid: user.uid,
           role: user.role,
-          podcast_ids: newPodcastIds,
+          playlist_id: playlistId,
+          podcast_id: podcastId,
         });
       } catch (err) {
         // Revert on failure
@@ -486,6 +487,36 @@ export const PlaylistProvider = ({
     }
   };
 
+
+  const reorderUserPlaylist = async (playlistId: string, orderedPodcastIds: string[]) => {
+    const playlist = playlists.find((p) => p.id === playlistId);
+    if (!playlist) return;
+
+    const updatedPlaylists = playlists.map(p =>
+      p.id === playlistId ? { ...p, podcast_ids: orderedPodcastIds } : p
+    );
+
+    // Optimistic UI update
+    setPlaylists(updatedPlaylists);
+
+    // Cloud sync — use reorder endpoint
+    if (needsCloudSync && user.uid && !user.isExpired) {
+      try {
+        await apiClient.post('actions.php?action=reorder_user_playlist', {
+          user_uid: user.uid,
+          role: user.role,
+          playlist_id: playlistId,
+          podcast_ids: orderedPodcastIds,
+        });
+      } catch (err) {
+        console.error('Failed to sync playlist reorder to DB:', err);
+        setPlaylists(playlists);
+        throw err;
+      }
+    } else {
+      savePlaylistsForUser(updatedPlaylists);
+    }
+  };
 
   const getPodcastsForPlaylist = useCallback(
     (playlistId: string, allPodcasts: Podcast[]) => {
@@ -620,6 +651,7 @@ export const PlaylistProvider = ({
     removePodcastFromGuestPlaylist,
     addPodcastToUserPlaylist,
     removePodcastFromUserPlaylist,
+    reorderUserPlaylist,
     getPodcastsForPlaylist,
     getPlaylistById,
     toggleFavorite,

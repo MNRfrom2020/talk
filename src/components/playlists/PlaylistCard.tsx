@@ -60,8 +60,10 @@ export default function PlaylistCard({ playlist }: PlaylistCardProps) {
     playlist.podcast_ids?.length ??
     playlist.audioCount ??
     getPodcastsForPlaylist(playlist.id, podcasts).length;
-  const playlistIdsParam = playlist.podcast_ids?.join(",") ?? "";
-  const playlistFetchTarget = playlist.isPredefined ? playlist.id : playlistIdsParam;
+
+  // All playlists now use the same fetch target: the playlist UUID.
+  // podcasts.php JOINs against both admin_playlist_items and playlist_items.
+  const playlistFetchTarget = playlist.id;
 
   // 🎯 Load first 4 podcasts for cover display if not already loaded
   useEffect(() => {
